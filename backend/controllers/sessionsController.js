@@ -13,7 +13,7 @@ const getSessions = async (req, res) => {
       SELECT 
         ts.id,
         ts.client_id,
-        ts.session_date,
+        ts.session_date::text as session_date,
         ts.start_time,
         ts.end_time,
         ts.session_type,

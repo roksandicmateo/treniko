@@ -14,47 +14,73 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [loading, setLoading] = useState(true);
-  const loadedRanges = useRef(new Set());
+  const [error, setError] = useState('');
+  const loadedRange = useRef(null);
 
-  const loadSessions = async (startDate, endDate) => {
-    const rangeKey = `${startDate}-${endDate}`;
-    
-    // Prevent duplicate loads
-    if (loadedRanges.current.has(rangeKey)) {
-      return;
-    }
-    
+  useEffect(() => {
+    // Load initial sessions
+    loadSessions();
+  }, []);
+
+  const loadSessions = async (startDate = null, endDate = null) => {
     try {
+      const rangeKey = `${startDate}-${endDate}`;
+      
+      // Prevent duplicate loads
+      if (loadedRange.current === rangeKey) {
+        console.log('Already loaded this range, skipping');
+        return;
+      }
+      
       setLoading(true);
+      setError('');
+      
       const params = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
+      console.log('Loading sessions with params:', params);
       const response = await sessionsAPI.getAll(params);
+      console.log('Sessions loaded:', response.data.sessions);
+      console.log('First session date details:', response.data.sessions[0]?.session_date);
       
-      loadedRanges.current.add(rangeKey);
+      loadedRange.current = rangeKey;
       
-      const calendarEvents = response.data.sessions.map(session => ({
-        id: session.id,
-        title: `${session.client_first_name} ${session.client_last_name}`,
-        start: `${session.session_date}T${session.start_time}`,
-        end: `${session.session_date}T${session.end_time}`,
-        extendedProps: {
-          clientId: session.client_id,
-          sessionType: session.session_type,
-          notes: session.notes,
-        },
-      }));
+      const calendarEvents = response.data.sessions.map(session => {
+        // Extract just the date part (YYYY-MM-DD) from session_date
+        const dateOnly = session.session_date.split('T')[0];
+        console.log('Processing session:', session.id, 'Original date:', session.session_date, 'Extracted:', dateOnly);
+        
+        return {
+          id: session.id,
+          title: `${session.client_first_name} ${session.client_last_name}`,
+          start: `${dateOnly}T${session.start_time}`,
+          end: `${dateOnly}T${session.end_time}`,
+          backgroundColor: session.is_completed ? '#10b981' : '#0ea5e9',
+          borderColor: session.is_completed ? '#059669' : '#0284c7',
+          extendedProps: {
+            clientId: session.client_id,
+            sessionType: session.session_type,
+            notes: session.notes,
+            isCompleted: session.is_completed,
+            sessionDate: dateOnly,  // Store original date here
+            startTime: session.start_time,
+            endTime: session.end_time
+          },
+        };
+      });
 
       setEvents(calendarEvents);
+      setLoading(false);
     } catch (err) {
       console.error('Failed to load sessions:', err);
-    } finally {
+      setError('Failed to load sessions');
       setLoading(false);
     }
   };
 
   const handleDateClick = (arg) => {
+    console.log('Date clicked:', arg);
     setSelectedSession(null);
     setSelectedDate(arg.dateStr);
     setSelectedTime(arg.date);
@@ -62,13 +88,20 @@ const Calendar = () => {
   };
 
   const handleEventClick = (arg) => {
+    console.log('Event clicked:', arg.event);
     const event = arg.event;
+    
+    // Use the date stored in extendedProps to avoid timezone issues
+    const sessionDate = event.extendedProps.sessionDate;
+    const startTime = event.extendedProps.startTime;
+    const endTime = event.extendedProps.endTime;
+    
     setSelectedSession({
       id: event.id,
       clientId: event.extendedProps.clientId,
-      sessionDate: format(event.start, 'yyyy-MM-dd'),
-      startTime: format(event.start, 'HH:mm'),
-      endTime: format(event.end, 'HH:mm'),
+      sessionDate: sessionDate,
+      startTime: startTime,
+      endTime: endTime,
       sessionType: event.extendedProps.sessionType,
       notes: event.extendedProps.notes,
       clientName: event.title,
@@ -79,6 +112,7 @@ const Calendar = () => {
   };
 
   const handleDatesSet = (arg) => {
+    console.log('Dates changed:', arg.start, 'to', arg.end);
     const start = format(arg.start, 'yyyy-MM-dd');
     const end = format(arg.end, 'yyyy-MM-dd');
     loadSessions(start, end);
@@ -86,9 +120,31 @@ const Calendar = () => {
 
   const handleSaveSession = () => {
     setModalOpen(false);
-    loadedRanges.current.clear();
-    setEvents([]);
+    // Clear the loaded range so it reloads
+    loadedRange.current = null;
+    loadSessions();
   };
+
+  if (error) {
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Schedule</h1>
+        </div>
+        <div className="card">
+          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+          <button onClick={() => {
+            loadedRange.current = null;
+            loadSessions();
+          }} className="btn-primary mt-4">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -104,6 +160,7 @@ const Calendar = () => {
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"
+            timeZone="local"
             headerToolbar={{
               left: 'prev,next today',
               center: 'title',
