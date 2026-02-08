@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -14,52 +14,47 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const loadedRanges = useRef(new Set());
 
-  useEffect(() => {
-    // Load initial sessions
-    loadSessions();
-  }, []);
-
-  const loadSessions = async (startDate = null, endDate = null) => {
+  const loadSessions = async (startDate, endDate) => {
+    const rangeKey = `${startDate}-${endDate}`;
+    
+    // Prevent duplicate loads
+    if (loadedRanges.current.has(rangeKey)) {
+      return;
+    }
+    
     try {
       setLoading(true);
-      setError('');
-      
       const params = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
-      console.log('Loading sessions with params:', params);
       const response = await sessionsAPI.getAll(params);
-      console.log('Sessions loaded:', response.data.sessions);
+      
+      loadedRanges.current.add(rangeKey);
       
       const calendarEvents = response.data.sessions.map(session => ({
         id: session.id,
         title: `${session.client_first_name} ${session.client_last_name}`,
         start: `${session.session_date}T${session.start_time}`,
         end: `${session.session_date}T${session.end_time}`,
-        backgroundColor: session.is_completed ? '#10b981' : '#0ea5e9',
-        borderColor: session.is_completed ? '#059669' : '#0284c7',
         extendedProps: {
           clientId: session.client_id,
           sessionType: session.session_type,
           notes: session.notes,
-          isCompleted: session.is_completed
         },
       }));
 
       setEvents(calendarEvents);
-      setLoading(false);
     } catch (err) {
       console.error('Failed to load sessions:', err);
-      setError('Failed to load sessions');
+    } finally {
       setLoading(false);
     }
   };
 
   const handleDateClick = (arg) => {
-    console.log('Date clicked:', arg);
     setSelectedSession(null);
     setSelectedDate(arg.dateStr);
     setSelectedTime(arg.date);
@@ -67,7 +62,6 @@ const Calendar = () => {
   };
 
   const handleEventClick = (arg) => {
-    console.log('Event clicked:', arg.event);
     const event = arg.event;
     setSelectedSession({
       id: event.id,
@@ -85,7 +79,6 @@ const Calendar = () => {
   };
 
   const handleDatesSet = (arg) => {
-    console.log('Dates changed:', arg);
     const start = format(arg.start, 'yyyy-MM-dd');
     const end = format(arg.end, 'yyyy-MM-dd');
     loadSessions(start, end);
@@ -93,27 +86,9 @@ const Calendar = () => {
 
   const handleSaveSession = () => {
     setModalOpen(false);
-    // Reload all sessions
-    loadSessions();
+    loadedRanges.current.clear();
+    setEvents([]);
   };
-
-  if (error) {
-    return (
-      <div>
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Schedule</h1>
-        </div>
-        <div className="card">
-          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-          <button onClick={() => loadSessions()} className="btn-primary mt-4">
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -148,9 +123,6 @@ const Calendar = () => {
             datesSet={handleDatesSet}
             height="auto"
             eventColor="#0ea5e9"
-            loading={(isLoading) => {
-              console.log('Calendar loading state:', isLoading);
-            }}
           />
         )}
       </div>

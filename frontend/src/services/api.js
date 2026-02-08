@@ -89,4 +89,22 @@ export const sessionsAPI = {
     api.delete(`/sessions/${id}`),
 };
 
+// Training Logs APIs
+export const trainingLogsAPI = {
+  getBySession: (sessionId) =>
+    api.get(`/training-logs/session/${sessionId}`),
+  
+  save: (sessionId, data) =>
+    api.post(`/training-logs/session/${sessionId}`, data),
+  
+  delete: (sessionId) =>
+    api.delete(`/training-logs/session/${sessionId}`),
+  
+  getExerciseStats: (clientId) =>
+    api.get(`/training-logs/client/${clientId}/exercise-stats`),
+  
+  getCompletionStats: (clientId) =>
+    api.get(`/training-logs/client/${clientId}/completion-stats`),
+};
+
 export default api;

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { clientsAPI } from '../services/api';
+import { clientsAPI, trainingLogsAPI } from '../services/api';
 import { format } from 'date-fns';
+import TrainingLogModal from '../components/TrainingLogModal';
 
 const ClientDetail = () => {
   const { id } = useParams();
@@ -10,9 +11,15 @@ const ClientDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [completionStats, setCompletionStats] = useState(null);
+  const [exerciseStats, setExerciseStats] = useState([]);
+  const [logModalOpen, setLogModalOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
 
   useEffect(() => {
     loadClient();
+    loadCompletionStats();
+    loadExerciseStats();
   }, [id]);
 
   const loadClient = async () => {
@@ -29,8 +36,25 @@ const ClientDetail = () => {
     }
   };
 
+  const loadCompletionStats = async () => {
+    try {
+      const response = await trainingLogsAPI.getCompletionStats(id);
+      setCompletionStats(response.data.completionStats);
+    } catch (err) {
+      console.error('Failed to load completion stats:', err);
+    }
+  };
+
+  const loadExerciseStats = async () => {
+    try {
+      const response = await trainingLogsAPI.getExerciseStats(id);
+      setExerciseStats(response.data.exerciseStats);
+    } catch (err) {
+      console.error('Failed to load exercise stats:', err);
+    }
+  };
+
   const handleEdit = () => {
-    // Navigate back to clients page with edit modal
     navigate('/dashboard/clients', { state: { editClientId: id } });
   };
 
@@ -46,6 +70,19 @@ const ClientDetail = () => {
       alert('Failed to delete client');
       console.error(err);
     }
+  };
+
+  const handleLogTraining = (session) => {
+    setSelectedSession(session);
+    setLogModalOpen(true);
+  };
+
+  const handleLogSaved = () => {
+    setLogModalOpen(false);
+    setSelectedSession(null);
+    loadClient();
+    loadCompletionStats();
+    loadExerciseStats();
   };
 
   if (loading) {
@@ -121,14 +158,14 @@ const ClientDetail = () => {
         <div className="card">
           <div className="text-sm text-gray-600">Completed</div>
           <div className="text-3xl font-bold text-green-600 mt-1">
-            {client.completed_sessions || 0}
+            {completionStats?.completed_sessions || 0}
           </div>
         </div>
 
         <div className="card">
-          <div className="text-sm text-gray-600">Upcoming</div>
+          <div className="text-sm text-gray-600">Completion Rate</div>
           <div className="text-3xl font-bold text-blue-600 mt-1">
-            {client.upcoming_sessions || 0}
+            {completionStats?.completion_rate || 0}%
           </div>
         </div>
 
@@ -175,6 +212,16 @@ const ClientDetail = () => {
           >
             Training History
           </button>
+          <button
+            onClick={() => setActiveTab('exercises')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'exercises'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Exercise Stats
+          </button>
         </nav>
       </div>
 
@@ -206,6 +253,26 @@ const ClientDetail = () => {
                 </div>
               </div>
             )}
+
+            {completionStats && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Training Completion</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-900">{completionStats.total_sessions}</div>
+                    <div className="text-sm text-gray-600">Total</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{completionStats.completed_sessions}</div>
+                    <div className="text-sm text-gray-600">Completed</div>
+                  </div>
+                  <div className="text-center p-4 bg-red-50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600">{completionStats.missed_sessions}</div>
+                    <div className="text-sm text-gray-600">Missed</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -217,7 +284,7 @@ const ClientDetail = () => {
                 {client.upcoming_sessions.map((session) => (
                   <div key={session.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1">
                         <div className="font-medium text-gray-900">
                           {format(new Date(session.session_date), 'EEEE, MMMM d, yyyy')}
                         </div>
@@ -253,7 +320,7 @@ const ClientDetail = () => {
                 {client.recent_sessions.map((session) => (
                   <div key={session.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1">
                         <div className="font-medium text-gray-900">
                           {format(new Date(session.session_date), 'EEEE, MMMM d, yyyy')}
                         </div>
@@ -271,9 +338,21 @@ const ClientDetail = () => {
                           </div>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500">
-                        Completed
-                      </span>
+                      <div className="ml-4">
+                        <button
+                          onClick={() => handleLogTraining({
+                            id: session.id,
+                            clientName: `${client.first_name} ${client.last_name}`,
+                            sessionDate: session.session_date,
+                            startTime: session.start_time,
+                            endTime: session.end_time,
+                            sessionType: session.session_type
+                          })}
+                          className="btn-primary text-sm"
+                        >
+                          Log Training
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -283,7 +362,73 @@ const ClientDetail = () => {
             )}
           </div>
         )}
+
+        {activeTab === 'exercises' && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Exercise Statistics</h3>
+            {exerciseStats.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Exercise
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Times Performed
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Max Weight
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Avg Weight
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Last Performed
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {exerciseStats.map((stat, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                          {stat.exercise_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {stat.total_times_performed}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {stat.max_weight ? `${stat.max_weight} kg` : '—'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {stat.avg_weight ? `${parseFloat(stat.avg_weight).toFixed(1)} kg` : '—'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {format(new Date(stat.last_performed), 'MMM d, yyyy')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">No exercise data yet. Start logging training sessions!</p>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Training Log Modal */}
+      {logModalOpen && (
+        <TrainingLogModal
+          session={selectedSession}
+          onClose={() => {
+            setLogModalOpen(false);
+            setSelectedSession(null);
+          }}
+          onSave={handleLogSaved}
+        />
+      )}
     </div>
   );
 };

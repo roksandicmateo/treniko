@@ -5,6 +5,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const clientsRoutes = require('./routes/clients');
 const sessionsRoutes = require('./routes/sessions');
+const trainingLogsRoutes = require('./routes/trainingLogs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +38,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientsRoutes);
 app.use('/api/sessions', sessionsRoutes);
+app.use('/api/training-logs', trainingLogsRoutes);
 
 // 404 handler
 app.use((req, res) => {
