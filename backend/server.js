@@ -6,7 +6,7 @@ const authRoutes = require('./routes/auth');
 const clientsRoutes = require('./routes/clients');
 const sessionsRoutes = require('./routes/sessions');
 const trainingLogsRoutes = require('./routes/trainingLogs');
-
+const subscriptionRoutes = require('./routes/subscriptions');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -34,11 +34,20 @@ app.get('/health', (req, res) => {
   });
 });
 
+
+const { checkReadOnlyMode, checkClientLimit, checkSessionLimit } = require('./middleware/subscription');
+app.use('/api', checkReadOnlyMode);
+app.use('/api', checkClientLimit);
+app.use('/api', checkSessionLimit);
+
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientsRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/training-logs', trainingLogsRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+
 
 // 404 handler
 app.use((req, res) => {
@@ -79,5 +88,5 @@ process.on('SIGTERM', () => {
     console.log('HTTP server closed');
   });
 });
-
+require('./cron');
 module.exports = app;

@@ -1,0 +1,425 @@
+const { queryWithTenant } = require('../config/database');
+
+/**
+ * Get current subscription status for tenant
+ */
+const getSubscriptionStatus = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+
+    const result = await queryWithTenant(
+      `SELECT * FROM tenant_subscription_status WHERE tenant_id = $1`,
+      [tenantId],
+      tenantId
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Subscription not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      subscription: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Get subscription status error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while fetching subscription status'
+    });
+  }
+};
+
+/**
+ * Get all available subscription plans
+ */
+const getSubscriptionPlans = async (req, res) => {
+  try {
+    const result = await queryWithTenant(
+      `SELECT 
+        id,
+        name,
+        display_name,
+        price_monthly,
+        price_yearly,
+        max_clients,
+        max_sessions_per_month,
+        max_storage_mb,
+        max_trainer_seats,
+        has_training_logs,
+        has_analytics,
+        has_export,
+        has_api_access,
+        has_custom_branding,
+        has_priority_support
+       FROM subscription_plans
+       WHERE is_active = true
+       ORDER BY price_monthly`,
+      [],
+      req.user.tenantId
+    );
+
+    res.json({
+      success: true,
+      plans: result.rows
+    });
+
+  } catch (error) {
+    console.error('Get subscription plans error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while fetching subscription plans'
+    });
+  }
+};
+
+/**
+ * Check if tenant can perform action (limit enforcement)
+ */
+const checkLimit = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { resource } = req.params; // clients, sessions, storage
+
+    const status = await queryWithTenant(
+      `SELECT * FROM tenant_subscription_status WHERE tenant_id = $1`,
+      [tenantId],
+      tenantId
+    );
+
+    if (status.rows.length === 0) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'No active subscription'
+      });
+    }
+
+    const sub = status.rows[0];
+
+    // Check read-only mode
+    if (sub.is_read_only) {
+      return res.json({
+        success: false,
+        allowed: false,
+        reason: 'read_only_mode',
+        message: 'Your subscription has expired. Please renew to continue using TRENIKO.',
+        subscription: sub
+      });
+    }
+
+    // Check specific limits
+    let allowed = true;
+    let reason = null;
+    let message = null;
+
+    switch (resource) {
+      case 'clients':
+        if (sub.clients_limit_reached) {
+          allowed = false;
+          reason = 'client_limit_reached';
+          message = `You've reached your client limit (${sub.max_clients}). Upgrade to add more clients.`;
+        }
+        break;
+
+      case 'sessions':
+        if (sub.sessions_limit_reached) {
+          allowed = false;
+          reason = 'session_limit_reached';
+          message = `You've reached your monthly session limit (${sub.max_sessions_per_month}). Upgrade for unlimited sessions.`;
+        }
+        break;
+
+      case 'training_logs':
+        if (!sub.has_training_logs) {
+          allowed = false;
+          reason = 'feature_not_available';
+          message = 'Training logs are only available on Pro and Enterprise plans. Upgrade to unlock this feature.';
+        }
+        break;
+
+      case 'analytics':
+        if (!sub.has_analytics) {
+          allowed = false;
+          reason = 'feature_not_available';
+          message = 'Analytics are only available on Pro and Enterprise plans. Upgrade to unlock this feature.';
+        }
+        break;
+
+      default:
+        return res.status(400).json({
+          error: 'Bad request',
+          message: 'Invalid resource type'
+        });
+    }
+
+    res.json({
+      success: true,
+      allowed,
+      reason,
+      message,
+      subscription: sub
+    });
+
+  } catch (error) {
+    console.error('Check limit error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while checking limits'
+    });
+  }
+};
+
+/**
+ * Get subscription notifications
+ */
+const getNotifications = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+
+    const result = await queryWithTenant(
+      `SELECT 
+        id,
+        notification_type,
+        title,
+        message,
+        is_read,
+        sent_at,
+        read_at
+       FROM subscription_notifications
+       WHERE tenant_id = $1
+       ORDER BY sent_at DESC
+       LIMIT 20`,
+      [tenantId],
+      tenantId
+    );
+
+    res.json({
+      success: true,
+      notifications: result.rows
+    });
+
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while fetching notifications'
+    });
+  }
+};
+
+/**
+ * Mark notification as read
+ */
+const markNotificationRead = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { notificationId } = req.params;
+
+    await queryWithTenant(
+      `UPDATE subscription_notifications
+       SET is_read = true, read_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND tenant_id = $2`,
+      [notificationId, tenantId],
+      tenantId
+    );
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read'
+    });
+
+  } catch (error) {
+    console.error('Mark notification read error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while updating notification'
+    });
+  }
+};
+
+/**
+ * Change subscription plan (upgrade/downgrade)
+ */
+const changePlan = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { planId, billingPeriod } = req.body;
+
+    if (!planId || !billingPeriod) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Plan ID and billing period are required'
+      });
+    }
+
+    // Get current subscription
+    const currentSub = await queryWithTenant(
+      `SELECT ts.*, sp.name as current_plan_name
+       FROM tenant_subscriptions ts
+       JOIN subscription_plans sp ON ts.plan_id = sp.id
+       WHERE ts.tenant_id = $1`,
+      [tenantId],
+      tenantId
+    );
+
+    if (currentSub.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'No active subscription found'
+      });
+    }
+
+    const current = currentSub.rows[0];
+
+    // Get new plan
+    const newPlan = await queryWithTenant(
+      `SELECT * FROM subscription_plans WHERE id = $1 AND is_active = true`,
+      [planId],
+      tenantId
+    );
+
+    if (newPlan.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Plan not found'
+      });
+    }
+
+    const plan = newPlan.rows[0];
+
+    // Determine change type
+    const priceOrder = { free: 0, pro: 1, enterprise: 2 };
+    const changeType = priceOrder[plan.name] > priceOrder[current.current_plan_name] 
+      ? 'upgrade' 
+      : 'downgrade';
+
+    // Calculate new period
+    const periodDays = billingPeriod === 'yearly' ? 365 : 30;
+    const newPeriodStart = new Date();
+    const newPeriodEnd = new Date();
+    newPeriodEnd.setDate(newPeriodEnd.getDate() + periodDays);
+
+    // Update subscription
+    await queryWithTenant(
+      `UPDATE tenant_subscriptions
+       SET 
+         plan_id = $1,
+         billing_period = $2,
+         current_period_start = $3,
+         current_period_end = $4,
+         status = 'active',
+         updated_at = CURRENT_TIMESTAMP
+       WHERE tenant_id = $5`,
+      [planId, billingPeriod, newPeriodStart, newPeriodEnd, tenantId],
+      tenantId
+    );
+
+    // Record in history
+    await queryWithTenant(
+      `INSERT INTO subscription_history 
+       (tenant_id, from_plan_id, to_plan_id, change_type, effective_date)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [tenantId, current.plan_id, planId, changeType, newPeriodStart],
+      tenantId
+    );
+
+    // Create notification
+    await queryWithTenant(
+      `INSERT INTO subscription_notifications
+       (tenant_id, notification_type, title, message)
+       VALUES ($1, $2, $3, $4)`,
+      [
+        tenantId,
+        changeType === 'upgrade' ? 'plan_upgraded' : 'plan_downgraded',
+        `Plan ${changeType === 'upgrade' ? 'Upgraded' : 'Downgraded'}`,
+        `Your subscription has been ${changeType}d to ${plan.display_name}.`
+      ],
+      tenantId
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully ${changeType}d to ${plan.display_name}`,
+      subscription: {
+        planName: plan.name,
+        planDisplayName: plan.display_name,
+        billingPeriod,
+        periodStart: newPeriodStart,
+        periodEnd: newPeriodEnd
+      }
+    });
+
+  } catch (error) {
+    console.error('Change plan error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while changing subscription plan'
+    });
+  }
+};
+
+/**
+ * Cancel subscription
+ */
+const cancelSubscription = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { cancelAtPeriodEnd } = req.body;
+
+    await queryWithTenant(
+      `UPDATE tenant_subscriptions
+       SET 
+         cancel_at_period_end = $1,
+         cancelled_at = CASE WHEN $1 THEN CURRENT_TIMESTAMP ELSE cancelled_at END,
+         status = CASE WHEN NOT $1 THEN 'cancelled' ELSE status END,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE tenant_id = $2`,
+      [cancelAtPeriodEnd, tenantId],
+      tenantId
+    );
+
+    // Create notification
+    await queryWithTenant(
+      `INSERT INTO subscription_notifications
+       (tenant_id, notification_type, title, message)
+       VALUES ($1, $2, $3, $4)`,
+      [
+        tenantId,
+        'subscription_cancelled',
+        'Subscription Cancelled',
+        cancelAtPeriodEnd 
+          ? 'Your subscription will be cancelled at the end of the current billing period.'
+          : 'Your subscription has been cancelled immediately.'
+      ],
+      tenantId
+    );
+
+    res.json({
+      success: true,
+      message: cancelAtPeriodEnd 
+        ? 'Subscription will be cancelled at period end'
+        : 'Subscription cancelled immediately'
+    });
+
+  } catch (error) {
+    console.error('Cancel subscription error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while cancelling subscription'
+    });
+  }
+};
+
+module.exports = {
+  getSubscriptionStatus,
+  getSubscriptionPlans,
+  checkLimit,
+  getNotifications,
+  markNotificationRead,
+  changePlan,
+  cancelSubscription
+};

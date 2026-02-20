@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import SubscriptionBanner from '../components/SubscriptionBanner';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -13,6 +14,7 @@ const DashboardLayout = () => {
   const navItems = [
     { to: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
     { to: '/dashboard/clients', label: 'Clients', icon: '👥' },
+    { to: '/dashboard/subscription', label: 'Subscription', icon: '💳' }, // ← ADD THIS
   ];
 
   return (
@@ -66,6 +68,7 @@ const DashboardLayout = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <SubscriptionBanner /> {/* ← ADD THIS */}
         <Outlet />
       </main>
     </div>

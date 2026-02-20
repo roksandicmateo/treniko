@@ -7,10 +7,13 @@ import DashboardLayout from './pages/DashboardLayout';
 import Calendar from './pages/Calendar';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
+import SubscriptionPage from './pages/SubscriptionPage';
+import Toast from './components/Toast';
 
 function App() {
   return (
     <AuthProvider>
+        <Toast />
       <BrowserRouter>
         <Routes>
           {/* Public routes */}
@@ -30,6 +33,7 @@ function App() {
             <Route path="calendar" element={<Calendar />} />
             <Route path="clients" element={<Clients />} />
             <Route path="clients/:id" element={<ClientDetail />} />
+            <Route path="subscription" element={<SubscriptionPage />} />
           </Route>
 
           {/* Default redirect */}

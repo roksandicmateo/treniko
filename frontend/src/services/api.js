@@ -107,4 +107,28 @@ export const trainingLogsAPI = {
     api.get(`/training-logs/client/${clientId}/completion-stats`),
 };
 
+// Subscriptions APIs
+export const subscriptionsAPI = {
+  getStatus: () => 
+    api.get('/subscriptions/status'),
+  
+  getPlans: () => 
+    api.get('/subscriptions/plans'),
+  
+  checkLimit: (resource) => 
+    api.get(`/subscriptions/check/${resource}`),
+  
+  getNotifications: () => 
+    api.get('/subscriptions/notifications'),
+  
+  markNotificationRead: (notificationId) => 
+    api.patch(`/subscriptions/notifications/${notificationId}/read`),
+  
+  changePlan: (planId, billingPeriod) => 
+    api.post('/subscriptions/change-plan', { planId, billingPeriod }),
+  
+  cancelSubscription: (cancelAtPeriodEnd) => 
+    api.post('/subscriptions/cancel', { cancelAtPeriodEnd })
+};
+
 export default api;
