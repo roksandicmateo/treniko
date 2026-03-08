@@ -36,6 +36,8 @@ export default function AddTrainingModal({
   initialStartTime = null,
   editTraining = null,
   clients: clientsProp = null,
+  sessionId = null,
+  overrideEndTime = null,
 }) {
   const defaultStart = initialStartTime
     ? toLocalInput(initialStartTime)
@@ -53,7 +55,7 @@ export default function AddTrainingModal({
     title:       '',
     workoutType: 'Gym',
     startTime:   defaultStart,
-    endTime:     addHour(defaultStart),
+    endTime:     overrideEndTime ? toLocalInput(overrideEndTime) : addHour(defaultStart),
     notes:       '',
     location:    '',
     exercises:   [],
@@ -161,6 +163,7 @@ export default function AddTrainingModal({
     try {
       const payload = {
         ...form,
+        sessionId: sessionId || undefined,
         exercises: form.exercises.map((ex) => ({
           ...ex,
           sets: ex.sets.map((s) => ({

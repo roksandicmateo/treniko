@@ -56,8 +56,8 @@ const Calendar = () => {
           title: `${session.client_first_name} ${session.client_last_name}`,
           start: `${dateOnly}T${session.start_time}`,
           end: `${dateOnly}T${session.end_time}`,
-          backgroundColor: session.is_completed ? '#10b981' : '#0ea5e9',
-          borderColor: session.is_completed ? '#059669' : '#0284c7',
+          backgroundColor: session.is_completed ? '#9ca3af' : '#0ea5e9',
+          borderColor: session.is_completed ? '#6b7280' : '#0284c7',
           extendedProps: {
             clientId: session.client_id,
             sessionType: session.session_type,

@@ -91,8 +91,7 @@ function ExerciseCard({ ex, exIdx, fields, onChange, onRemove }) {
                     {FIELD_LABELS[f]}
                   </label>
                   <input
-                    type="number"
-                    inputMode="decimal"
+                    type="number" inputMode="decimal" min="0"
                     className="w-full border border-gray-200 rounded-lg p-2 text-sm text-center focus:border-blue-400 focus:outline-none"
                     value={set[f] || ''}
                     placeholder="—"

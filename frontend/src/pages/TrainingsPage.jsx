@@ -69,6 +69,16 @@ export default function TrainingsPage() {
     e.stopPropagation();
     const updated = await trainingService.update(t.id, { isCompleted: !t.is_completed });
     setTrainings((prev) => prev.map((x) => (x.id === t.id ? updated.data : x)));
+    // Sync linked calendar session if exists
+    if (t.session_id) {
+      try {
+        await import('../services/api').then(({ sessionsAPI }) =>
+          sessionsAPI.update(t.session_id, { isCompleted: !t.is_completed })
+        );
+      } catch (err) {
+        console.warn('Could not sync session completion:', err);
+      }
+    }
   }
 
   const types = [...new Set(trainings.map((t) => t.workout_type))];

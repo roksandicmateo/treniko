@@ -55,6 +55,9 @@ export const trainingService = {
   /**
    * List images for a training
    */
+  getBySession: (sessionId) =>
+    api.get(`/trainings/by-session/${sessionId}`),
+
   getImages: (id) =>
     api.get(`/trainings/${id}/images`),
 

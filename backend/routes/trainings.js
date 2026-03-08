@@ -122,9 +122,9 @@ router.post('/', async (req, res) => {
   try {
     await dbClient.query('BEGIN');
     const { rows: [training] } = await dbClient.query(
-      `INSERT INTO trainings (tenant_id, client_id, title, workout_type, start_time, end_time, notes, location)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [tenantId, clientId, title || null, workoutType || 'Gym', startTime, endTime, notes || null, location || null]
+      `INSERT INTO trainings (tenant_id, client_id, title, workout_type, start_time, end_time, notes, location, session_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [tenantId, clientId, title || null, workoutType || 'Gym', startTime, endTime, notes || null, location || null, req.body.sessionId || null]
     );
     await insertExercises(dbClient, training.id, exercises);
     await dbClient.query('COMMIT');
@@ -204,3 +204,21 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+
+// GET /api/trainings/by-session/:sessionId
+router.get('/by-session/:sessionId', async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { rows } = await pool.query(
+      `SELECT t.*, c.first_name, c.last_name
+       FROM trainings t
+       JOIN clients c ON c.id = t.client_id
+       WHERE t.session_id = $1 AND t.tenant_id = $2`,
+      [req.params.sessionId, tenantId]
+    );
+    res.json(rows[0] || null);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
