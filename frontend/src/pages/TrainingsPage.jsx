@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from '../components/training/AddTrainingModal';
 
@@ -12,7 +13,33 @@ const TYPE_COLORS = {
 
 const FILTERS = ['All', 'Upcoming', 'Past', 'Completed'];
 
+// Simple in-app confirm modal
+function ConfirmModal({ message, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+        <p className="text-gray-800 text-sm mb-5">{message}</p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TrainingsPage() {
+  const navigate = useNavigate();
   const [trainings,    setTrainings]    = useState([]);
   const [filtered,     setFiltered]     = useState([]);
   const [filter,       setFilter]       = useState('All');
@@ -20,6 +47,7 @@ export default function TrainingsPage() {
   const [loading,      setLoading]      = useState(true);
   const [modalOpen,    setModalOpen]    = useState(false);
   const [editTraining, setEditTraining] = useState(null);
+  const [confirmId,    setConfirmId]    = useState(null); // id to delete, or null
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,24 +80,26 @@ export default function TrainingsPage() {
     setFiltered(result);
   }, [trainings, filter, typeFilter]);
 
-  async function openEdit(id) {
-    const { data } = await trainingService.getById(id);
-    setEditTraining(data);
-    setModalOpen(true);
+  function openEdit(id) {
+    navigate('/dashboard/trainings/' + id);
   }
 
-  async function deleteTraining(id, e) {
+  function requestDelete(id, e) {
     e.stopPropagation();
-    if (!window.confirm('Delete this training?')) return;
-    await trainingService.delete(id);
-    setTrainings((prev) => prev.filter((t) => t.id !== id));
+    setConfirmId(id);
+  }
+
+  async function confirmDelete() {
+    if (!confirmId) return;
+    await trainingService.delete(confirmId);
+    setTrainings((prev) => prev.filter((t) => t.id !== confirmId));
+    setConfirmId(null);
   }
 
   async function toggleCompleted(t, e) {
     e.stopPropagation();
     const updated = await trainingService.update(t.id, { isCompleted: !t.is_completed });
     setTrainings((prev) => prev.map((x) => (x.id === t.id ? updated.data : x)));
-    // Sync linked calendar session if exists
     if (t.session_id) {
       try {
         await import('../services/api').then(({ sessionsAPI }) =>
@@ -85,6 +115,16 @@ export default function TrainingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-8">
+
+      {/* In-app delete confirmation */}
+      {confirmId && (
+        <ConfirmModal
+          message="Delete this training? This cannot be undone."
+          onConfirm={confirmDelete}
+          onCancel={() => setConfirmId(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mt-4 mb-4">
         <div>
@@ -195,9 +235,8 @@ export default function TrainingsPage() {
                   {t.workout_type}
                 </span>
 
-                {/* Delete button (visible on hover) */}
                 <button
-                  onClick={(e) => deleteTraining(t.id, e)}
+                  onClick={(e) => requestDelete(t.id, e)}
                   className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Delete"
                 >

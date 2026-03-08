@@ -5,17 +5,16 @@ const { queryWithTenant } = require('../config/database');
  */
 const checkReadOnlyMode = async (req, res, next) => {
   try {
+    // Skip if user is not authenticated yet (e.g. /api/auth/validate)
+    if (!req.user) return next();
+
     const { tenantId } = req.user;
 
     // Skip for GET requests (read operations)
-    if (req.method === 'GET') {
-      return next();
-    }
+    if (req.method === 'GET') return next();
 
     // Skip for subscription-related endpoints
-    if (req.path.startsWith('/subscriptions')) {
-      return next();
-    }
+    if (req.path.startsWith('/subscriptions')) return next();
 
     const result = await queryWithTenant(
       `SELECT is_read_only, status, current_period_end, plan_display_name
@@ -60,9 +59,10 @@ const checkReadOnlyMode = async (req, res, next) => {
 const checkClientLimit = async (req, res, next) => {
   try {
     // Only check on client creation
-    if (req.method !== 'POST' || !req.path.includes('/clients')) {
-      return next();
-    }
+    if (req.method !== 'POST' || !req.path.includes('/clients')) return next();
+
+    // Skip if user is not authenticated yet
+    if (!req.user) return next();
 
     const { tenantId } = req.user;
 
@@ -78,9 +78,7 @@ const checkClientLimit = async (req, res, next) => {
       tenantId
     );
 
-    if (result.rows.length === 0) {
-      return next(); // Let it proceed, will be caught by other checks
-    }
+    if (result.rows.length === 0) return next();
 
     const sub = result.rows[0];
 
@@ -99,7 +97,7 @@ const checkClientLimit = async (req, res, next) => {
 
   } catch (error) {
     console.error('Client limit check error:', error);
-    next(); // Continue on error
+    next();
   }
 };
 
@@ -109,9 +107,10 @@ const checkClientLimit = async (req, res, next) => {
 const checkSessionLimit = async (req, res, next) => {
   try {
     // Only check on session creation
-    if (req.method !== 'POST' || !req.path.includes('/sessions')) {
-      return next();
-    }
+    if (req.method !== 'POST' || !req.path.includes('/sessions')) return next();
+
+    // Skip if user is not authenticated yet
+    if (!req.user) return next();
 
     const { tenantId } = req.user;
 
@@ -127,9 +126,7 @@ const checkSessionLimit = async (req, res, next) => {
       tenantId
     );
 
-    if (result.rows.length === 0) {
-      return next();
-    }
+    if (result.rows.length === 0) return next();
 
     const sub = result.rows[0];
 
@@ -158,9 +155,11 @@ const checkSessionLimit = async (req, res, next) => {
 const checkFeatureAccess = (feature) => {
   return async (req, res, next) => {
     try {
+      // Skip if user is not authenticated yet
+      if (!req.user) return next();
+
       const { tenantId } = req.user;
 
-      // Map features to database columns
       const featureMap = {
         training_logs: 'has_training_logs',
         analytics: 'has_analytics',
@@ -170,14 +169,10 @@ const checkFeatureAccess = (feature) => {
       };
 
       const dbColumn = featureMap[feature];
-      if (!dbColumn) {
-        return next(); // Unknown feature, let it through
-      }
+      if (!dbColumn) return next();
 
       const result = await queryWithTenant(
-        `SELECT 
-          ${dbColumn} as has_feature,
-          plan_display_name
+        `SELECT ${dbColumn} as has_feature, plan_display_name
          FROM tenant_subscription_status 
          WHERE tenant_id = $1`,
         [tenantId],

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from '../components/training/AddTrainingModal';
 import ProgressChart from '../components/progress/ProgressChart';
+import StrengthProgress from '../components/progress/StrengthProgress';
 
 const TABS = ['profile', 'trainings', 'progress'];
 
@@ -14,6 +15,40 @@ const TYPE_COLORS = {
   Custom:     'bg-yellow-100 text-yellow-700',
 };
 
+
+function ProgressSection({ clientId }) {
+  const [progressTab, setProgressTab] = useState('body');
+  return (
+    <div className="space-y-4">
+      {/* Sub-tab toggle */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setProgressTab('body')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            progressTab === 'body'
+              ? 'bg-white shadow-sm text-gray-900'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          📏 Body Metrics
+        </button>
+        <button
+          onClick={() => setProgressTab('strength')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            progressTab === 'strength'
+              ? 'bg-white shadow-sm text-gray-900'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          🏋️ Strength
+        </button>
+      </div>
+
+      {progressTab === 'body'     && <ProgressChart    clientId={clientId} />}
+      {progressTab === 'strength' && <StrengthProgress clientId={clientId} />}
+    </div>
+  );
+}
 export default function ClientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -302,9 +337,9 @@ export default function ClientDetail() {
       )}
 
       {/* ── PROGRESS TAB ── */}
-      {tab === 'progress' && (
-        <ProgressChart clientId={id} />
-      )}
+   {tab === 'progress' && (
+      <ProgressSection clientId={id} />
+     )}
 
       {/* Modal */}
       <AddTrainingModal

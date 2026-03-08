@@ -11,6 +11,7 @@ import SubscriptionPage from './pages/SubscriptionPage';
 import Toast from './components/Toast';
 import CalendarPage from './pages/CalendarPage';
 import TrainingsPage from './pages/TrainingsPage';
+import TrainingDetailPage from './pages/TrainingDetailPage';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
             <Route path="clients/:id" element={<ClientDetail />} />
             <Route path="subscription" element={<SubscriptionPage />} />
             <Route path="trainings" element={<TrainingsPage />} />
+            <Route path="trainings/:id" element={<TrainingDetailPage />} />
             <Route path="calendar-new" element={<CalendarPage />} />
           </Route>
 

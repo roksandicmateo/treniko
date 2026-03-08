@@ -6,8 +6,9 @@ const { authenticateToken } = require('../middleware/auth');
 router.use(authenticateToken);
 
 // ─── Helper: load full training with exercises + sets ─────────────────────────
-async function loadFull(trainingId, tenantId, client) {
-  const { rows: [t] } = await client.query(
+// Accepts either a pool or a checked-out client
+async function loadFull(trainingId, tenantId, db) {
+  const { rows: [t] } = await db.query(
     `SELECT t.*, c.first_name, c.last_name, c.email
      FROM trainings t
      JOIN clients c ON c.id = t.client_id
@@ -16,7 +17,7 @@ async function loadFull(trainingId, tenantId, client) {
   );
   if (!t) return null;
 
-  const { rows: exRows } = await client.query(
+  const { rows: exRows } = await db.query(
     `SELECT te.*, e.name AS exercise_name, e.category, e.default_unit
      FROM training_exercises te
      JOIN exercises e ON e.id = te.exercise_id
@@ -26,7 +27,7 @@ async function loadFull(trainingId, tenantId, client) {
   );
 
   for (const ex of exRows) {
-    const { rows: sets } = await client.query(
+    const { rows: sets } = await db.query(
       'SELECT * FROM training_sets WHERE training_exercise_id = $1 ORDER BY sort_order',
       [ex.id]
     );
@@ -38,11 +39,11 @@ async function loadFull(trainingId, tenantId, client) {
 }
 
 // ─── Helper: insert exercises + sets ─────────────────────────────────────────
-async function insertExercises(client, trainingId, exercises) {
+async function insertExercises(dbClient, trainingId, exercises) {
   if (!exercises || exercises.length === 0) return;
   for (let i = 0; i < exercises.length; i++) {
     const ex = exercises[i];
-    const { rows: [te] } = await client.query(
+    const { rows: [te] } = await dbClient.query(
       `INSERT INTO training_exercises (training_id, exercise_id, sort_order, notes)
        VALUES ($1,$2,$3,$4) RETURNING *`,
       [trainingId, ex.exerciseId, i, ex.notes || null]
@@ -50,7 +51,7 @@ async function insertExercises(client, trainingId, exercises) {
     if (ex.sets && ex.sets.length > 0) {
       for (let j = 0; j < ex.sets.length; j++) {
         const s = ex.sets[j];
-        await client.query(
+        await dbClient.query(
           `INSERT INTO training_sets
              (training_exercise_id, sort_order, reps, weight, duration_seconds, distance, rpe, notes)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
@@ -66,6 +67,24 @@ async function insertExercises(client, trainingId, exercises) {
     }
   }
 }
+
+// GET /api/trainings/by-session/:sessionId  ← MUST be before /:id
+router.get('/by-session/:sessionId', async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { rows } = await pool.query(
+      `SELECT t.*, c.first_name, c.last_name
+       FROM trainings t
+       JOIN clients c ON c.id = t.client_id
+       WHERE t.session_id = $1 AND t.tenant_id = $2`,
+      [req.params.sessionId, tenantId]
+    );
+    res.json(rows[0] || null);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // GET /api/trainings?clientId=&from=&to=
 router.get('/', async (req, res) => {
@@ -89,7 +108,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/trainings/:id
+// GET /api/trainings/:id  — uses pool directly (pool.query works fine for reads)
 router.get('/:id', async (req, res) => {
   try {
     const t = await loadFull(req.params.id, req.user.tenantId, pool);
@@ -110,12 +129,11 @@ router.post('/', async (req, res) => {
   if (!startTime) return res.status(400).json({ error: 'startTime is required' });
   if (!endTime)   return res.status(400).json({ error: 'endTime is required' });
 
-  // Verify client belongs to this tenant and is active
   const { rows: [cl] } = await pool.query(
     'SELECT id, is_active FROM clients WHERE id=$1 AND tenant_id=$2',
     [clientId, tenantId]
   );
-  if (!cl)           return res.status(404).json({ error: 'Client not found' });
+  if (!cl)          return res.status(404).json({ error: 'Client not found' });
   if (!cl.is_active) return res.status(400).json({ error: 'Client is inactive' });
 
   const dbClient = await getClient();
@@ -124,7 +142,8 @@ router.post('/', async (req, res) => {
     const { rows: [training] } = await dbClient.query(
       `INSERT INTO trainings (tenant_id, client_id, title, workout_type, start_time, end_time, notes, location, session_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [tenantId, clientId, title || null, workoutType || 'Gym', startTime, endTime, notes || null, location || null, req.body.sessionId || null]
+      [tenantId, clientId, title || null, workoutType || 'Gym', startTime, endTime,
+       notes || null, location || null, req.body.sessionId || null]
     );
     await insertExercises(dbClient, training.id, exercises);
     await dbClient.query('COMMIT');
@@ -204,21 +223,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-
-// GET /api/trainings/by-session/:sessionId
-router.get('/by-session/:sessionId', async (req, res) => {
-  try {
-    const { tenantId } = req.user;
-    const { rows } = await pool.query(
-      `SELECT t.*, c.first_name, c.last_name
-       FROM trainings t
-       JOIN clients c ON c.id = t.client_id
-       WHERE t.session_id = $1 AND t.tenant_id = $2`,
-      [req.params.sessionId, tenantId]
-    );
-    res.json(rows[0] || null);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
