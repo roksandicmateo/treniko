@@ -13,6 +13,7 @@ const DashboardLayout = () => {
 
   const navItems = [
     { to: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
+    { to: '/dashboard/trainings', label: 'Trainings', icon: '🏋️' },
     { to: '/dashboard/clients', label: 'Clients', icon: '👥' },
     { to: '/dashboard/subscription', label: 'Subscription', icon: '💳' }, // ← ADD THIS
   ];

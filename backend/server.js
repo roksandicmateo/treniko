@@ -7,6 +7,14 @@ const clientsRoutes = require('./routes/clients');
 const sessionsRoutes = require('./routes/sessions');
 const trainingLogsRoutes = require('./routes/trainingLogs');
 const subscriptionRoutes = require('./routes/subscriptions');
+
+// Phase 2 routes
+const exercisesRouter = require('./routes/exercises');
+const trainingsRouter = require('./routes/trainings');
+const templatesRouter = require('./routes/templates');
+const progressRouter  = require('./routes/progress');
+const uploadsRouter   = require('./routes/uploads');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -34,12 +42,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-
 const { checkReadOnlyMode, checkClientLimit, checkSessionLimit } = require('./middleware/subscription');
 app.use('/api', checkReadOnlyMode);
 app.use('/api', checkClientLimit);
 app.use('/api', checkSessionLimit);
-
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -48,6 +54,13 @@ app.use('/api/sessions', sessionsRoutes);
 app.use('/api/training-logs', trainingLogsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 
+// Phase 2 API Routes
+app.use('/api/exercises', exercisesRouter);
+app.use('/api/trainings', trainingsRouter);
+app.use('/api/templates', templatesRouter);
+app.use('/api/progress',  progressRouter);
+app.use('/api/trainings', uploadsRouter);
+app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
 // 404 handler
 app.use((req, res) => {

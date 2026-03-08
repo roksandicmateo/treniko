@@ -9,6 +9,8 @@ import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
 import SubscriptionPage from './pages/SubscriptionPage';
 import Toast from './components/Toast';
+import CalendarPage from './pages/CalendarPage';
+import TrainingsPage from './pages/TrainingsPage';
 
 function App() {
   return (
@@ -34,12 +36,13 @@ function App() {
             <Route path="clients" element={<Clients />} />
             <Route path="clients/:id" element={<ClientDetail />} />
             <Route path="subscription" element={<SubscriptionPage />} />
+            <Route path="trainings" element={<TrainingsPage />} />
+            <Route path="calendar-new" element={<CalendarPage />} />
           </Route>
 
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} /></Routes>
       </BrowserRouter>
     </AuthProvider>
   );
