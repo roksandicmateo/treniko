@@ -1,9 +1,33 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import DpaAcceptanceModal from '../components/DpaAcceptanceModal';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import SubscriptionBanner from '../components/SubscriptionBanner';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
+  const [dpaAccepted, setDpaAccepted] = useState(true); // optimistic
+  const [dpaLoading, setDpaLoading] = useState(true);
+
+  useEffect(() => {
+    const checkDpa = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/dpa-status`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setDpaAccepted(res.data.dpa_accepted);
+      } catch {
+        setDpaAccepted(false);
+      } finally {
+        setDpaLoading(false);
+      }
+    };
+    if (user) checkDpa();
+    else setDpaLoading(false);
+  }, [user]);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -18,8 +42,11 @@ const DashboardLayout = () => {
     { to: '/dashboard/subscription', label: 'Subscription', icon: '💳' }, // ← ADD THIS
   ];
 
+  if (dpaLoading) return null;
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {!dpaAccepted && <DpaAcceptanceModal onAccepted={() => setDpaAccepted(true)} />}
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

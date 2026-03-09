@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { clientsAPI, subscriptionsAPI } from '../services/api';
 import { showToast } from '../components/Toast';
 import LimitReachedModal from '../components/LimitReachedModal';
+import ConsentModal from '../components/ConsentModal';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const Clients = () => {
   const [clients, setClients] = useState([]);
@@ -16,6 +19,10 @@ const Clients = () => {
   });
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [subscription, setSubscription] = useState(null);
+
+  // Consent state
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
 
   useEffect(() => {
     loadClients();
@@ -43,12 +50,10 @@ const Clients = () => {
   };
 
   const handleAdd = () => {
-    // Check if limit is reached
     if (subscription && subscription.clients_limit_reached) {
       setLimitModalOpen(true);
       return;
     }
-
     setEditingClient(null);
     setFormData({ firstName: '', lastName: '', email: '', phone: '' });
     setModalOpen(true);
@@ -65,34 +70,72 @@ const Clients = () => {
     setModalOpen(true);
   };
 
+  // Intercept form submit — show consent modal for new clients
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!editingClient) {
+      // New client — require consent first
+      setShowConsentModal(true);
+      return;
+    }
+    await saveClient();
+  };
+
+  // Called after trainer confirms consent in modal
+  const handleConsentAccepted = async () => {
+    setPendingSubmit(true);
     try {
-      if (editingClient) {
-        await clientsAPI.update(editingClient.id, formData);
-        showToast('Client updated successfully', 'success');
-      } else {
-        await clientsAPI.create(formData);
-        showToast('Client added successfully', 'success');
+      // Create the client
+      const response = await clientsAPI.create(formData);
+      const newClientId = response.data.client?.id || response.data.id;
+
+      // Record consent
+      if (newClientId) {
+        const token = localStorage.getItem('token');
+        await fetch(`${API_URL}/clients/${newClientId}/consent`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
       }
+
+      setShowConsentModal(false);
       setModalOpen(false);
+      showToast('Client added and consent recorded', 'success');
       loadClients();
-      loadSubscription(); // Refresh subscription to update usage
+      loadSubscription();
     } catch (error) {
       if (error.response?.data?.upgradeRequired) {
-        // Limit reached error from backend
+        setShowConsentModal(false);
         setModalOpen(false);
         setLimitModalOpen(true);
         loadSubscription();
       } else {
         showToast(error.response?.data?.message || 'Failed to save client', 'error');
+        setShowConsentModal(false);
       }
+    } finally {
+      setPendingSubmit(false);
+    }
+  };
+
+  // Save existing client (edit — no consent needed again)
+  const saveClient = async () => {
+    try {
+      await clientsAPI.update(editingClient.id, formData);
+      showToast('Client updated successfully', 'success');
+      setModalOpen(false);
+      loadClients();
+      loadSubscription();
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to save client', 'error');
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this client?')) return;
-    
     try {
       await clientsAPI.delete(id);
       showToast('Client deleted successfully', 'success');
@@ -110,6 +153,8 @@ const Clients = () => {
   if (loading) {
     return <div className="text-center py-12">Loading clients...</div>;
   }
+
+  const clientDisplayName = `${formData.firstName} ${formData.lastName}`.trim();
 
   return (
     <div>
@@ -141,8 +186,8 @@ const Clients = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {clients.map((client) => (
-                <tr 
-                  key={client.id} 
+                <tr
+                  key={client.id}
                   onClick={() => handleViewClient(client.id)}
                   className="hover:bg-gray-50 cursor-pointer"
                 >
@@ -170,19 +215,13 @@ const Clients = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(client);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); handleEdit(client); }}
                       className="text-primary-600 hover:text-primary-900 mr-3"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(client.id);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(client.id); }}
                       className="text-red-600 hover:text-red-900"
                     >
                       Delete
@@ -197,16 +236,24 @@ const Clients = () => {
 
       {/* Add/Edit Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-40">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               {editingClient ? 'Edit Client' : 'Add New Client'}
             </h2>
+
+            {/* GDPR notice for new clients */}
+            {!editingClient && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-xs text-blue-700">
+                  🔒 <strong>GDPR:</strong> You will be asked to confirm health data consent before this client is saved.
+                </p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  First Name *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
                 <input
                   type="text"
                   value={formData.firstName}
@@ -216,9 +263,7 @@ const Clients = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Last Name *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
                 <input
                   type="text"
                   value={formData.lastName}
@@ -228,9 +273,7 @@ const Clients = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
                   value={formData.email}
@@ -239,9 +282,7 @@ const Clients = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                 <input
                   type="tel"
                   value={formData.phone}
@@ -264,6 +305,15 @@ const Clients = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Consent Modal */}
+      {showConsentModal && (
+        <ConsentModal
+          clientName={clientDisplayName}
+          onAccept={handleConsentAccepted}
+          onDecline={() => setShowConsentModal(false)}
+        />
       )}
 
       {/* Limit Reached Modal */}

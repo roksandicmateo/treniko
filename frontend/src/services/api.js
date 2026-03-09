@@ -28,7 +28,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    if (error.response?.status === 401 || 
+        (error.response?.status === 403 && error.response?.data?.error !== 'dpa_required')) {
       // Token expired or invalid
       localStorage.removeItem('token');
       localStorage.removeItem('user');

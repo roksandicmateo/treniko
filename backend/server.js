@@ -10,6 +10,14 @@ const subscriptionRoutes = require('./routes/subscriptions');
 
 // Phase 2 routes
 const exercisesRouter = require('./routes/exercises');
+const dpaRoutes = require('./routes/dpa');
+const exportRoutes = require('./routes/export');
+const deletionRoutes = require('./routes/deletion');
+const consentRoutes = require('./routes/consent');
+const { requireDpa } = require('./middleware/requireDpa');
+const { auditLogMiddleware, auditFailedLogin } = require('./middleware/auditLog');
+const { helmetMiddleware, authRateLimiter, apiRateLimiter, exportRateLimiter, checkAccountLockout } = require('./middleware/security');
+const { authenticateToken } = require('./middleware/auth');
 const trainingsRouter = require('./routes/trainings');
 const templatesRouter = require('./routes/templates');
 const progressRouter  = require('./routes/progress');
@@ -19,6 +27,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(helmetMiddleware);
 app.use(cors({
   origin: '*',
   credentials: false
@@ -43,14 +52,25 @@ app.get('/health', (req, res) => {
 });
 
 const { checkReadOnlyMode, checkClientLimit, checkSessionLimit } = require('./middleware/subscription');
+app.use('/api', apiRateLimiter);
+app.use('/api/auth/login', authRateLimiter);
+app.use('/api/auth/login', checkAccountLockout);
+app.use('/api/auth/register', authRateLimiter);
+app.use('/api/export', exportRateLimiter);
+app.use('/api', auditLogMiddleware);
+app.use('/api/auth/login', auditFailedLogin);
 app.use('/api', checkReadOnlyMode);
 app.use('/api', checkClientLimit);
 app.use('/api', checkSessionLimit);
 
 // API Routes
+app.use('/api/auth', dpaRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/clients', clientsRoutes);
-app.use('/api/sessions', sessionsRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api', deletionRoutes);
+app.use('/api/clients/:id/consent', consentRoutes);
+app.use('/api/clients', authenticateToken, requireDpa, clientsRoutes);
+app.use('/api/sessions', authenticateToken, requireDpa, sessionsRoutes);
 app.use('/api/training-logs', trainingLogsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 
@@ -58,7 +78,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/exercises', exercisesRouter);
 app.use('/api/trainings', trainingsRouter);
 app.use('/api/templates', templatesRouter);
-app.use('/api/progress',  progressRouter);
+app.use('/api/progress', authenticateToken, requireDpa, progressRouter);
 app.use('/api/trainings', uploadsRouter);
 app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 

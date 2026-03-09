@@ -16,11 +16,15 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.3.1",
     "express-validator": "^7.0.1",
+    "helmet": "^8.1.0",
+    "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
@@ -28,5 +32,17 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "uploads/*",
+      "uploads/**/*",
+      "logs/*",
+      "*.log"
+    ],
+    "watch": [
+      "."
+    ],
+    "ext": "js,json"
   }
 }

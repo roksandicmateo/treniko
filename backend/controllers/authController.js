@@ -1,16 +1,15 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/database');
+const { recordFailedLogin, resetFailedLogins } = require('../middleware/security');
 
 /**
  * User Login
- * Validates credentials and returns JWT token
  */
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({
         error: 'Validation error',
@@ -18,7 +17,6 @@ const login = async (req, res) => {
       });
     }
 
-    // Find user by email
     const result = await query(
       'SELECT id, tenant_id, email, password_hash, first_name, last_name FROM users WHERE email = $1',
       [email.toLowerCase()]
@@ -33,17 +31,17 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
-
     if (!isValidPassword) {
+      await recordFailedLogin(email); // ← track failed attempt
       return res.status(401).json({
         error: 'Authentication failed',
         message: 'Invalid email or password'
       });
     }
 
-    // Generate JWT token
+    await resetFailedLogins(email); // ← clear counter on success
+
     const token = jwt.sign(
       {
         userId: user.id,
@@ -54,7 +52,6 @@ const login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Return token and user info
     res.json({
       success: true,
       token,
@@ -66,7 +63,6 @@ const login = async (req, res) => {
         lastName: user.last_name
       }
     });
-
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({
@@ -78,13 +74,11 @@ const login = async (req, res) => {
 
 /**
  * User Registration
- * Creates new tenant and user account
  */
 const register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, businessName } = req.body;
 
-    // Validate input
     if (!email || !password || !firstName || !lastName || !businessName) {
       return res.status(400).json({
         error: 'Validation error',
@@ -92,7 +86,6 @@ const register = async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const existingUser = await query(
       'SELECT id FROM users WHERE email = $1',
       [email.toLowerCase()]
@@ -105,18 +98,14 @@ const register = async (req, res) => {
       });
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create tenant first
     const tenantResult = await query(
       'INSERT INTO tenants (name) VALUES ($1) RETURNING id',
       [businessName]
     );
-
     const tenantId = tenantResult.rows[0].id;
 
-    // Create user
     const userResult = await query(
       `INSERT INTO users (tenant_id, email, password_hash, first_name, last_name) 
        VALUES ($1, $2, $3, $4, $5) 
@@ -126,7 +115,6 @@ const register = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Generate JWT token
     const token = jwt.sign(
       {
         userId: user.id,
@@ -137,7 +125,6 @@ const register = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Return token and user info
     res.status(201).json({
       success: true,
       token,
@@ -149,7 +136,6 @@ const register = async (req, res) => {
         lastName: user.last_name
       }
     });
-
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({
@@ -161,12 +147,9 @@ const register = async (req, res) => {
 
 /**
  * Validate Token
- * Check if current token is valid
  */
 const validateToken = async (req, res) => {
   try {
-    // Token is already validated by authenticateToken middleware
-    // Just return user info
     const result = await query(
       'SELECT id, tenant_id, email, first_name, last_name FROM users WHERE id = $1',
       [req.user.userId]
@@ -180,7 +163,6 @@ const validateToken = async (req, res) => {
     }
 
     const user = result.rows[0];
-
     res.json({
       success: true,
       user: {
@@ -191,7 +173,6 @@ const validateToken = async (req, res) => {
         lastName: user.last_name
       }
     });
-
   } catch (error) {
     console.error('Token validation error:', error);
     res.status(500).json({
@@ -201,8 +182,4 @@ const validateToken = async (req, res) => {
   }
 };
 
-module.exports = {
-  login,
-  register,
-  validateToken
-};
+module.exports = { login, register, validateToken };

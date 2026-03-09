@@ -1,3 +1,4 @@
+import CookieBanner from './components/CookieBanner';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -45,7 +46,9 @@ function App() {
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} /></Routes>
-      </BrowserRouter>
+      <CookieBanner />
+<CookieBanner />
+</BrowserRouter>
     </AuthProvider>
   );
 }
