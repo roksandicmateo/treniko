@@ -9,6 +9,7 @@ import Calendar from './pages/Calendar';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
 import SubscriptionPage from './pages/SubscriptionPage';
+import ProfilePage from './pages/ProfilePage';
 import Toast from './components/Toast';
 import CalendarPage from './pages/CalendarPage';
 import TrainingsPage from './pages/TrainingsPage';
@@ -38,6 +39,7 @@ function App() {
             <Route path="clients" element={<Clients />} />
             <Route path="clients/:id" element={<ClientDetail />} />
             <Route path="subscription" element={<SubscriptionPage />} />
+          <Route path="profile" element={<ProfilePage />} />
             <Route path="trainings" element={<TrainingsPage />} />
             <Route path="trainings/:id" element={<TrainingDetailPage />} />
             <Route path="calendar-new" element={<CalendarPage />} />

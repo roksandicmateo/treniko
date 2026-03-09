@@ -11,6 +11,7 @@ const subscriptionRoutes = require('./routes/subscriptions');
 // Phase 2 routes
 const exercisesRouter = require('./routes/exercises');
 const dpaRoutes = require('./routes/dpa');
+const profileRoutes = require('./routes/profile');
 const exportRoutes = require('./routes/export');
 const deletionRoutes = require('./routes/deletion');
 const consentRoutes = require('./routes/consent');
@@ -66,6 +67,7 @@ app.use('/api', checkSessionLimit);
 // API Routes
 app.use('/api/auth', dpaRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api', deletionRoutes);
 app.use('/api/clients/:id/consent', consentRoutes);

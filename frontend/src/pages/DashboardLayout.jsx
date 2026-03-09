@@ -4,6 +4,7 @@ import DpaAcceptanceModal from '../components/DpaAcceptanceModal';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import SubscriptionBanner from '../components/SubscriptionBanner';
+import ProfileMenu from '../components/ProfileMenu';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -39,7 +40,6 @@ const DashboardLayout = () => {
     { to: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
     { to: '/dashboard/trainings', label: 'Trainings', icon: '🏋️' },
     { to: '/dashboard/clients', label: 'Clients', icon: '👥' },
-    { to: '/dashboard/subscription', label: 'Subscription', icon: '💳' }, // ← ADD THIS
   ];
 
   if (dpaLoading) return null;
@@ -55,17 +55,7 @@ const DashboardLayout = () => {
               <h1 className="text-2xl font-bold text-primary-600">TRENIKO</h1>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-700">
-                <span className="font-medium">{user?.firstName} {user?.lastName}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="btn-secondary text-sm"
-              >
-                Logout
-              </button>
-            </div>
+            <ProfileMenu />
           </div>
         </div>
       </header>
