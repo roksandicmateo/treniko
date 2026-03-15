@@ -70,6 +70,7 @@ const DashboardLayout = () => {
               <NavLink
                 key={item.to}
                 to={item.to}
+            end={item.to === '/dashboard'}
                 className={({ isActive }) =>
                   `flex items-center space-x-2 px-3 py-4 text-sm font-medium border-b-2 transition-colors ${
                     isActive

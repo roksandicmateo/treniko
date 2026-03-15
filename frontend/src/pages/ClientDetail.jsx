@@ -1,4 +1,4 @@
-// frontend/src/pages/ClientDetail.jsx  (UPDATED)
+// frontend/src/pages/ClientDetail.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
@@ -8,9 +8,11 @@ import StrengthProgress from '../components/progress/StrengthProgress';
 import AssignPackageModal from '../components/AssignPackageModal';
 import ClientNotesTab from '../components/ClientNotesTab';
 import PRSummary from '../components/progress/PRSummary';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const TABS = ['profile', 'trainings', 'progress', 'packages', 'notes', 'prs'];
+
 const TYPE_COLORS = {
   Gym:        'bg-blue-100 text-blue-700',
   Cardio:     'bg-green-100 text-green-700',
@@ -37,20 +39,12 @@ function ProgressSection({ clientId }) {
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        <button
-          onClick={() => setProgressTab('body')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            progressTab === 'body' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
+        <button onClick={() => setProgressTab('body')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'body' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
           📏 Body Metrics
         </button>
-        <button
-          onClick={() => setProgressTab('strength')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            progressTab === 'strength' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
+        <button onClick={() => setProgressTab('strength')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'strength' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
           🏋️ Strength
         </button>
       </div>
@@ -64,14 +58,11 @@ function PackagesSection({ clientId, clientName }) {
   const [clientPackages, setClientPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
-
   const token = () => localStorage.getItem('token');
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/clients/${clientId}/packages`, {
-        headers: { Authorization: `Bearer ${token()}` }
-      });
+      const res = await fetch(`${API_URL}/clients/${clientId}/packages`, { headers: { Authorization: `Bearer ${token()}` } });
       const data = await res.json();
       setClientPackages(data.packages || []);
     } catch { /* ignore */ }
@@ -95,8 +86,7 @@ function PackagesSection({ clientId, clientName }) {
 
   const formatUsage = (cp) => {
     if (cp.package_type === 'session_based' && cp.total_sessions) {
-      const remaining = cp.total_sessions - cp.sessions_used;
-      return `${cp.sessions_used} / ${cp.total_sessions} sessions used · ${remaining} remaining`;
+      return `${cp.sessions_used} / ${cp.total_sessions} sessions used · ${cp.total_sessions - cp.sessions_used} remaining`;
     }
     if (cp.package_type === 'unlimited') return `${cp.sessions_used} sessions used · Unlimited`;
     if (cp.package_type === 'time_based') return cp.sessions_used > 0 ? `${cp.sessions_used} sessions used` : 'No sessions yet';
@@ -115,17 +105,13 @@ function PackagesSection({ clientId, clientName }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Active Package</h3>
-          <button onClick={() => setAssignOpen(true)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-            + Assign Package
-          </button>
+          <button onClick={() => setAssignOpen(true)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">+ Assign Package</button>
         </div>
 
         {active.length === 0 ? (
           <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
             <p className="text-gray-400 text-sm mb-3">No active package</p>
-            <button onClick={() => setAssignOpen(true)} className="btn-primary text-sm">
-              Assign a Package
-            </button>
+            <button onClick={() => setAssignOpen(true)} className="btn-primary text-sm">Assign a Package</button>
           </div>
         ) : (
           active.map(cp => {
@@ -139,32 +125,22 @@ function PackagesSection({ clientId, clientName }) {
                   </div>
                   <span className="text-xs bg-green-100 text-green-700 font-medium px-2.5 py-1 rounded-full">Active</span>
                 </div>
-
                 <p className="text-sm text-gray-600 mb-2">{formatUsage(cp)}</p>
-
                 {pct !== null && (
                   <div className="mb-3">
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : 'bg-blue-500'}`}
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
                     </div>
                     <p className="text-xs text-gray-400 mt-1">{pct}% used</p>
                   </div>
                 )}
-
                 <div className="flex gap-4 text-xs text-gray-500 mb-3">
                   <span>Started: {new Date(cp.start_date).toLocaleDateString('en-GB')}</span>
                   {cp.end_date && <span>Expires: {new Date(cp.end_date).toLocaleDateString('en-GB')}</span>}
                 </div>
-
                 {cp.price && <p className="text-xs text-gray-400 mb-3">{Number(cp.price).toFixed(2)} {cp.currency}</p>}
                 {cp.notes && <p className="text-xs text-gray-500 italic mb-3">"{cp.notes}"</p>}
-
-                <button onClick={() => handleCancel(cp)} className="text-xs text-red-500 hover:text-red-700">
-                  Cancel package
-                </button>
+                <button onClick={() => handleCancel(cp)} className="text-xs text-red-500 hover:text-red-700">Cancel package</button>
               </div>
             );
           })
@@ -217,16 +193,21 @@ export default function ClientDetail() {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
   const [menuOpen,     setMenuOpen]     = useState(false);
+
+  // Edit profile modal state
+  const [editProfileOpen,   setEditProfileOpen]   = useState(false);
+  const [editProfileForm,   setEditProfileForm]   = useState({ firstName: '', lastName: '', email: '', phone: '' });
+  const [editProfileSaving, setEditProfileSaving] = useState(false);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
       const [clientRes, trainingsRes] = await Promise.all([
-        fetch(`/api/clients/${id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        }).then((r) => { if (!r.ok) throw new Error('Client not found'); return r.json(); }),
+        fetch(`/api/clients/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+          .then(r => { if (!r.ok) throw new Error('Client not found'); return r.json(); }),
         trainingService.getAll({ clientId: id }),
       ]);
-setClient(clientRes.client || clientRes);
+      setClient(clientRes.client || clientRes);
       setTrainings(trainingsRes.data);
     } catch (e) {
       setError(e.message || 'Failed to load client');
@@ -237,15 +218,16 @@ setClient(clientRes.client || clientRes);
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {  
+  useEffect(() => {
     const handler = () => { if (menuOpen) setMenuOpen(false); };
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [menuOpen]);
+
   function onTrainingSaved(t) {
-    setTrainings((prev) => {
-      const idx = prev.findIndex((x) => x.id === t.id);
-      return idx >= 0 ? prev.map((x, i) => (i === idx ? t : x)) : [t, ...prev];
+    setTrainings(prev => {
+      const idx = prev.findIndex(x => x.id === t.id);
+      return idx >= 0 ? prev.map((x, i) => i === idx ? t : x) : [t, ...prev];
     });
   }
 
@@ -257,6 +239,24 @@ setClient(clientRes.client || clientRes);
     } catch { /* ignore */ }
   }
 
+  async function saveProfile() {
+    setEditProfileSaving(true);
+    try {
+      const res = await fetch(`/api/clients/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify(editProfileForm),
+      });
+      const data = await res.json();
+      if (data.success || data.client) {
+        setClient(c => ({ ...c, ...data.client }));
+        setEditProfileOpen(false);
+      }
+    } finally {
+      setEditProfileSaving(false);
+    }
+  }
+
   async function deactivateClient() {
     if (!window.confirm(`Deactivate ${client.first_name} ${client.last_name}?`)) return;
     await fetch(`/api/clients/${id}`, {
@@ -264,44 +264,43 @@ setClient(clientRes.client || clientRes);
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({ isActive: false }),
     });
-    navigate('/clients');
+    navigate('/dashboard/clients');
   }
 
   async function archiveClient() {
-  if (!window.confirm(`Archive ${client.first_name} ${client.last_name}?`)) return;
-  await fetch(`/api/clients/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-    body: JSON.stringify({ isArchived: true, isActive: false }),
-  });
-  navigate('/dashboard/clients');
-}
+    if (!window.confirm(`Archive ${client.first_name} ${client.last_name}?`)) return;
+    await fetch(`/api/clients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify({ isArchived: true, isActive: false }),
+    });
+    navigate('/dashboard/clients');
+  }
 
-async function reactivateClient() {
-  await fetch(`/api/clients/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-    body: JSON.stringify({ isArchived: false, isActive: true }),
-  });
-  load();
-}
+  async function reactivateClient() {
+    await fetch(`/api/clients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify({ isArchived: false, isActive: true }),
+    });
+    load();
+  }
 
-  const upcoming = trainings.filter((t) => !t.is_completed && new Date(t.start_time) >= new Date());
+  const upcoming = trainings.filter(t => !t.is_completed && new Date(t.start_time) >= new Date());
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-gray-400">Loading...</div></div>;
   if (error) return (
     <div className="p-4 text-center">
       <p className="text-red-600 mb-4">{error}</p>
-      <button onClick={() => navigate('/clients')} className="text-blue-600 hover:underline">← Back to clients</button>
+      <button onClick={() => navigate('/dashboard/clients')} className="text-blue-600 hover:underline">← Back to clients</button>
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-8">
-      <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-sm mt-4 mb-4 flex items-center gap-1">
-        ← Back
-      </button>
+      <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-sm mt-4 mb-4 flex items-center gap-1">← Back</button>
 
+      {/* Client header */}
       <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-6">
         <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0">
           <span className="text-blue-600 font-bold text-2xl">{client.first_name?.[0]}{client.last_name?.[0]}</span>
@@ -312,53 +311,59 @@ async function reactivateClient() {
               <h1 className="text-2xl font-bold text-gray-900">{client.first_name} {client.last_name}</h1>
               {client.email && <p className="text-gray-500 text-sm">{client.email}</p>}
               <div className="flex items-center gap-2 mt-1">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${client.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {client.is_active ? 'Active' : 'Inactive'}
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  client.is_archived ? 'bg-yellow-100 text-yellow-700' :
+                  client.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {client.is_archived ? 'Archived' : client.is_active ? 'Active' : 'Inactive'}
                 </span>
                 <span className="text-gray-300 text-xs">{trainings.length} training{trainings.length !== 1 ? 's' : ''}</span>
               </div>
             </div>
             <div className="flex gap-2">
-              {client.is_active && (
+              {client.is_active && !client.is_archived && (
                 <button onClick={() => { setEditTraining(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium">
                   + Training
                 </button>
               )}
-             <div className="relative">
-<button
-  onClick={(e) => { e.stopPropagation(); setMenuOpen(m => !m); }}
-  className="border border-gray-300 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-xl text-sm"
->···</button>
-  {menuOpen && (
-    <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-10">
-      <button onClick={() => { setMenuOpen(false); setTab('notes'); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 rounded-t-xl">Edit profile</button>
-   {client.is_active && client.is_archived !== true && (
-        <button onClick={deactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-yellow-600 hover:bg-yellow-50">Deactivate</button>
-      )}
-{client.is_archived !== true && (
-  <button onClick={archiveClient} className="w-full text-left px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">Archive</button>
-)}
-{!client.is_active && client.is_archived !== true && (
-  <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50">Reactivate</button>
-)}
-{client.is_archived === true && (
-        <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 rounded-b-xl">Reactivate</button>
-      )}
-    </div>
-  )}
-</div>
+              <div className="relative">
+                <button onClick={(e) => { e.stopPropagation(); setMenuOpen(m => !m); }}
+                  className="border border-gray-300 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-xl text-sm">···</button>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-10">
+                    <button onClick={() => {
+                      setEditProfileForm({ firstName: client.first_name, lastName: client.last_name, email: client.email || '', phone: client.phone || '' });
+                      setEditProfileOpen(true);
+                      setMenuOpen(false);
+                    }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 rounded-t-xl">Edit profile</button>
+                    {client.is_active && client.is_archived !== true && (
+                      <button onClick={deactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-yellow-600 hover:bg-yellow-50">Deactivate</button>
+                    )}
+                    {client.is_archived !== true && (
+                      <button onClick={archiveClient} className="w-full text-left px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">Archive</button>
+                    )}
+                    {!client.is_active && client.is_archived !== true && (
+                      <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50">Reactivate</button>
+                    )}
+                    {client.is_archived === true && (
+                      <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 rounded-b-xl">Reactivate</button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-blue-50 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-blue-600">{trainings.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Total</p>
         </div>
         <div className="bg-green-50 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-green-600">{trainings.filter((t) => t.is_completed).length}</p>
+          <p className="text-2xl font-bold text-green-600">{trainings.filter(t => t.is_completed).length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Completed</p>
         </div>
         <div className="bg-orange-50 rounded-xl p-3 text-center">
@@ -367,18 +372,19 @@ async function reactivateClient() {
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
-        {TABS.map((t) => (
+        {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px whitespace-nowrap ${
               tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-{t === 'prs' ? '🏆 PRs' : t === 'packages' ? '📦 Packages' : t === 'notes' ? '📋 Notes' : t}
+            }`}>
+            {t === 'packages' ? '📦 Packages' : t === 'notes' ? '📋 Notes' : t === 'prs' ? '🏆 PRs' : t}
           </button>
         ))}
       </div>
 
+      {/* Profile tab */}
       {tab === 'profile' && (
         <div className="space-y-4">
           {[['Phone', client.phone], ['Date of Birth', client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString() : null], ['Notes', client.notes]]
@@ -389,11 +395,18 @@ async function reactivateClient() {
               </div>
             ) : null)}
           {!client.phone && !client.date_of_birth && !client.notes && (
-            <p className="text-gray-400 text-sm text-center py-8">No additional info. <button onClick={() => navigate(`/clients/${id}/edit`)} className="text-blue-600 hover:underline">Edit profile</button></p>
+            <p className="text-gray-400 text-sm text-center py-8">
+              No additional info.{' '}
+              <button onClick={() => {
+                setEditProfileForm({ firstName: client.first_name, lastName: client.last_name, email: client.email || '', phone: client.phone || '' });
+                setEditProfileOpen(true);
+              }} className="text-blue-600 hover:underline">Edit profile</button>
+            </p>
           )}
         </div>
       )}
 
+      {/* Trainings tab */}
       {tab === 'trainings' && (
         <div>
           {trainings.length === 0 ? (
@@ -405,7 +418,7 @@ async function reactivateClient() {
             </div>
           ) : (
             <div className="space-y-2">
-              {trainings.map((t) => (
+              {trainings.map(t => (
                 <div key={t.id} onClick={() => openEdit(t.id)} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-800 truncate">{t.title || t.workout_type}</p>
@@ -424,23 +437,54 @@ async function reactivateClient() {
         </div>
       )}
 
-      {tab === 'progress' && <ProgressSection clientId={id} />}
+      {tab === 'progress'  && <ProgressSection clientId={id} />}
+      {tab === 'packages'  && <PackagesSection clientId={id} clientName={`${client.first_name} ${client.last_name}`} />}
+      {tab === 'notes'     && <ClientNotesTab client={client} onUpdated={updated => setClient(c => ({ ...c, ...updated }))} />}
+      {tab === 'prs'       && <PRSummary clientId={id} />}
 
-      {tab === 'prs' && <PRSummary clientId={id} />}
+      {/* Edit Profile Modal */}
+      {editProfileOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
+              <button onClick={() => setEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light">×</button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                  <input type="text" value={editProfileForm.firstName} onChange={e => setEditProfileForm(f => ({ ...f, firstName: e.target.value }))} className="input" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                  <input type="text" value={editProfileForm.lastName} onChange={e => setEditProfileForm(f => ({ ...f, lastName: e.target.value }))} className="input" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" value={editProfileForm.email} onChange={e => setEditProfileForm(f => ({ ...f, email: e.target.value }))} className="input" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input type="tel" value={editProfileForm.phone} onChange={e => setEditProfileForm(f => ({ ...f, phone: e.target.value }))} className="input" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditProfileOpen(false)} className="flex-1 btn-secondary">Cancel</button>
+                <button onClick={saveProfile} disabled={editProfileSaving} className="flex-1 btn-primary disabled:opacity-50">
+                  {editProfileSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {tab === 'packages' && <PackagesSection clientId={id} clientName={`${client.first_name} ${client.last_name}`} />}
-
-      {tab === 'notes' && (
-  <ClientNotesTab
-    client={client}
-    onUpdated={(updated) => setClient(c => ({ ...c, ...updated }))}
-  />
-)}
-
+      {/* Add Training Modal */}
       <AddTrainingModal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditTraining(null); }}
-        onSaved={(t) => { onTrainingSaved(t); setModalOpen(false); }}
+        onSaved={t => { onTrainingSaved(t); setModalOpen(false); }}
         initialClientId={id}
         editTraining={editTraining}
       />
