@@ -37,9 +37,11 @@ const DashboardLayout = () => {
   };
 
   const navItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
     { to: '/dashboard/trainings', label: 'Trainings', icon: '🏋️' },
     { to: '/dashboard/clients', label: 'Clients', icon: '👥' },
+    { to: '/dashboard/packages', label: 'Packages', icon: '📦' },
   ];
 
   if (dpaLoading) return null;

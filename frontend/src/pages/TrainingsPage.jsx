@@ -84,6 +84,26 @@ export default function TrainingsPage() {
     navigate('/dashboard/trainings/' + id);
   }
 
+async function recordPackageUsage(clientId) {
+  try {
+    const token = localStorage.getItem('token');
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    
+    const res = await fetch(`${API_URL}/clients/${clientId}/packages/active`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!data.package) return;
+    
+    await fetch(`${API_URL}/clients/${clientId}/packages/${data.package.id}/use-session`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})  // no sessionId
+    });
+  } catch (err) {
+    console.warn('Could not record package usage:', err);
+  }
+}
   function requestDelete(id, e) {
     e.stopPropagation();
     setConfirmId(id);
@@ -100,6 +120,9 @@ export default function TrainingsPage() {
     e.stopPropagation();
     const updated = await trainingService.update(t.id, { isCompleted: !t.is_completed });
     setTrainings((prev) => prev.map((x) => (x.id === t.id ? updated.data : x)));
+      if (!t.is_completed && t.client_id) {
+    await recordPackageUsage(t.client_id);
+  }
     if (t.session_id) {
       try {
         await import('../services/api').then(({ sessionsAPI }) =>

@@ -7,7 +7,7 @@ const clientsRoutes = require('./routes/clients');
 const sessionsRoutes = require('./routes/sessions');
 const trainingLogsRoutes = require('./routes/trainingLogs');
 const subscriptionRoutes = require('./routes/subscriptions');
-
+const { router: packagesRoutes, clientRouter: clientPackagesRoutes } = require('./routes/packages');
 // Phase 2 routes
 const exercisesRouter = require('./routes/exercises');
 const dpaRoutes = require('./routes/dpa');
@@ -23,7 +23,7 @@ const trainingsRouter = require('./routes/trainings');
 const templatesRouter = require('./routes/templates');
 const progressRouter  = require('./routes/progress');
 const uploadsRouter   = require('./routes/uploads');
-
+const dashboardRoutes = require('./routes/dashboard');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -63,7 +63,8 @@ app.use('/api/auth/login', auditFailedLogin);
 app.use('/api', checkReadOnlyMode);
 app.use('/api', checkClientLimit);
 app.use('/api', checkSessionLimit);
-
+app.use('/api/packages', packagesRoutes);
+app.use('/api/clients/:clientId', clientPackagesRoutes);
 // API Routes
 app.use('/api/auth', dpaRoutes);
 app.use('/api/auth', authRoutes);
@@ -83,7 +84,7 @@ app.use('/api/templates', templatesRouter);
 app.use('/api/progress', authenticateToken, requireDpa, progressRouter);
 app.use('/api/trainings', uploadsRouter);
 app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
-
+app.use('/api/dashboard', dashboardRoutes);
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

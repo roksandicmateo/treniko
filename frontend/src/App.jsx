@@ -14,7 +14,8 @@ import Toast from './components/Toast';
 import CalendarPage from './pages/CalendarPage';
 import TrainingsPage from './pages/TrainingsPage';
 import TrainingDetailPage from './pages/TrainingDetailPage';
-
+import PackagesPage from './pages/PackagesPage';
+import DashboardPage from './pages/DashboardPage';
 function App() {
   return (
     <AuthProvider>
@@ -34,11 +35,13 @@ function App() {
               </PrivateRoute>
             }
           >
+            <Route index element={<DashboardPage />} />
             <Route index element={<Navigate to="/dashboard/calendar" replace />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="clients" element={<Clients />} />
             <Route path="clients/:id" element={<ClientDetail />} />
             <Route path="subscription" element={<SubscriptionPage />} />
+            <Route path="packages" element={<PackagesPage />} />
           <Route path="profile" element={<ProfilePage />} />
             <Route path="trainings" element={<TrainingsPage />} />
             <Route path="trainings/:id" element={<TrainingDetailPage />} />
