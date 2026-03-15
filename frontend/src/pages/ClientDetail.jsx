@@ -7,9 +7,10 @@ import ProgressChart from '../components/progress/ProgressChart';
 import StrengthProgress from '../components/progress/StrengthProgress';
 import AssignPackageModal from '../components/AssignPackageModal';
 import ClientNotesTab from '../components/ClientNotesTab';
+import PRSummary from '../components/progress/PRSummary';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-const TABS = ['profile', 'trainings', 'progress', 'packages', 'notes'];
+const TABS = ['profile', 'trainings', 'progress', 'packages', 'notes', 'prs'];
 const TYPE_COLORS = {
   Gym:        'bg-blue-100 text-blue-700',
   Cardio:     'bg-green-100 text-green-700',
@@ -373,7 +374,7 @@ async function reactivateClient() {
               tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-     {t === 'packages' ? '📦 Packages' : t === 'notes' ? '📋 Notes' : t}
+{t === 'prs' ? '🏆 PRs' : t === 'packages' ? '📦 Packages' : t === 'notes' ? '📋 Notes' : t}
           </button>
         ))}
       </div>
@@ -424,6 +425,8 @@ async function reactivateClient() {
       )}
 
       {tab === 'progress' && <ProgressSection clientId={id} />}
+
+      {tab === 'prs' && <PRSummary clientId={id} />}
 
       {tab === 'packages' && <PackagesSection clientId={id} clientName={`${client.first_name} ${client.last_name}`} />}
 

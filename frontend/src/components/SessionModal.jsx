@@ -20,9 +20,12 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
     clientId: '', sessionDate: '', startTime: '',
     endTime: '', sessionType: '', notes: '',
   });
-  const [loading,    setLoading]    = useState(false);
+  const [loading,       setLoading]       = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [error,      setError]      = useState('');
+  const [error,         setError]         = useState('');
+  const [conflicts,     setConflicts]     = useState([]);
+  const [showConflictWarning, setShowConflictWarning] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState(null);
 
   useEffect(() => {
     loadClients();
@@ -70,15 +73,14 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
+    setShowConflictWarning(false);
   };
 
-  // Set session status (completed, cancelled, no_show, scheduled)
   const handleSetStatus = async (newStatus) => {
     if (!session) return;
     setStatusLoading(true);
     try {
       await sessionsAPI.update(session.id, { status: newStatus });
-      // Sync linked training completion
       if (linkedTraining) {
         await trainingService.update(linkedTraining.id, { isCompleted: newStatus === 'completed' });
       }
@@ -90,22 +92,42 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Save with optional force flag (overrides conflict)
+  const saveSession = async (force = false) => {
     setLoading(true);
     setError('');
     try {
+      const payload = { ...formData, ...(force ? { force: true } : {}) };
       if (session) {
-        await sessionsAPI.update(session.id, formData);
+        await sessionsAPI.update(session.id, payload);
       } else {
-        await sessionsAPI.create(formData);
+        await sessionsAPI.create(payload);
       }
+      setShowConflictWarning(false);
+      setConflicts([]);
       onSave();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save session');
+      const data = err.response?.data;
+      if (data?.error === 'conflict') {
+        // Show conflict warning instead of error
+        setConflicts(data.conflicts || []);
+        setShowConflictWarning(true);
+        setPendingSubmit({ force: true });
+      } else {
+        setError(data?.message || 'Failed to save session');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await saveSession(false);
+  };
+
+  const handleForceSubmit = async () => {
+    await saveSession(true);
   };
 
   const handleDelete = async () => {
@@ -143,10 +165,48 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
             )}
           </div>
 
-          {/* ── Status actions for existing sessions ── */}
+          {/* Conflict warning */}
+          {showConflictWarning && conflicts.length > 0 && (
+            <div className="mb-5 bg-amber-50 border border-amber-300 rounded-xl p-4">
+              <div className="flex items-start gap-2 mb-3">
+                <span className="text-xl flex-shrink-0">⚠️</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Schedule conflict detected</p>
+                  <p className="text-xs text-amber-700 mt-0.5">This time slot overlaps with:</p>
+                </div>
+              </div>
+              <div className="space-y-1.5 mb-3">
+                {conflicts.map(c => (
+                  <div key={c.id} className="bg-white rounded-lg px-3 py-2 border border-amber-200">
+                    <p className="text-sm font-medium text-gray-800">{c.clientName}</p>
+                    <p className="text-xs text-gray-500">
+                      {c.startTime?.slice(0, 5)} – {c.endTime?.slice(0, 5)}
+                      {c.sessionType ? ` · ${c.sessionType}` : ''}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowConflictWarning(false); setConflicts([]); }}
+                  className="flex-1 py-2 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleForceSubmit}
+                  disabled={loading}
+                  className="flex-1 py-2 text-xs rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600 disabled:opacity-50"
+                >
+                  Schedule Anyway
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Status buttons for existing sessions */}
           {session && (
             <div className="mb-5">
-              {/* Linked training banner */}
               {loadingTraining ? (
                 <div className="text-xs text-gray-400 mb-3">Checking training...</div>
               ) : linkedTraining ? (
@@ -173,54 +233,21 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
                 </div>
               )}
 
-              {/* Status buttons */}
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSetStatus('completed')}
-                  disabled={statusLoading || currentStatus === 'completed'}
-                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${
-                    currentStatus === 'completed'
-                      ? 'bg-green-100 border-green-300 text-green-700 cursor-default'
-                      : 'border-green-300 text-green-600 hover:bg-green-50'
-                  }`}
-                >
+                <button type="button" onClick={() => handleSetStatus('completed')} disabled={statusLoading || currentStatus === 'completed'}
+                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${currentStatus === 'completed' ? 'bg-green-100 border-green-300 text-green-700 cursor-default' : 'border-green-300 text-green-600 hover:bg-green-50'}`}>
                   ✅ Completed
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetStatus('no_show')}
-                  disabled={statusLoading || currentStatus === 'no_show'}
-                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${
-                    currentStatus === 'no_show'
-                      ? 'bg-red-100 border-red-300 text-red-700 cursor-default'
-                      : 'border-red-300 text-red-500 hover:bg-red-50'
-                  }`}
-                >
+                <button type="button" onClick={() => handleSetStatus('no_show')} disabled={statusLoading || currentStatus === 'no_show'}
+                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${currentStatus === 'no_show' ? 'bg-red-100 border-red-300 text-red-700 cursor-default' : 'border-red-300 text-red-500 hover:bg-red-50'}`}>
                   ❌ No-show
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetStatus('cancelled')}
-                  disabled={statusLoading || currentStatus === 'cancelled'}
-                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${
-                    currentStatus === 'cancelled'
-                      ? 'bg-gray-100 border-gray-300 text-gray-600 cursor-default'
-                      : 'border-gray-300 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
+                <button type="button" onClick={() => handleSetStatus('cancelled')} disabled={statusLoading || currentStatus === 'cancelled'}
+                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${currentStatus === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-600 cursor-default' : 'border-gray-300 text-gray-500 hover:bg-gray-50'}`}>
                   🚫 Cancelled
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetStatus('scheduled')}
-                  disabled={statusLoading || currentStatus === 'scheduled'}
-                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${
-                    currentStatus === 'scheduled'
-                      ? 'bg-blue-100 border-blue-300 text-blue-700 cursor-default'
-                      : 'border-blue-300 text-blue-500 hover:bg-blue-50'
-                  }`}
-                >
+                <button type="button" onClick={() => handleSetStatus('scheduled')} disabled={statusLoading || currentStatus === 'scheduled'}
+                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${currentStatus === 'scheduled' ? 'bg-blue-100 border-blue-300 text-blue-700 cursor-default' : 'border-blue-300 text-blue-500 hover:bg-blue-50'}`}>
                   📅 Scheduled
                 </button>
               </div>
@@ -230,8 +257,7 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-              <select id="clientId" name="clientId" value={formData.clientId}
-                onChange={handleChange} required className="input" disabled={session !== null}>
+              <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="input" disabled={session !== null}>
                 <option value="">Select a client</option>
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>{client.first_name} {client.last_name}</option>
@@ -242,20 +268,17 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
 
             <div>
               <label htmlFor="sessionDate" className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
-              <input type="date" id="sessionDate" name="sessionDate"
-                value={formData.sessionDate} onChange={handleChange} required className="input" />
+              <input type="date" id="sessionDate" name="sessionDate" value={formData.sessionDate} onChange={handleChange} required className="input" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-2">Start Time *</label>
-                <input type="time" id="startTime" name="startTime"
-                  value={formData.startTime} onChange={handleChange} required className="input" />
+                <input type="time" id="startTime" name="startTime" value={formData.startTime} onChange={handleChange} required className="input" />
               </div>
               <div>
                 <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-2">End Time *</label>
-                <input type="time" id="endTime" name="endTime"
-                  value={formData.endTime} onChange={handleChange} required className="input" />
+                <input type="time" id="endTime" name="endTime" value={formData.endTime} onChange={handleChange} required className="input" />
               </div>
             </div>
 
@@ -269,21 +292,16 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
 
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-              <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange}
-                rows={3} className="input" placeholder="Session notes, goals, exercises..." />
+              <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="input" placeholder="Session notes, goals, exercises..." />
             </div>
 
             {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
             <div className="flex space-x-3 pt-2">
               {session && (
-                <button type="button" onClick={handleDelete} className="btn-danger" disabled={loading}>
-                  Delete
-                </button>
+                <button type="button" onClick={handleDelete} className="btn-danger" disabled={loading}>Delete</button>
               )}
-              <button type="button" onClick={onClose} className="flex-1 btn-secondary" disabled={loading}>
-                Cancel
-              </button>
+              <button type="button" onClick={onClose} className="flex-1 btn-secondary" disabled={loading}>Cancel</button>
               <button type="submit" className="flex-1 btn-primary" disabled={loading}>
                 {loading ? 'Saving...' : 'Save'}
               </button>

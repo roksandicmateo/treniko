@@ -54,8 +54,8 @@ const Calendar = () => {
         return {
           id: session.id,
           title: `${session.client_first_name} ${session.client_last_name}`,
-          start: `${dateOnly}T${session.start_time}`,
-          end: `${dateOnly}T${session.end_time}`,
+start: `${dateOnly}T${session.start_time.slice(0, 5)}`,
+end: `${dateOnly}T${session.end_time.slice(0, 5)}`,
 backgroundColor:
   session.status === 'completed' ? '#22c55e' :
   session.status === 'cancelled' ? '#9ca3af' :
@@ -169,7 +169,7 @@ borderColor:
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"
-            timeZone="local"
+            timeZone="UTC"
             headerToolbar={{
               left: 'prev,next today',
               center: 'title',
