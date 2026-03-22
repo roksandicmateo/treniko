@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -7,190 +7,219 @@ import { sessionsAPI } from '../services/api';
 import SessionModal from '../components/SessionModal';
 import { format } from 'date-fns';
 
-const Calendar = () => {
-  const [events, setEvents] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedTime, setSelectedTime] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const loadedRange = useRef(null);
+const STATUS_COLORS = {
+  completed: { bg: '#22c55e', border: '#16a34a' },
+  cancelled: { bg: '#cbd5e1', border: '#94a3b8' },
+  no_show:   { bg: '#f87171', border: '#ef4444' },
+  scheduled: { bg: '#38bdf8', border: '#0ea5e9' },
+};
 
-  useEffect(() => {
-    // Load initial sessions
-    loadSessions();
+const LEGEND = [
+  { label: 'Scheduled', color: '#38bdf8' },
+  { label: 'Completed', color: '#22c55e' },
+  { label: 'No-show',   color: '#f87171' },
+  { label: 'Cancelled', color: '#cbd5e1' },
+];
+
+export default function Calendar() {
+  const calRef = useRef(null);
+  const mobile = window.innerWidth < 640;
+
+  const [currentView, setCurrentView] = useState(mobile ? 'timeGridDay' : 'timeGridWeek');
+  const [title,       setTitle]       = useState('');
+  const [modalOpen,       setModalOpen]       = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [selectedDate,    setSelectedDate]    = useState(null);
+  const [selectedTime,    setSelectedTime]    = useState(null);
+
+  // FC manages fetch lifecycle — no infinite loop
+  const fetchEvents = useCallback(async (fetchInfo, successCallback, failureCallback) => {
+    try {
+      const start = format(fetchInfo.start, 'yyyy-MM-dd');
+      const end   = format(fetchInfo.end,   'yyyy-MM-dd');
+      const response = await sessionsAPI.getAll({ startDate: start, endDate: end });
+      successCallback(
+        response.data.sessions.map(session => {
+          const dateOnly = session.session_date.split('T')[0];
+          const colors   = STATUS_COLORS[session.status] || STATUS_COLORS.scheduled;
+          return {
+            id:              session.id,
+            title:           `${session.client_first_name} ${session.client_last_name}`,
+            start:           `${dateOnly}T${session.start_time.slice(0, 5)}`,
+            end:             `${dateOnly}T${session.end_time.slice(0, 5)}`,
+            backgroundColor: colors.bg,
+            borderColor:     colors.border,
+            textColor:       session.status === 'cancelled' ? '#64748b' : '#ffffff',
+            extendedProps: {
+              clientId:    session.client_id,
+              sessionType: session.session_type,
+              notes:       session.notes,
+              isCompleted: session.is_completed,
+              sessionDate: dateOnly,
+              startTime:   session.start_time,
+              endTime:     session.end_time,
+              status:      session.status || 'scheduled',
+            },
+          };
+        })
+      );
+    } catch (e) { failureCallback(e); }
   }, []);
 
-  const loadSessions = async (startDate = null, endDate = null) => {
-    try {
-      const rangeKey = `${startDate}-${endDate}`;
-      
-      // Prevent duplicate loads
-      if (loadedRange.current === rangeKey) {
-        console.log('Already loaded this range, skipping');
-        return;
-      }
-      
-      setLoading(true);
-      setError('');
-      
-      const params = {};
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-
-      console.log('Loading sessions with params:', params);
-      const response = await sessionsAPI.getAll(params);
-      console.log('Sessions loaded:', response.data.sessions);
-      console.log('First session date details:', response.data.sessions[0]?.session_date);
-      
-      loadedRange.current = rangeKey;
-      
-      const calendarEvents = response.data.sessions.map(session => {
-        // Extract just the date part (YYYY-MM-DD) from session_date
-        const dateOnly = session.session_date.split('T')[0];
-        console.log('Processing session:', session.id, 'Original date:', session.session_date, 'Extracted:', dateOnly);
-        
-        return {
-          id: session.id,
-          title: `${session.client_first_name} ${session.client_last_name}`,
-start: `${dateOnly}T${session.start_time.slice(0, 5)}`,
-end: `${dateOnly}T${session.end_time.slice(0, 5)}`,
-backgroundColor:
-  session.status === 'completed' ? '#22c55e' :
-  session.status === 'cancelled' ? '#9ca3af' :
-  session.status === 'no_show'   ? '#ef4444' :
-  '#0ea5e9',
-borderColor:
-  session.status === 'completed' ? '#16a34a' :
-  session.status === 'cancelled' ? '#6b7280' :
-  session.status === 'no_show'   ? '#dc2626' :
-  '#0284c7',
-          extendedProps: {
-            clientId: session.client_id,
-            sessionType: session.session_type,
-            notes: session.notes,
-            isCompleted: session.is_completed,
-            sessionDate: dateOnly,  // Store original date here
-            startTime: session.start_time,
-            endTime: session.end_time,
-            status: session.status || 'scheduled'
-          },
-        };
-      });
-
-      setEvents(calendarEvents);
-      setLoading(false);
-    } catch (err) {
-      console.error('Failed to load sessions:', err);
-      setError('Failed to load sessions');
-      setLoading(false);
-    }
-  };
-
-  const handleDateClick = (arg) => {
-    console.log('Date clicked:', arg);
+  const handleDatesSet   = (arg) => setTitle(arg.view.title);
+  const handleDateClick  = (arg) => {
     setSelectedSession(null);
-    setSelectedDate(arg.dateStr);
+    setSelectedDate(arg.dateStr.split('T')[0]);
     setSelectedTime(arg.date);
     setModalOpen(true);
   };
-
   const handleEventClick = (arg) => {
-    console.log('Event clicked:', arg.event);
-    const event = arg.event;
-    
-    // Use the date stored in extendedProps to avoid timezone issues
-    const sessionDate = event.extendedProps.sessionDate;
-    const startTime = event.extendedProps.startTime;
-    const endTime = event.extendedProps.endTime;
-    
+    const e = arg.event;
     setSelectedSession({
-      id: event.id,
-      clientId: event.extendedProps.clientId,
-      sessionDate: sessionDate,
-      startTime: startTime,
-      endTime: endTime,
-      sessionType: event.extendedProps.sessionType,
-      notes: event.extendedProps.notes,
-      clientName: event.title,
+      id: e.id, clientId: e.extendedProps.clientId,
+      sessionDate: e.extendedProps.sessionDate,
+      startTime: e.extendedProps.startTime, endTime: e.extendedProps.endTime,
+      sessionType: e.extendedProps.sessionType, notes: e.extendedProps.notes,
+      isCompleted: e.extendedProps.isCompleted, status: e.extendedProps.status,
+      clientName: e.title,
     });
-    setSelectedDate(null);
-    setSelectedTime(null);
+    setSelectedDate(null); setSelectedTime(null);
     setModalOpen(true);
   };
-
-  const handleDatesSet = (arg) => {
-    console.log('Dates changed:', arg.start, 'to', arg.end);
-    const start = format(arg.start, 'yyyy-MM-dd');
-    const end = format(arg.end, 'yyyy-MM-dd');
-    loadSessions(start, end);
+  const handleSave = () => {
+    setModalOpen(false); setSelectedSession(null);
+    calRef.current?.getApi().refetchEvents();
   };
 
-  const handleSaveSession = () => {
-    setModalOpen(false);
-    // Clear the loaded range so it reloads
-    loadedRange.current = null;
-    loadSessions();
+  const go = (action) => {
+    const api = calRef.current?.getApi();
+    if (!api) return;
+    if (action === 'prev')  api.prev();
+    if (action === 'next')  api.next();
+    if (action === 'today') api.today();
   };
 
-  if (error) {
-    return (
-      <div>
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Schedule</h1>
-        </div>
-        <div className="card">
-          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-          <button onClick={() => {
-            loadedRange.current = null;
-            loadSessions();
-          }} className="btn-primary mt-4">
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const changeView = (v) => {
+    calRef.current?.getApi().changeView(v);
+    setCurrentView(v);
+  };
+
+  const viewOptions = mobile
+    ? [{ id: 'timeGridDay', label: 'Day' }, { id: 'dayGridMonth', label: 'Month' }]
+    : [{ id: 'timeGridDay', label: 'Day' }, { id: 'timeGridWeek', label: 'Week' }, { id: 'dayGridMonth', label: 'Month' }];
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Schedule</h1>
-        <p className="text-gray-600 mt-2">Click on a time slot to create a session, or click on an existing session to edit it</p>
+    <div className="max-w-6xl mx-auto space-y-4">
+
+      {/* Page header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Schedule</h1>
+          <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">Click a slot to create · Click a session to edit</p>
+        </div>
+        <button
+          onClick={() => {
+            setSelectedSession(null);
+            setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+            setSelectedTime(new Date());
+            setModalOpen(true);
+          }}
+          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-sm shadow-sm transition-colors"
+        >
+          <span className="text-lg leading-none">+</span> Session
+        </button>
       </div>
 
-      <div className="card">
-        {loading && events.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">Loading calendar...</div>
-        ) : (
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
-            timeZone="UTC"
-            headerToolbar={{
-              left: 'prev,next today',
-              center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay',
-            }}
-            slotMinTime="06:00:00"
-            slotMaxTime="22:00:00"
-            allDaySlot={false}
-            editable={false}
-            selectable={true}
-            selectMirror={true}
-            dayMaxEvents={true}
-            weekends={true}
-            events={events}
-            select={handleDateClick}
-            eventClick={handleEventClick}
-            datesSet={handleDatesSet}
-            height="auto"
-            eventColor="#0ea5e9"
-          />
+      {/* Calendar card */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-100 bg-white">
+
+          {/* Left: nav buttons */}
+          <div className="flex items-center gap-1">
+            <button onClick={() => go('prev')}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 active:bg-gray-200 transition-colors font-bold text-lg">
+              ‹
+            </button>
+            <button onClick={() => go('today')}
+              className="h-8 px-3 rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors text-xs font-semibold">
+              Today
+            </button>
+            <button onClick={() => go('next')}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 active:bg-gray-200 transition-colors font-bold text-lg">
+              ›
+            </button>
+          </div>
+
+          {/* Center: title */}
+          <span className="text-sm font-semibold text-gray-700 hidden sm:block select-none">{title}</span>
+
+          {/* Right: view switcher */}
+          <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1">
+            {viewOptions.map(v => (
+              <button key={v.id} onClick={() => changeView(v.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  currentView === v.id
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile title */}
+        {mobile && title && (
+          <div className="px-4 py-2 text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-100 text-center">
+            {title}
+          </div>
         )}
+
+        {/* Calendar */}
+        <FullCalendar
+          ref={calRef}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView={currentView}
+          timeZone="UTC"
+          headerToolbar={false}
+          slotMinTime="06:00:00"
+          slotMaxTime="22:00:00"
+          allDaySlot={false}
+          editable={false}
+          selectable={true}
+          selectMirror={true}
+          dayMaxEvents={3}
+          weekends={true}
+          events={fetchEvents}
+          select={handleDateClick}
+          eventClick={handleEventClick}
+          datesSet={handleDatesSet}
+          height="auto"
+          eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+          slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+          eventContent={(arg) => {
+            const type = arg.event.extendedProps.sessionType;
+            return (
+              <div className="px-2 py-1 w-full overflow-hidden h-full">
+                <div className="text-xs font-bold leading-tight truncate">{arg.timeText}</div>
+                <div className="text-xs leading-tight truncate font-semibold opacity-95">{arg.event.title}</div>
+                {type && <div className="text-xs leading-tight truncate opacity-75">{type}</div>}
+              </div>
+            );
+          }}
+        />
+
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-3 border-t border-gray-100 bg-gray-50/60">
+          {LEGEND.map(({ label, color }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+              <span className="text-xs text-gray-400 font-medium">{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {modalOpen && (
@@ -198,12 +227,10 @@ borderColor:
           session={selectedSession}
           initialDate={selectedDate}
           initialTime={selectedTime}
-          onClose={() => setModalOpen(false)}
-          onSave={handleSaveSession}
+          onClose={() => { setModalOpen(false); setSelectedSession(null); }}
+          onSave={handleSave}
         />
       )}
     </div>
   );
-};
-
-export default Calendar;
+}

@@ -24,6 +24,10 @@
   .btn-danger {
     @apply btn bg-red-600 text-white hover:bg-red-700;
   }
+
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
   
   .input {
     @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
@@ -34,19 +38,153 @@
   }
 }
 
-/* FullCalendar custom styles */
+/* ─── FullCalendar — Treniko theme ──────────────────────────────────────────── */
+
+/* Remove default FC chrome */
 .fc {
-  @apply bg-white rounded-lg shadow-md p-4;
+  font-family: inherit;
 }
 
-.fc-button-primary {
-  @apply bg-primary-600 border-primary-600;
+.fc .fc-toolbar,
+.fc .fc-toolbar-chunk {
+  display: none !important;
 }
 
-.fc-button-primary:hover {
-  @apply bg-primary-700 border-primary-700;
+/* Scrollable time grid */
+.fc .fc-scroller {
+  overflow: auto !important;
 }
 
-.fc-event {
-  @apply cursor-pointer;
+/* Column headers — day names */
+.fc .fc-col-header-cell {
+  background: #f8fafc;
+  border-color: #e2e8f0 !important;
+  padding: 10px 0;
+}
+
+.fc .fc-col-header-cell-cushion {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none !important;
+}
+
+/* Highlight today's column header */
+.fc .fc-day-today .fc-col-header-cell-cushion {
+  color: #0ea5e9;
+}
+
+/* Time labels */
+.fc .fc-timegrid-slot-label-cushion {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding-right: 10px;
+}
+
+/* Grid lines */
+.fc .fc-timegrid-slot {
+  border-color: #f1f5f9 !important;
+  height: 40px;
+}
+
+.fc .fc-timegrid-slot-minor {
+  border-color: #f8fafc !important;
+}
+
+.fc td, .fc th {
+  border-color: #e2e8f0 !important;
+}
+
+/* Today column highlight */
+.fc .fc-day-today {
+  background: #f0f9ff !important;
+}
+
+/* Month view — day number */
+.fc .fc-daygrid-day-number {
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none !important;
+  padding: 6px 8px;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+  color: #ffffff;
+  background: #0ea5e9;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 4px;
+}
+
+/* Events */
+.fc .fc-event {
+  border-radius: 8px !important;
+  border-width: 0 !important;
+  padding: 0 !important;
+  font-size: 0.75rem;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  overflow: hidden;
+}
+
+.fc .fc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.fc .fc-event-main {
+  padding: 4px 7px;
+}
+
+/* Time grid current time indicator */
+.fc .fc-timegrid-now-indicator-line {
+  border-color: #0ea5e9;
+  border-width: 2px;
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+  border-top-color: #0ea5e9;
+  border-bottom-color: #0ea5e9;
+}
+
+/* Month view events */
+.fc .fc-daygrid-event {
+  border-radius: 6px !important;
+  padding: 1px 6px !important;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* "more" link */
+.fc .fc-daygrid-more-link {
+  color: #0ea5e9;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* Remove blue highlight on select */
+.fc .fc-highlight {
+  background: rgba(14, 165, 233, 0.08) !important;
+}
+
+/* Scrollbar styling */
+.fc .fc-scroller::-webkit-scrollbar {
+  width: 4px;
+}
+.fc .fc-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.fc .fc-scroller::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }

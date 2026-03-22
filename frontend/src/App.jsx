@@ -17,6 +17,8 @@ import TrainingDetailPage from './pages/TrainingDetailPage';
 import PackagesPage from './pages/PackagesPage';
 import DashboardPage from './pages/DashboardPage';
 import ExercisesPage from './pages/ExercisesPage';
+import GroupsPage  from './pages/GroupsPage';
+import GroupDetail from './pages/GroupDetail';
 function App() {
   return (
     <AuthProvider>
@@ -43,11 +45,13 @@ function App() {
             <Route path="clients/:id" element={<ClientDetail />} />
             <Route path="subscription" element={<SubscriptionPage />} />
             <Route path="packages" element={<PackagesPage />} />
-          <Route path="profile" element={<ProfilePage />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="trainings" element={<TrainingsPage />} />
             <Route path="trainings/:id" element={<TrainingDetailPage />} />
             <Route path="calendar-new" element={<CalendarPage />} />
             <Route path="exercises" element={<ExercisesPage />} />
+            <Route path="groups"     element={<GroupsPage />} />
+            <Route path="groups/:id" element={<GroupDetail />} />
           </Route>
 
           {/* Default redirect */}

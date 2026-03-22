@@ -26,6 +26,7 @@ const uploadsRouter   = require('./routes/uploads');
 const dashboardRoutes = require('./routes/dashboard');
 const app = express();
 const PORT = process.env.PORT || 3000;
+const groupsRoutes = require('./routes/groups');
 
 // Middleware
 app.use(helmetMiddleware);
@@ -35,7 +36,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use('/api/groups', authenticateToken, groupsRoutes);
 // Request logging middleware (development)
 if (process.env.NODE_ENV === 'development') {
   app.use((req, res, next) => {
