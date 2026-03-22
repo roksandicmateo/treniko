@@ -5,16 +5,17 @@ const { authenticateToken } = require('../middleware/auth');
 
 router.use(authenticateToken);
 
-// GET /api/exercises?search=bench&category=Strength
+// GET /api/exercises?search=bench&category=Strength&muscleGroup=Chest
 router.get('/', async (req, res) => {
   try {
-    const { search, category } = req.query;
+    const { search, category, muscleGroup } = req.query;
     const { tenantId } = req.user;
     let query = 'SELECT * FROM exercises WHERE tenant_id = $1';
     const params = [tenantId];
-    if (search)   { params.push(`%${search}%`);  query += ` AND name ILIKE $${params.length}`; }
-    if (category) { params.push(category);        query += ` AND category = $${params.length}`; }
-    query += ' ORDER BY name ASC';
+    if (search)      { params.push(`%${search}%`); query += ` AND name ILIKE $${params.length}`; }
+    if (category)    { params.push(category);       query += ` AND category = $${params.length}`; }
+    if (muscleGroup) { params.push(muscleGroup);    query += ` AND muscle_group = $${params.length}`; }
+    query += ' ORDER BY category ASC, name ASC';
     const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (e) {
@@ -26,13 +27,13 @@ router.get('/', async (req, res) => {
 // POST /api/exercises
 router.post('/', async (req, res) => {
   try {
-    const { name, category, defaultUnit, description } = req.body;
+    const { name, category, muscleGroup, equipment, defaultUnit, description } = req.body;
     const { tenantId } = req.user;
     if (!name) return res.status(400).json({ error: 'name is required' });
     const { rows } = await pool.query(
-      `INSERT INTO exercises (tenant_id, name, category, default_unit, description)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [tenantId, name.trim(), category || 'Strength', defaultUnit || 'Kg', description || null]
+      `INSERT INTO exercises (tenant_id, name, category, muscle_group, equipment, default_unit, description)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [tenantId, name.trim(), category || 'Strength', muscleGroup || null, equipment || null, defaultUnit || 'kg', description || null]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -44,12 +45,12 @@ router.post('/', async (req, res) => {
 // PUT /api/exercises/:id
 router.put('/:id', async (req, res) => {
   try {
-    const { name, category, defaultUnit, description } = req.body;
+    const { name, category, muscleGroup, equipment, defaultUnit, description } = req.body;
     const { tenantId } = req.user;
     const { rows } = await pool.query(
-      `UPDATE exercises SET name=$1, category=$2, default_unit=$3, description=$4
-       WHERE id=$5 AND tenant_id=$6 RETURNING *`,
-      [name, category, defaultUnit, description, req.params.id, tenantId]
+      `UPDATE exercises SET name=$1, category=$2, muscle_group=$3, equipment=$4, default_unit=$5, description=$6
+       WHERE id=$7 AND tenant_id=$8 RETURNING *`,
+      [name, category, muscleGroup || null, equipment || null, defaultUnit || 'kg', description || null, req.params.id, tenantId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);

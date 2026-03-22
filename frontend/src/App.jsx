@@ -16,6 +16,7 @@ import TrainingsPage from './pages/TrainingsPage';
 import TrainingDetailPage from './pages/TrainingDetailPage';
 import PackagesPage from './pages/PackagesPage';
 import DashboardPage from './pages/DashboardPage';
+import ExercisesPage from './pages/ExercisesPage';
 function App() {
   return (
     <AuthProvider>
@@ -46,6 +47,7 @@ function App() {
             <Route path="trainings" element={<TrainingsPage />} />
             <Route path="trainings/:id" element={<TrainingDetailPage />} />
             <Route path="calendar-new" element={<CalendarPage />} />
+            <Route path="exercises" element={<ExercisesPage />} />
           </Route>
 
           {/* Default redirect */}

@@ -42,6 +42,7 @@ const DashboardLayout = () => {
     { to: '/dashboard/trainings', label: 'Trainings', icon: '🏋️' },
     { to: '/dashboard/clients', label: 'Clients', icon: '👥' },
     { to: '/dashboard/packages', label: 'Packages', icon: '📦' },
+    { to: '/dashboard/exercises', label: 'Exercises', icon: '🏋️' },
   ];
 
   if (dpaLoading) return null;
