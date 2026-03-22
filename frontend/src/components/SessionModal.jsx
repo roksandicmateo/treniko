@@ -83,9 +83,59 @@ const PackageBanner = ({ clientId }) => {
   );
 };
 
+// ── Group Quick Select ───────────────────────────────────────────────────────
+const GroupQuickSelect = ({ groups, selected, onSelect }) => {
+  const [showAll, setShowAll] = useState(false);
+  const top2 = groups.slice(0, 2);
+  const rest = groups.slice(2);
+
+  const GroupChip = ({ g }) => (
+    <button type="button" onClick={() => onSelect(g.id)}
+      className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-left transition-colors ${
+        selected === g.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+      }`}>
+      <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+        style={{ backgroundColor: g.color || '#0ea5e9' }}>
+        {g.name?.[0]}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-800 truncate leading-tight">{g.name}</p>
+        <p className="text-xs text-gray-400 leading-tight">{g.member_count} member{g.member_count !== 1 ? 's' : ''}</p>
+      </div>
+      {selected === g.id && <span className="text-blue-600 text-sm ml-1 flex-shrink-0">✓</span>}
+    </button>
+  );
+
+  return (
+    <div className="space-y-2">
+      {/* Top 2 quick chips */}
+      <div className="grid grid-cols-2 gap-2">
+        {top2.map(g => <GroupChip key={g.id} g={g} />)}
+      </div>
+
+      {/* Expand to show all */}
+      {rest.length > 0 && !showAll && (
+        <button type="button" onClick={() => setShowAll(true)}
+          className="w-full py-2 text-xs text-gray-500 hover:text-gray-700 border border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
+          + {rest.length} more group{rest.length !== 1 ? 's' : ''}
+        </button>
+      )}
+
+      {showAll && (
+        <div className="grid grid-cols-2 gap-2">
+          {rest.map(g => <GroupChip key={g.id} g={g} />)}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Main modal ────────────────────────────────────────────────────────────────
-const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) => {
-  const [clients,      setClients]      = useState([]);
+const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initialClientId, onClose, onSave }) => {
+  const [clients,         setClients]         = useState([]);
+  const [groups,          setGroups]          = useState([]);
+  const [sessionMode,     setSessionMode]     = useState('individual');
+  const [selectedGroupId, setSelectedGroupId] = useState('');
   const [linkedTraining,   setLinkedTraining]   = useState(null);
   const [showAddTraining,  setShowAddTraining]  = useState(false);
   const [loadingTraining,  setLoadingTraining]  = useState(false);
@@ -101,6 +151,7 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
 
   useEffect(() => {
     loadClients();
+    if (!session) loadGroups();
     if (session) {
       setFormData({
         clientId:    session.clientId    || '',
@@ -114,12 +165,14 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
       loadLinkedTraining(session.id);
     } else if (initialDate) {
       const time    = initialTime ? format(initialTime, 'HH:mm') : '09:00';
-      const endHour = initialTime
-        ? format(new Date(initialTime.getTime() + 60 * 60 * 1000), 'HH:mm')
-        : '10:00';
-      setFormData({ clientId: '', sessionDate: initialDate, startTime: time, endTime: endHour, sessionType: '', notes: '' });
+      const endHour = initialEndTime
+        ? format(initialEndTime, 'HH:mm')
+        : initialTime
+          ? format(new Date(initialTime.getTime() + 60 * 60 * 1000), 'HH:mm')
+          : '10:00';
+      setFormData({ clientId: initialClientId || '', sessionDate: initialDate, startTime: time, endTime: endHour, sessionType: '', notes: '' });
     }
-  }, [session, initialDate, initialTime]);
+  }, [session, initialDate, initialTime, initialEndTime, initialClientId]);
 
   const loadLinkedTraining = async (sessionId) => {
     setLoadingTraining(true);
@@ -135,6 +188,16 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
       const response = await clientsAPI.getAll({ isActive: 'true' });
       setClients(response.data.clients);
     } catch (err) { console.error('Failed to load clients:', err); }
+  };
+
+  const loadGroups = async () => {
+    try {
+      const res = await fetch(`${API_URL}/groups`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      setGroups(data.groups || []);
+    } catch { /* ignore */ }
   };
 
   const handleChange = (e) => {
@@ -158,6 +221,20 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
     setLoading(true);
     setError('');
     try {
+      // Group session — call group endpoint
+      if (!session && sessionMode === 'group') {
+        if (!selectedGroupId) { setError('Please select a group'); setLoading(false); return; }
+        const res = await fetch(`${API_URL}/groups/${selectedGroupId}/sessions`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error || 'Failed to schedule'); setLoading(false); return; }
+        onSave();
+        return;
+      }
+      // Individual session
       const payload = { ...formData, ...(force ? { force: true } : {}) };
       if (session) { await sessionsAPI.update(session.id, payload); }
       else         { await sessionsAPI.create(payload); }
@@ -296,16 +373,56 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-              <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="input" disabled={session !== null}>
-                <option value="">Select a client</option>
-                {clients.map(client => (
-                  <option key={client.id} value={client.id}>{client.first_name} {client.last_name}</option>
-                ))}
-              </select>
-              {session && <p className="text-xs text-gray-500 mt-1">Client: {session.clientName}</p>}
-            </div>
+            {/* Individual / Group toggle — only for new sessions */}
+            {!session && (
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                <button type="button" onClick={() => { setSessionMode('individual'); setSelectedGroupId(''); setError(''); }}
+                  className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${sessionMode === 'individual' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                  👤 Individual
+                </button>
+                <button type="button" onClick={() => { setSessionMode('group'); setError(''); }}
+                  className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${sessionMode === 'group' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                  👥 Group
+                </button>
+              </div>
+            )}
+
+            {/* Individual: client selector */}
+            {(!session && sessionMode === 'individual') || session ? (
+              <div>
+                <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
+                <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="input" disabled={session !== null}>
+                  <option value="">Select a client</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>{client.first_name} {client.last_name}</option>
+                  ))}
+                </select>
+                {session && <p className="text-xs text-gray-500 mt-1">Client: {session.clientName}</p>}
+              </div>
+            ) : null}
+
+            {/* Group: group selector — top 2 + expand */}
+            {!session && sessionMode === 'group' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Group *</label>
+                {groups.length === 0 ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500">
+                    No groups yet. <a href="/dashboard/groups" className="text-blue-600 hover:underline">Create a group →</a>
+                  </div>
+                ) : (
+                  <GroupQuickSelect
+                    groups={groups}
+                    selected={selectedGroupId}
+                    onSelect={setSelectedGroupId}
+                  />
+                )}
+                {selectedGroupId && (
+                  <p className="text-xs text-blue-600 mt-1.5">
+                    ℹ️ A session will be created for each member of this group
+                  </p>
+                )}
+              </div>
+            )}
 
             <div>
               <label htmlFor="sessionDate" className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
@@ -341,7 +458,12 @@ const SessionModal = ({ session, initialDate, initialTime, onClose, onSave }) =>
             <div className="flex space-x-3 pt-2">
               {session && <button type="button" onClick={handleDelete} className="btn-danger" disabled={loading}>Delete</button>}
               <button type="button" onClick={onClose} className="flex-1 btn-secondary" disabled={loading}>Cancel</button>
-              <button type="submit" className="flex-1 btn-primary" disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
+              <button type="submit" className="flex-1 btn-primary" disabled={loading}>
+                {loading ? 'Saving...' :
+                  (!session && sessionMode === 'group' && selectedGroupId)
+                    ? `Schedule for ${groups.find(g => g.id === selectedGroupId)?.member_count || 0} members`
+                    : 'Save'}
+              </button>
             </div>
           </form>
         </div>

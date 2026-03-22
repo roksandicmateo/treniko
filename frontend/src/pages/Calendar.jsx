@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -22,59 +23,107 @@ const LEGEND = [
 ];
 
 export default function Calendar() {
+  const navigate = useNavigate();
   const calRef = useRef(null);
   const mobile = window.innerWidth < 640;
 
   const [currentView, setCurrentView] = useState(mobile ? 'timeGridDay' : 'timeGridWeek');
   const [title,       setTitle]       = useState('');
   const [modalOpen,       setModalOpen]       = useState(false);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [selectedDate,    setSelectedDate]    = useState(null);
-  const [selectedTime,    setSelectedTime]    = useState(null);
+  const [selectedSession,  setSelectedSession]  = useState(null);
+  const [selectedDate,     setSelectedDate]     = useState(null);
+  const [selectedTime,     setSelectedTime]     = useState(null);
+  const [selectedEndTime,  setSelectedEndTime]  = useState(null);
+  const [groupSession,     setGroupSession]     = useState(null);
+  const [groupModalOpen,   setGroupModalOpen]   = useState(false);
 
   // FC manages fetch lifecycle — no infinite loop
   const fetchEvents = useCallback(async (fetchInfo, successCallback, failureCallback) => {
     try {
       const start = format(fetchInfo.start, 'yyyy-MM-dd');
       const end   = format(fetchInfo.end,   'yyyy-MM-dd');
-      const response = await sessionsAPI.getAll({ startDate: start, endDate: end });
-      successCallback(
-        response.data.sessions.map(session => {
-          const dateOnly = session.session_date.split('T')[0];
-          const colors   = STATUS_COLORS[session.status] || STATUS_COLORS.scheduled;
-          return {
-            id:              session.id,
-            title:           `${session.client_first_name} ${session.client_last_name}`,
-            start:           `${dateOnly}T${session.start_time.slice(0, 5)}`,
-            end:             `${dateOnly}T${session.end_time.slice(0, 5)}`,
-            backgroundColor: colors.bg,
-            borderColor:     colors.border,
-            textColor:       session.status === 'cancelled' ? '#64748b' : '#ffffff',
-            extendedProps: {
-              clientId:    session.client_id,
-              sessionType: session.session_type,
-              notes:       session.notes,
-              isCompleted: session.is_completed,
-              sessionDate: dateOnly,
-              startTime:   session.start_time,
-              endTime:     session.end_time,
-              status:      session.status || 'scheduled',
-            },
-          };
-        })
-      );
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+      const [indivRes, groupRes] = await Promise.all([
+        sessionsAPI.getAll({ startDate: start, endDate: end }),
+        fetch(`${API_URL}/groups/sessions/calendar?startDate=${start}&endDate=${end}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => r.json()),
+      ]);
+
+      const individual = indivRes.data.sessions.map(session => {
+        const dateOnly = session.session_date.split('T')[0];
+        const colors   = STATUS_COLORS[session.status] || STATUS_COLORS.scheduled;
+        return {
+          id:              session.id,
+          title:           `${session.client_first_name} ${session.client_last_name}`,
+          start:           `${dateOnly}T${session.start_time.slice(0, 5)}`,
+          end:             `${dateOnly}T${session.end_time.slice(0, 5)}`,
+          backgroundColor: colors.bg,
+          borderColor:     colors.border,
+          textColor:       session.status === 'cancelled' ? '#64748b' : '#ffffff',
+          extendedProps: {
+            kind:        'individual',
+            clientId:    session.client_id,
+            sessionType: session.session_type,
+            notes:       session.notes,
+            isCompleted: session.is_completed,
+            sessionDate: dateOnly,
+            startTime:   session.start_time,
+            endTime:     session.end_time,
+            status:      session.status || 'scheduled',
+          },
+        };
+      });
+
+      const group = (groupRes.sessions || []).map(gs => {
+        const dateOnly = gs.session_date.split('T')[0];
+        const color    = gs.group_color || '#0ea5e9';
+        return {
+          id:              `group-${gs.id}`,
+          title:           `👥 ${gs.group_name}`,
+          start:           `${dateOnly}T${gs.start_time.slice(0, 5)}`,
+          end:             `${dateOnly}T${gs.end_time.slice(0, 5)}`,
+          backgroundColor: color,
+          borderColor:     color,
+          textColor:       '#ffffff',
+          extendedProps: {
+            kind:          'group',
+            groupSessionId: gs.id,
+            groupId:       gs.group_id,
+            groupName:     gs.group_name,
+            groupColor:    gs.group_color,
+            sessionType:   gs.session_type,
+            notes:         gs.notes,
+            sessionDate:   dateOnly,
+            startTime:     gs.start_time,
+            endTime:       gs.end_time,
+            memberCount:   gs.member_count,
+            status:        gs.status || 'scheduled',
+          },
+        };
+      });
+
+      successCallback([...individual, ...group]);
     } catch (e) { failureCallback(e); }
   }, []);
 
   const handleDatesSet   = (arg) => setTitle(arg.view.title);
-  const handleDateClick  = (arg) => {
+  const handleSelect = (arg) => {
     setSelectedSession(null);
-    setSelectedDate(arg.dateStr.split('T')[0]);
-    setSelectedTime(arg.date);
+    setSelectedDate(format(arg.start, 'yyyy-MM-dd'));
+    setSelectedTime(arg.start);
+    setSelectedEndTime(arg.end);
     setModalOpen(true);
   };
   const handleEventClick = (arg) => {
     const e = arg.event;
+    if (e.extendedProps.kind === 'group') {
+      setGroupSession(e.extendedProps);
+      setGroupModalOpen(true);
+      return;
+    }
     setSelectedSession({
       id: e.id, clientId: e.extendedProps.clientId,
       sessionDate: e.extendedProps.sessionDate,
@@ -122,6 +171,7 @@ export default function Calendar() {
             setSelectedSession(null);
             setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
             setSelectedTime(new Date());
+            setSelectedEndTime(null);
             setModalOpen(true);
           }}
           className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-sm shadow-sm transition-colors"
@@ -193,7 +243,7 @@ export default function Calendar() {
           dayMaxEvents={3}
           weekends={true}
           events={fetchEvents}
-          select={handleDateClick}
+          select={handleSelect}
           eventClick={handleEventClick}
           datesSet={handleDatesSet}
           height="auto"
@@ -222,13 +272,67 @@ export default function Calendar() {
         </div>
       </div>
 
+      {/* Group session info popup */}
+      {groupModalOpen && groupSession && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold"
+                  style={{ backgroundColor: groupSession.groupColor || '#0ea5e9' }}>
+                  👥
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">{groupSession.groupName}</h3>
+                  <p className="text-xs text-gray-400">Group Session</p>
+                </div>
+              </div>
+              <button onClick={() => setGroupModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+            </div>
+            <div className="space-y-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 w-5">📅</span>
+                <span>{new Date(groupSession.sessionDate + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 w-5">🕐</span>
+                <span>{groupSession.startTime?.slice(0,5)} – {groupSession.endTime?.slice(0,5)}</span>
+              </div>
+              {groupSession.sessionType && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400 w-5">🏋️</span>
+                  <span>{groupSession.sessionType}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 w-5">👥</span>
+                <span>{groupSession.memberCount} member{groupSession.memberCount !== 1 ? 's' : ''}</span>
+              </div>
+              {groupSession.notes && (
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-400 w-5">📝</span>
+                  <span className="text-gray-500 italic">{groupSession.notes}</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+              <button onClick={() => { setGroupModalOpen(false); navigate(`/dashboard/groups/${groupSession.groupId}`); }}
+                className="flex-1 btn-secondary text-sm">View Group →</button>
+              <button onClick={() => { setGroupModalOpen(false); navigate(`/dashboard/groups/${groupSession.groupId}/sessions/${groupSession.groupSessionId}`); }} className="flex-1 btn-primary text-sm">Open Session →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalOpen && (
         <SessionModal
           session={selectedSession}
           initialDate={selectedDate}
           initialTime={selectedTime}
-          onClose={() => { setModalOpen(false); setSelectedSession(null); }}
-          onSave={handleSave}
+          initialEndTime={selectedEndTime}
+          onClose={() => { setModalOpen(false); setSelectedSession(null); setSelectedEndTime(null); }}
+          onSave={() => { handleSave(); setSelectedEndTime(null); }}
         />
       )}
     </div>

@@ -19,6 +19,7 @@ import DashboardPage from './pages/DashboardPage';
 import ExercisesPage from './pages/ExercisesPage';
 import GroupsPage  from './pages/GroupsPage';
 import GroupDetail from './pages/GroupDetail';
+import GroupSessionDetail from './pages/GroupSessionDetail';
 function App() {
   return (
     <AuthProvider>
@@ -52,6 +53,7 @@ function App() {
             <Route path="exercises" element={<ExercisesPage />} />
             <Route path="groups"     element={<GroupsPage />} />
             <Route path="groups/:id" element={<GroupDetail />} />
+                <Route path="groups/:groupId/sessions/:sessionId" element={<GroupSessionDetail />} />
           </Route>
 
           {/* Default redirect */}
