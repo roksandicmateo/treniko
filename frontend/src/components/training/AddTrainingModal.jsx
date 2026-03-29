@@ -156,7 +156,7 @@ export default function AddTrainingModal({
           {/* Template */}
           {!editTraining && templates.length > 0 && (
             <div>
-              <label className={labelCls}>Use Template</label>
+              <label className={labelCls}>{t('form.useTemplate')}</label>
               <select className={inputCls} defaultValue="" onChange={e => applyTemplate(e.target.value)}>
                 <option value="">Choose a template ({t('common.optional')})...</option>
                 {templates.map(tmpl => <option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option>)}
@@ -167,12 +167,12 @@ export default function AddTrainingModal({
           {/* Title + Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Title</label>
+              <label className={labelCls}>{t('form.title') || 'Title'}</label>
               <input className={inputCls} placeholder="e.g. Leg Day" value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
             </div>
             <div>
-              <label className={labelCls}>Type <span className="text-red-400">*</span></label>
+              <label className={labelCls}>{t('form.type')} <span className="text-red-400">*</span></label>
               <select className={inputCls} value={form.workoutType} onChange={e => setForm(f => ({ ...f, workoutType: e.target.value }))}>
                 {WORKOUT_TYPES.map(type => <option key={type}>{type}</option>)}
               </select>
@@ -194,7 +194,7 @@ export default function AddTrainingModal({
           </div>
 
           {/* Location */}
-          <input className={inputCls} placeholder={`Location (${t('common.optional')})`}
+          <input className={inputCls} placeholder={`${t('form.location')} (${t('common.optional')})`}
             value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
 
           {/* Notes */}
@@ -213,10 +213,10 @@ export default function AddTrainingModal({
             <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={saveAsTemplate} onChange={e => setSaveAsTemplate(e.target.checked)} className="rounded" />
-                <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Save as template</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{t('form.saveAsTemplate')}</span>
               </label>
               {saveAsTemplate && (
-                <input className={`${inputCls} mt-2`} placeholder="Template name..."
+                <input className={`${inputCls} mt-2`} placeholder={t('form.templateName') + '...'}
                   value={templateName} onChange={e => setTemplateName(e.target.value)} />
               )}
             </div>

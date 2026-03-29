@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { sessionsAPI, clientsAPI } from '../services/api';
 import { format } from 'date-fns';
 import { trainingService } from '../services/trainingService';
@@ -7,14 +8,15 @@ import AddTrainingModal from './training/AddTrainingModal';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const STATUS_CONFIG = {
-  scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-700' },
-  completed:  { label: 'Completed', color: 'bg-green-100 text-green-700' },
-  cancelled:  { label: 'Cancelled', color: 'bg-gray-100 text-gray-500' },
-  no_show:    { label: 'No-show',   color: 'bg-red-100 text-red-600' },
+  scheduled: { labelKey: 'sessions.legend_scheduled', color: 'bg-blue-100 text-blue-700' },
+  completed:  { labelKey: 'sessions.legend_completed', color: 'bg-green-100 text-green-700' },
+  cancelled:  { labelKey: 'sessions.legend_cancelled', color: 'bg-gray-100 text-gray-500' },
+  no_show:    { labelKey: 'sessions.legend_noshow',   color: 'bg-red-100 text-red-600' },
 };
 
 // ── Package banner ────────────────────────────────────────────────────────────
 const PackageBanner = ({ clientId }) => {
+  const { t } = useTranslation();
   const [pkg, setPkg] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -85,6 +87,7 @@ const PackageBanner = ({ clientId }) => {
 
 // ── Group Quick Select ───────────────────────────────────────────────────────
 const GroupQuickSelect = ({ groups, selected, onSelect }) => {
+  const { t } = useTranslation();
   const [showAll, setShowAll] = useState(false);
   const top2 = groups.slice(0, 2);
   const rest = groups.slice(2);
@@ -143,6 +146,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
     clientId: '', sessionDate: '', startTime: '',
     endTime: '', sessionType: '', notes: '',
   });
+  const { t } = useTranslation();
   const [loading,             setLoading]             = useState(false);
   const [statusLoading,       setStatusLoading]       = useState(false);
   const [error,               setError]               = useState('');
@@ -274,16 +278,16 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-800">
 
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xl font-bold text-gray-900">
-              {session ? 'Edit Session' : 'New Training Session'}
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              {session ? t('sessions.editSession') : t('sessions.newSession')}
             </h2>
             {session && (
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusCfg.color}`}>
-                {statusCfg.label}
+                {t(statusCfg.labelKey)}
               </span>
             )}
           </div>
@@ -297,8 +301,8 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
               <div className="flex items-start gap-2 mb-3">
                 <span className="text-xl flex-shrink-0">⚠️</span>
                 <div>
-                  <p className="text-sm font-semibold text-amber-800">Schedule conflict detected</p>
-                  <p className="text-xs text-amber-700 mt-0.5">This time slot overlaps with:</p>
+                  <p className="text-sm font-semibold text-amber-800">{t('sessions.conflictDetected')}</p>
+                  <p className="text-xs text-amber-700 mt-0.5">{t('sessions.conflictOverlaps')}</p>
                 </div>
               </div>
               <div className="space-y-1.5 mb-3">
@@ -315,11 +319,11 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
               <div className="flex gap-2">
                 <button onClick={() => { setShowConflictWarning(false); setConflicts([]); }}
                   className="flex-1 py-2 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button onClick={handleForceSubmit} disabled={loading}
                   className="flex-1 py-2 text-xs rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600 disabled:opacity-50">
-                  Schedule Anyway
+                  {t('sessions.scheduleAnyway')}
                 </button>
               </div>
             </div>
@@ -329,11 +333,11 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
           {session && (
             <div className="mb-5">
               {loadingTraining ? (
-                <div className="text-xs text-gray-400 mb-3">Checking training...</div>
+                <div className="text-xs text-gray-400 mb-3">{t('common.loading')}</div>
               ) : linkedTraining ? (
                 <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-3">
                   <div>
-                    <p className="text-xs text-green-600 font-medium uppercase tracking-wide mb-0.5">Training logged</p>
+                    <p className="text-xs text-green-600 font-medium uppercase tracking-wide mb-0.5">{t('sessions.trainingLogged')}</p>
                     <p className="text-sm font-semibold text-green-800">{linkedTraining.title || linkedTraining.workout_type}</p>
                     {linkedTraining.exercises?.length > 0 && (
                       <p className="text-xs text-green-600">{linkedTraining.exercises.length} exercise{linkedTraining.exercises.length !== 1 ? 's' : ''}</p>
@@ -346,20 +350,20 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                 </div>
               ) : (
                 <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-3">
-                  <p className="text-sm text-gray-500">No training logged</p>
+                  <p className="text-sm text-gray-500">{t('sessions.noTrainingLogged')}</p>
                   <button type="button" onClick={() => setShowAddTraining(true)}
                     className="ml-3 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
-                    + Add Training
+                    {t('sessions.addTraining')}
                   </button>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { status: 'completed', label: '✅ Completed', active: 'bg-green-100 border-green-300 text-green-700', inactive: 'border-green-300 text-green-600 hover:bg-green-50' },
-                  { status: 'no_show',  label: '❌ No-show',   active: 'bg-red-100 border-red-300 text-red-700',     inactive: 'border-red-300 text-red-500 hover:bg-red-50' },
-                  { status: 'cancelled',label: '🚫 Cancelled', active: 'bg-gray-100 border-gray-300 text-gray-600', inactive: 'border-gray-300 text-gray-500 hover:bg-gray-50' },
-                  { status: 'scheduled',label: '📅 Scheduled', active: 'bg-blue-100 border-blue-300 text-blue-700', inactive: 'border-blue-300 text-blue-500 hover:bg-blue-50' },
+                  { status: 'completed', label: `✅ ${t('sessions.completed')}`, active: 'bg-green-100 border-green-300 text-green-700', inactive: 'border-green-300 text-green-600 hover:bg-green-50' },
+                  { status: 'no_show',  label: `❌ ${t('sessions.noShow')}`,   active: 'bg-red-100 border-red-300 text-red-700',     inactive: 'border-red-300 text-red-500 hover:bg-red-50' },
+                  { status: 'cancelled',label: `🚫 ${t('sessions.cancelled')}`, active: 'bg-gray-100 border-gray-300 text-gray-600', inactive: 'border-gray-300 text-gray-500 hover:bg-gray-50' },
+                  { status: 'scheduled',label: `📅 ${t('sessions.scheduled')}`, active: 'bg-blue-100 border-blue-300 text-blue-700', inactive: 'border-blue-300 text-blue-500 hover:bg-blue-50' },
                 ].map(({ status, label, active, inactive }) => (
                   <button key={status} type="button"
                     onClick={() => handleSetStatus(status)}
@@ -378,11 +382,11 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
               <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
                 <button type="button" onClick={() => { setSessionMode('individual'); setSelectedGroupId(''); setError(''); }}
                   className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${sessionMode === 'individual' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-                  👤 Individual
+                  {`👤 ${t('sessions.individual')}`}
                 </button>
                 <button type="button" onClick={() => { setSessionMode('group'); setError(''); }}
                   className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${sessionMode === 'group' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-                  👥 Group
+                  {`👥 ${t('sessions.group')}`}
                 </button>
               </div>
             )}
@@ -390,24 +394,24 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
             {/* Individual: client selector */}
             {(!session && sessionMode === 'individual') || session ? (
               <div>
-                <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
+                <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.client')} *</label>
                 <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="input" disabled={session !== null}>
-                  <option value="">Select a client</option>
+                  <option value="">{t('sessions.selectClient')}</option>
                   {clients.map(client => (
                     <option key={client.id} value={client.id}>{client.first_name} {client.last_name}</option>
                   ))}
                 </select>
-                {session && <p className="text-xs text-gray-500 mt-1">Client: {session.clientName}</p>}
+                {session && <p className="text-xs text-gray-500 mt-1">{t('sessions.client')}: {session.clientName}</p>}
               </div>
             ) : null}
 
             {/* Group: group selector — top 2 + expand */}
             {!session && sessionMode === 'group' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Group *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('nav.groups')} *</label>
                 {groups.length === 0 ? (
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500">
-                    No groups yet. <a href="/dashboard/groups" className="text-blue-600 hover:underline">Create a group →</a>
+                    {t('groups.noGroups')}. <a href="/dashboard/groups" className="text-blue-600 hover:underline">{t('groups.addFirst')} →</a>
                   </div>
                 ) : (
                   <GroupQuickSelect
@@ -418,51 +422,51 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                 )}
                 {selectedGroupId && (
                   <p className="text-xs text-blue-600 mt-1.5">
-                    ℹ️ A session will be created for each member of this group
+                    ℹ️ {t('sessions.sessionFor')} {groups.find(g => g.id === selectedGroupId)?.member_count || 0} {t('sessions.members')}
                   </p>
                 )}
               </div>
             )}
 
             <div>
-              <label htmlFor="sessionDate" className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
+              <label htmlFor="sessionDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.date')} *</label>
               <input type="date" id="sessionDate" name="sessionDate" value={formData.sessionDate} onChange={handleChange} required className="input" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-2">Start Time *</label>
+                <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.startTime')} *</label>
                 <input type="time" id="startTime" name="startTime" value={formData.startTime} onChange={handleChange} required className="input" />
               </div>
               <div>
-                <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-2">End Time *</label>
+                <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.endTime')} *</label>
                 <input type="time" id="endTime" name="endTime" value={formData.endTime} onChange={handleChange} required className="input" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="sessionType" className="block text-sm font-medium text-gray-700 mb-2">Session Type</label>
+              <label htmlFor="sessionType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.sessionType')}</label>
               <select id="sessionType" name="sessionType" value={formData.sessionType} onChange={handleChange} className="input">
-                <option value="">Select type (optional)</option>
+                <option value="">{t('sessions.selectType')}</option>
                 {sessionTypes.map(type => <option key={type} value={type}>{type}</option>)}
               </select>
             </div>
 
             <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-              <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="input" placeholder="Session notes, goals, exercises..." />
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.notes')}</label>
+              <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="input" placeholder={t('sessions.notesPlaceholder')} />
             </div>
 
             {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
             <div className="flex space-x-3 pt-2">
-              {session && <button type="button" onClick={handleDelete} className="btn-danger" disabled={loading}>Delete</button>}
-              <button type="button" onClick={onClose} className="flex-1 btn-secondary" disabled={loading}>Cancel</button>
+              {session && <button type="button" onClick={handleDelete} className="btn-danger" disabled={loading}>{t('common.delete')}</button>}
+              <button type="button" onClick={onClose} className="flex-1 btn-secondary" disabled={loading}>{t('common.cancel')}</button>
               <button type="submit" className="flex-1 btn-primary" disabled={loading}>
-                {loading ? 'Saving...' :
+                {loading ? t('common.saving') :
                   (!session && sessionMode === 'group' && selectedGroupId)
-                    ? `Schedule for ${groups.find(g => g.id === selectedGroupId)?.member_count || 0} members`
-                    : 'Save'}
+                    ? `${t('sessions.sessionFor')} ${groups.find(g => g.id === selectedGroupId)?.member_count || 0} ${t('sessions.members')}`
+                    : t('common.save')}
               </button>
             </div>
           </form>

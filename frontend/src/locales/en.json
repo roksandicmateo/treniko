@@ -6,7 +6,8 @@
     "clients": "Clients",
     "packages": "Packages",
     "exercises": "Exercises",
-    "groups": "Groups"
+    "groups": "Groups",
+    "progress": "Progress"
   },
   "common": {
     "save": "Save",
@@ -268,6 +269,22 @@
     "duration": "Duration (days)",
     "sessionsPerPeriod": "Sessions per period",
     "downloadZip": "Download ZIP with all your data",
-    "scheduledDays": "Scheduled 30 days from request"
+    "scheduledDays": "Scheduled 30 days from request",
+    "title": "Title",
+    "type": "Type",
+    "location": "Location",
+    "exercises": "Exercises",
+    "addExercise": "+ Add Exercise",
+    "noExercisesYet": "No exercises added yet",
+    "saveAsTemplate": "Save as template",
+    "templateName": "Template name",
+    "useTemplate": "Use Template"
+  },
+  "calendar": {
+    "today": "Today",
+    "clickToCreate": "Click a slot to create · Click a session to edit",
+    "day": "Day",
+    "week": "Week",
+    "month": "Month"
   }
 }

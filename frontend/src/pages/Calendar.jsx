@@ -2,6 +2,8 @@ import { useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
+import hrLocale from '@fullcalendar/core/locales/hr';
+import deLocale from '@fullcalendar/core/locales/de';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -25,7 +27,8 @@ const LEGEND_KEYS = [
 
 export default function Calendar() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const fcLocale = i18n.language === 'hr' ? hrLocale : i18n.language === 'de' ? deLocale : undefined;
   const calRef = useRef(null);
   const mobile = window.innerWidth < 640;
 
@@ -156,8 +159,8 @@ export default function Calendar() {
   };
 
   const viewOptions = mobile
-    ? [{ id: 'timeGridDay', label: 'Day' }, { id: 'dayGridMonth', label: 'Month' }]
-    : [{ id: 'timeGridDay', label: 'Day' }, { id: 'timeGridWeek', label: 'Week' }, { id: 'dayGridMonth', label: 'Month' }];
+    ? [{ id: 'timeGridDay', label: t('calendar.day') }, { id: 'dayGridMonth', label: t('calendar.month') }]
+    : [{ id: 'timeGridDay', label: t('calendar.day') }, { id: 'timeGridWeek', label: t('calendar.week') }, { id: 'dayGridMonth', label: t('calendar.month') }];
 
   return (
     <div className="max-w-6xl mx-auto space-y-4">
@@ -166,7 +169,7 @@ export default function Calendar() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t('sessions.title')}</h1>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden sm:block">Click a slot to create · Click a session to edit</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden sm:block">{t('calendar.clickToCreate')}</p>
         </div>
         <button
           onClick={() => {
@@ -196,7 +199,7 @@ export default function Calendar() {
             </button>
             <button onClick={() => go('today')}
               className="h-8 px-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 transition-colors text-xs font-semibold">
-              Today
+              {t('calendar.today')}
             </button>
             <button onClick={() => go('next')}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 transition-colors font-bold text-lg">
@@ -240,6 +243,7 @@ export default function Calendar() {
           slotMaxTime="22:00:00"
           allDaySlot={false}
           editable={false}
+          locale={fcLocale}
           selectable={true}
           selectMirror={true}
           dayMaxEvents={3}

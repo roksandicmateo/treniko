@@ -42,6 +42,7 @@ const DashboardLayout = () => {
     { to: '/dashboard/clients',   label: t('nav.clients'),   icon: '👥' },
     { to: '/dashboard/trainings', label: t('nav.trainings'), icon: '🏋️' },
     { to: '/dashboard/packages',  label: t('nav.packages'),  icon: '📦' },
+    { to: '/dashboard/progress',  label: t('nav.progress'),  icon: '📈' },
   ];
 
   const allNavItems = [
@@ -52,6 +53,7 @@ const DashboardLayout = () => {
     { to: '/dashboard/packages',  label: t('nav.packages'),  icon: '📦' },
     { to: '/dashboard/exercises', label: t('nav.exercises'), icon: '💪' },
     { to: '/dashboard/groups',    label: t('nav.groups'),    icon: '🤝' },
+    { to: '/dashboard/progress',  label: t('nav.progress'),  icon: '📈' },
   ];
 
   if (dpaLoading) return null;

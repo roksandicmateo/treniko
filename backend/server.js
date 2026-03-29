@@ -21,13 +21,12 @@ const { helmetMiddleware, authRateLimiter, apiRateLimiter, exportRateLimiter, ch
 const { authenticateToken } = require('./middleware/auth');
 const trainingsRouter = require('./routes/trainings');
 const templatesRouter = require('./routes/templates');
-const progressRouter  = require('./routes/progress');
 const uploadsRouter   = require('./routes/uploads');
 const dashboardRoutes = require('./routes/dashboard');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const groupsRoutes = require('./routes/groups');
-
+const progressRoutes = require('./routes/progress');  
 // Middleware
 app.use(helmetMiddleware);
 app.use(cors({
@@ -37,6 +36,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/groups', authenticateToken, groupsRoutes);
+app.use('/api/progress', authenticateToken, progressRoutes);
 // Request logging middleware (development)
 if (process.env.NODE_ENV === 'development') {
   app.use((req, res, next) => {
@@ -82,7 +82,6 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/exercises', exercisesRouter);
 app.use('/api/trainings', trainingsRouter);
 app.use('/api/templates', templatesRouter);
-app.use('/api/progress', authenticateToken, requireDpa, progressRouter);
 app.use('/api/trainings', uploadsRouter);
 app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 app.use('/api/dashboard', dashboardRoutes);

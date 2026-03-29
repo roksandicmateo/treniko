@@ -6,7 +6,8 @@
     "clients": "Klijenti",
     "packages": "Paketi",
     "exercises": "Vježbe",
-    "groups": "Grupe"
+    "groups": "Grupe",
+    "progress": "Napredak"
   },
   "common": {
     "save": "Spremi",
@@ -268,6 +269,22 @@
     "duration": "Trajanje (dana)",
     "sessionsPerPeriod": "Sesija po periodu",
     "downloadZip": "Preuzmi ZIP sa svim vašim podacima",
-    "scheduledDays": "Zakazano 30 dana od zahtjeva"
+    "scheduledDays": "Zakazano 30 dana od zahtjeva",
+    "title": "Naslov",
+    "type": "Vrsta",
+    "location": "Lokacija",
+    "exercises": "Vježbe",
+    "addExercise": "+ Dodaj vježbu",
+    "noExercisesYet": "Nema dodanih vježbi",
+    "saveAsTemplate": "Spremi kao predložak",
+    "templateName": "Naziv predloška",
+    "useTemplate": "Koristi predložak"
+  },
+  "calendar": {
+    "today": "Danas",
+    "clickToCreate": "Kliknite slot za kreiranje · Kliknite sesiju za uređivanje",
+    "day": "Dan",
+    "week": "Tjedan",
+    "month": "Mjesec"
   }
 }

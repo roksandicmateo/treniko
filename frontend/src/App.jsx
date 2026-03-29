@@ -20,6 +20,7 @@ import ExercisesPage from './pages/ExercisesPage';
 import GroupsPage  from './pages/GroupsPage';
 import GroupDetail from './pages/GroupDetail';
 import GroupSessionDetail from './pages/GroupSessionDetail';
+import ProgressPage from './pages/ProgressPage';
 function App() {
   return (
     <AuthProvider>
@@ -54,6 +55,7 @@ function App() {
             <Route path="groups"     element={<GroupsPage />} />
             <Route path="groups/:id" element={<GroupDetail />} />
                 <Route path="groups/:groupId/sessions/:sessionId" element={<GroupSessionDetail />} />
+                <Route path="progress" element={<ProgressPage />} />
           </Route>
 
           {/* Default redirect */}

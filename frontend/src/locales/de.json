@@ -6,7 +6,8 @@
     "clients": "Klienten",
     "packages": "Pakete",
     "exercises": "Übungen",
-    "groups": "Gruppen"
+    "groups": "Gruppen",
+    "progress": "Fortschritt"
   },
   "common": {
     "save": "Speichern",
@@ -268,6 +269,22 @@
     "duration": "Dauer (Tage)",
     "sessionsPerPeriod": "Einheiten pro Periode",
     "downloadZip": "ZIP mit allen Ihren Daten herunterladen",
-    "scheduledDays": "30 Tage nach Antrag geplant"
+    "scheduledDays": "30 Tage nach Antrag geplant",
+    "title": "Titel",
+    "type": "Typ",
+    "location": "Ort",
+    "exercises": "Übungen",
+    "addExercise": "+ Übung hinzufügen",
+    "noExercisesYet": "Noch keine Übungen",
+    "saveAsTemplate": "Als Vorlage speichern",
+    "templateName": "Vorlagenname",
+    "useTemplate": "Vorlage verwenden"
+  },
+  "calendar": {
+    "today": "Heute",
+    "clickToCreate": "Slot klicken zum Erstellen · Einheit klicken zum Bearbeiten",
+    "day": "Tag",
+    "week": "Woche",
+    "month": "Monat"
   }
 }
