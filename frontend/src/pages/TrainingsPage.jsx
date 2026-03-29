@@ -1,62 +1,42 @@
+import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from '../components/training/AddTrainingModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 const TYPE_COLORS = {
-  Gym:        'bg-blue-100 text-blue-700',
-  Cardio:     'bg-green-100 text-green-700',
-  HIIT:       'bg-red-100 text-red-700',
-  Bodyweight: 'bg-purple-100 text-purple-700',
-  Custom:     'bg-yellow-100 text-yellow-700',
+  Gym:        'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
+  Cardio:     'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
+  HIIT:       'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
+  Bodyweight: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400',
+  Custom:     'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400',
 };
-
-const FILTERS = ['All', 'Upcoming', 'Past', 'Completed'];
-
-// Simple in-app confirm modal
-function ConfirmModal({ message, onConfirm, onCancel }) {
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
-        <p className="text-gray-800 text-sm mb-5">{message}</p>
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function TrainingsPage() {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+
   const [trainings,    setTrainings]    = useState([]);
   const [filtered,     setFiltered]     = useState([]);
   const [filter,       setFilter]       = useState('All');
   const [typeFilter,   setTypeFilter]   = useState('');
   const [loading,      setLoading]      = useState(true);
   const [modalOpen,    setModalOpen]    = useState(false);
-  const [editTraining, setEditTraining] = useState(null);
-  const [confirmId,    setConfirmId]    = useState(null); // id to delete, or null
+  const [confirmOpen,  setConfirmOpen]  = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const FILTERS = [
+    { key: 'All',       label: t('common.all') },
+    { key: 'Upcoming',  label: t('training.upcoming') },
+    { key: 'Past',      label: t('training.past') },
+    { key: 'Completed', label: t('training.completed') },
+  ];
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const { data } = await trainingService.getAll();
-      setTrainings(data);
-    } finally {
-      setLoading(false);
-    }
+    try { const { data } = await trainingService.getAll(); setTrainings(data); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -64,225 +44,117 @@ export default function TrainingsPage() {
   useEffect(() => {
     const now = new Date();
     let result = [...trainings];
-
-    if (filter === 'Upcoming') {
-      result = result.filter((t) => !t.is_completed && new Date(t.start_time) >= now);
-    } else if (filter === 'Past') {
-      result = result.filter((t) => !t.is_completed && new Date(t.start_time) < now);
-    } else if (filter === 'Completed') {
-      result = result.filter((t) => t.is_completed);
-    }
-
-    if (typeFilter) {
-      result = result.filter((t) => t.workout_type === typeFilter);
-    }
-
+    if (filter === 'Upcoming') result = result.filter(tr => !tr.is_completed && new Date(tr.start_time) >= now);
+    else if (filter === 'Past') result = result.filter(tr => !tr.is_completed && new Date(tr.start_time) < now);
+    else if (filter === 'Completed') result = result.filter(tr => tr.is_completed);
+    if (typeFilter) result = result.filter(tr => tr.workout_type === typeFilter);
     setFiltered(result);
   }, [trainings, filter, typeFilter]);
 
-  function openEdit(id) {
-    navigate('/dashboard/trainings/' + id);
+  function confirmDelete(id, e) { e.stopPropagation(); setDeleteTarget(id); setConfirmOpen(true); }
+
+  async function handleDeleteConfirmed() {
+    if (!deleteTarget) return;
+    await trainingService.delete(deleteTarget);
+    setTrainings(prev => prev.filter(tr => tr.id !== deleteTarget));
+    setConfirmOpen(false); setDeleteTarget(null);
   }
 
-async function recordPackageUsage(clientId) {
-  try {
-    const token = localStorage.getItem('token');
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    
-    const res = await fetch(`${API_URL}/clients/${clientId}/packages/active`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!data.package) return;
-    
-    await fetch(`${API_URL}/clients/${clientId}/packages/${data.package.id}/use-session`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({})  // no sessionId
-    });
-  } catch (err) {
-    console.warn('Could not record package usage:', err);
-  }
-}
-  function requestDelete(id, e) {
+  async function toggleCompleted(tr, e) {
     e.stopPropagation();
-    setConfirmId(id);
-  }
-
-  async function confirmDelete() {
-    if (!confirmId) return;
-    await trainingService.delete(confirmId);
-    setTrainings((prev) => prev.filter((t) => t.id !== confirmId));
-    setConfirmId(null);
-  }
-
-  async function toggleCompleted(t, e) {
-    e.stopPropagation();
-    const updated = await trainingService.update(t.id, { isCompleted: !t.is_completed });
-    setTrainings((prev) => prev.map((x) => (x.id === t.id ? updated.data : x)));
-      if (!t.is_completed && t.client_id) {
-    await recordPackageUsage(t.client_id);
-  }
-    if (t.session_id) {
-      try {
-        await import('../services/api').then(({ sessionsAPI }) =>
-          sessionsAPI.update(t.session_id, { isCompleted: !t.is_completed })
-        );
-      } catch (err) {
-        console.warn('Could not sync session completion:', err);
-      }
+    const updated = await trainingService.update(tr.id, { isCompleted: !tr.is_completed });
+    setTrainings(prev => prev.map(x => x.id === tr.id ? updated.data : x));
+    if (tr.session_id) {
+      try { await import('../services/api').then(({ sessionsAPI }) => sessionsAPI.update(tr.session_id, { isCompleted: !tr.is_completed })); }
+      catch (err) { console.warn('Could not sync:', err); }
     }
   }
 
-  const types = [...new Set(trainings.map((t) => t.workout_type))];
+  const types = [...new Set(trainings.map(tr => tr.workout_type))];
+  const locale = i18n.language === 'hr' ? 'hr-HR' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-8">
-
-      {/* In-app delete confirmation */}
-      {confirmId && (
-        <ConfirmModal
-          message="Delete this training? This cannot be undone."
-          onConfirm={confirmDelete}
-          onCancel={() => setConfirmId(null)}
-        />
-      )}
-
-      {/* Header */}
       <div className="flex items-center justify-between mt-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Trainings</h1>
-          <p className="text-gray-400 text-sm">{filtered.length} sessions</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('training.title')}</h1>
+          <p className="text-gray-400 dark:text-gray-500 text-sm">{filtered.length} {t('training.sessions')}</p>
         </div>
-        <button
-          onClick={() => { setEditTraining(null); setModalOpen(true); }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium text-sm"
-        >
-          + Add Training
-        </button>
+        <button onClick={() => setModalOpen(true)} className="btn-primary">{t('training.addTraining')}</button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
+        {FILTERS.map(f => (
+          <button key={f.key} onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === f
-                ? 'bg-gray-800 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {f}
+              filter === f.key ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}>
+            {f.label}
           </button>
         ))}
-
-        <div className="h-6 w-px bg-gray-200 self-center" />
-
-        {types.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTypeFilter(typeFilter === t ? '' : t)}
+        {types.length > 0 && <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 self-center" />}
+        {types.map(type => (
+          <button key={type} onClick={() => setTypeFilter(typeFilter === type ? '' : type)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              typeFilter === t
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {t}
+              typeFilter === type ? 'bg-primary-500 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}>
+            {type}
           </button>
         ))}
       </div>
 
-      {/* List */}
       {loading ? (
-        <div className="text-center py-12 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-sm">{t('common.loading')}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-gray-200 rounded-2xl">
-          <p className="text-gray-400 text-sm mb-3">No trainings found</p>
-          <button
-            onClick={() => { setEditTraining(null); setModalOpen(true); }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium"
-          >
-            + Add Training
-          </button>
+        <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
+          <p className="text-gray-400 dark:text-gray-500 text-sm mb-3">{t('training.noTrainings')}</p>
+          <button onClick={() => setModalOpen(true)} className="btn-primary">{t('training.addTraining')}</button>
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((t) => (
-            <div
-              key={t.id}
-              onClick={() => openEdit(t.id)}
-              className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors group"
-            >
-              {/* Completed toggle */}
-              <button
-                onClick={(e) => toggleCompleted(t, e)}
+          {filtered.map(tr => (
+            <div key={tr.id} onClick={() => navigate(`/dashboard/trainings/${tr.id}`)}
+              className="flex items-center gap-3 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors group">
+              <button onClick={e => toggleCompleted(tr, e)}
                 className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-colors ${
-                  t.is_completed
-                    ? 'bg-green-500 border-green-500'
-                    : 'border-gray-300 hover:border-green-400'
-                }`}
-                title={t.is_completed ? 'Mark incomplete' : 'Mark complete'}
-              >
-                {t.is_completed && (
-                  <span className="text-white text-xs flex items-center justify-center w-full h-full">✓</span>
-                )}
+                  tr.is_completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-600 hover:border-green-400'
+                }`}>
+                {tr.is_completed && <span className="text-white text-xs flex items-center justify-center w-full h-full">✓</span>}
               </button>
-
-              {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className={`font-medium truncate ${t.is_completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                    {t.title || `${t.first_name} ${t.last_name}`}
+                  <p className={`font-medium truncate ${tr.is_completed ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
+                    {tr.title || `${tr.first_name} ${tr.last_name}`}
                   </p>
-                  {t.title && (
-                    <span className="text-gray-400 text-xs truncate">
-                      {t.first_name} {t.last_name}
-                    </span>
-                  )}
+                  {tr.title && <span className="text-gray-400 dark:text-gray-500 text-xs">{tr.first_name} {tr.last_name}</span>}
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {new Date(t.start_time).toLocaleString('en-GB', {
-                    weekday: 'short', day: 'numeric', month: 'short',
-                    hour: '2-digit', minute: '2-digit', hour12: false,
-                  })}
-                  {t.location && ` · ${t.location}`}
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  {new Date(tr.start_time).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                  {tr.location && ` · ${tr.location}`}
                 </p>
               </div>
-
-              {/* Badges */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium hidden sm:inline-flex ${TYPE_COLORS[t.workout_type] || 'bg-gray-100 text-gray-600'}`}>
-                  {t.workout_type}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium hidden sm:inline-flex ${TYPE_COLORS[tr.workout_type] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
+                  {tr.workout_type}
                 </span>
-
-                <button
-                  onClick={(e) => requestDelete(t.id, e)}
-                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Delete"
-                >
-                  🗑
-                </button>
+                <span className="text-gray-300 dark:text-gray-600 text-sm hidden sm:inline">›</span>
+                <button onClick={e => confirmDelete(tr.id, e)}
+                  className="text-gray-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">🗑</button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <AddTrainingModal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setEditTraining(null); }}
-        onSaved={(t) => {
-          setTrainings((prev) => {
-            const idx = prev.findIndex((x) => x.id === t.id);
-            return idx >= 0 ? prev.map((x, i) => (i === idx ? t : x)) : [t, ...prev];
-          });
-          setModalOpen(false);
-        }}
-        editTraining={editTraining}
-      />
+      <AddTrainingModal isOpen={modalOpen} onClose={() => setModalOpen(false)}
+        onSaved={tr => { setModalOpen(false); navigate(`/dashboard/trainings/${tr.id}`); }} />
+
+      <ConfirmModal isOpen={confirmOpen} title={t('common.delete')} message={t('common.confirm')}
+        confirmLabel={t('common.delete')} confirmClass="bg-red-600 hover:bg-red-700 text-white"
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => { setConfirmOpen(false); setDeleteTarget(null); }} />
     </div>
   );
 }

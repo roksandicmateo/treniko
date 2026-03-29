@@ -4,63 +4,102 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply dark:bg-gray-950 dark:text-gray-100;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
 @layer components {
+
+  /* ── Buttons ── */
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
-  }
-  
-  .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
-  }
-  
-  .btn-secondary {
-    @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300;
-  }
-  
-  .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply px-4 py-2 rounded-xl font-medium transition-all duration-150 text-sm;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-1;
   }
 
+  .btn-primary {
+    @apply btn bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700;
+    @apply focus:ring-primary-400;
+    @apply dark:bg-primary-500 dark:hover:bg-primary-600;
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300;
+    @apply focus:ring-gray-300;
+    @apply dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-500 text-white hover:bg-red-600 active:bg-red-700;
+    @apply focus:ring-red-400;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full px-3.5 py-2.5 rounded-xl text-sm transition-all duration-150;
+    @apply border border-gray-200 bg-white text-gray-900 placeholder-gray-400;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent;
+    @apply dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500;
+    @apply dark:focus:ring-primary-500;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-white rounded-2xl border border-gray-100 shadow-card p-5;
+    @apply dark:bg-gray-900 dark:border-gray-800;
+  }
+
+  .card-hover {
+    @apply card cursor-pointer hover:shadow-panel hover:border-gray-200 transition-all duration-150;
+    @apply dark:hover:border-gray-700;
+  }
+
+  /* ── Safe area for iPhone ── */
   .safe-area-pb {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
-  .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+
+  /* ── Page title ── */
+  .page-title {
+    @apply text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100;
   }
-  
-  .card {
-    @apply bg-white rounded-lg shadow-md p-6;
+
+  /* ── Section header ── */
+  .section-title {
+    @apply text-sm font-semibold text-gray-700 uppercase tracking-wide;
+    @apply dark:text-gray-400;
   }
+
+  /* ── Status badges ── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-green  { @apply badge bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400; }
+  .badge-blue   { @apply badge bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400; }
+  .badge-gray   { @apply badge bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400; }
+  .badge-red    { @apply badge bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400; }
+  .badge-amber  { @apply badge bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400; }
+  .badge-yellow { @apply badge bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400; }
 }
 
-/* ─── FullCalendar — Treniko theme ──────────────────────────────────────────── */
+/* ── FullCalendar — Treniko theme ──────────────────────────────────────────── */
 
-/* Remove default FC chrome */
-.fc {
-  font-family: inherit;
-}
+.fc { font-family: inherit; }
+.fc .fc-toolbar, .fc .fc-toolbar-chunk { display: none !important; }
+.fc .fc-scroller { overflow: auto !important; }
 
-.fc .fc-toolbar,
-.fc .fc-toolbar-chunk {
-  display: none !important;
-}
-
-/* Scrollable time grid */
-.fc .fc-scroller {
-  overflow: auto !important;
-}
-
-/* Column headers — day names */
+/* Column headers */
 .fc .fc-col-header-cell {
   background: #f8fafc;
   border-color: #e2e8f0 !important;
   padding: 10px 0;
 }
+.dark .fc .fc-col-header-cell { background: #1e293b; border-color: #334155 !important; }
 
 .fc .fc-col-header-cell-cushion {
   color: #64748b;
@@ -70,11 +109,9 @@
   letter-spacing: 0.06em;
   text-decoration: none !important;
 }
+.dark .fc .fc-col-header-cell-cushion { color: #94a3b8; }
 
-/* Highlight today's column header */
-.fc .fc-day-today .fc-col-header-cell-cushion {
-  color: #0ea5e9;
-}
+.fc .fc-day-today .fc-col-header-cell-cushion { color: #0ea5e9; }
 
 /* Time labels */
 .fc .fc-timegrid-slot-label-cushion {
@@ -85,25 +122,17 @@
 }
 
 /* Grid lines */
-.fc .fc-timegrid-slot {
-  border-color: #f1f5f9 !important;
-  height: 40px;
-}
+.fc .fc-timegrid-slot { border-color: #f1f5f9 !important; height: 40px; }
+.fc .fc-timegrid-slot-minor { border-color: #f8fafc !important; }
+.fc td, .fc th { border-color: #e2e8f0 !important; }
+.dark .fc .fc-timegrid-slot { border-color: #1e293b !important; }
+.dark .fc td, .dark .fc th { border-color: #334155 !important; }
 
-.fc .fc-timegrid-slot-minor {
-  border-color: #f8fafc !important;
-}
+/* Today highlight */
+.fc .fc-day-today { background: #f0f9ff !important; }
+.dark .fc .fc-day-today { background: rgba(14,165,233,0.06) !important; }
 
-.fc td, .fc th {
-  border-color: #e2e8f0 !important;
-}
-
-/* Today column highlight */
-.fc .fc-day-today {
-  background: #f0f9ff !important;
-}
-
-/* Month view — day number */
+/* Day numbers */
 .fc .fc-daygrid-day-number {
   color: #475569;
   font-size: 0.8rem;
@@ -111,6 +140,7 @@
   text-decoration: none !important;
   padding: 6px 8px;
 }
+.dark .fc .fc-daygrid-day-number { color: #94a3b8; }
 
 .fc .fc-day-today .fc-daygrid-day-number {
   color: #ffffff;
@@ -136,55 +166,23 @@
   transition: transform 0.1s ease, box-shadow 0.1s ease;
   overflow: hidden;
 }
+.fc .fc-event:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+.fc .fc-event-main { padding: 4px 7px; }
 
-.fc .fc-event:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
+/* Now indicator */
+.fc .fc-timegrid-now-indicator-line { border-color: #0ea5e9; border-width: 2px; }
+.fc .fc-timegrid-now-indicator-arrow { border-top-color: #0ea5e9; border-bottom-color: #0ea5e9; }
 
-.fc .fc-event-main {
-  padding: 4px 7px;
-}
+/* Month events */
+.fc .fc-daygrid-event { border-radius: 6px !important; padding: 1px 6px !important; font-size: 0.72rem; font-weight: 600; }
+.fc .fc-daygrid-more-link { color: #0ea5e9; font-size: 0.72rem; font-weight: 600; }
+.fc .fc-highlight { background: rgba(14, 165, 233, 0.08) !important; }
 
-/* Time grid current time indicator */
-.fc .fc-timegrid-now-indicator-line {
-  border-color: #0ea5e9;
-  border-width: 2px;
-}
+/* Scrollbar */
+.fc .fc-scroller::-webkit-scrollbar { width: 4px; }
+.fc .fc-scroller::-webkit-scrollbar-track { background: transparent; }
+.fc .fc-scroller::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.dark .fc .fc-scroller::-webkit-scrollbar-thumb { background: #475569; }
 
-.fc .fc-timegrid-now-indicator-arrow {
-  border-top-color: #0ea5e9;
-  border-bottom-color: #0ea5e9;
-}
-
-/* Month view events */
-.fc .fc-daygrid-event {
-  border-radius: 6px !important;
-  padding: 1px 6px !important;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-/* "more" link */
-.fc .fc-daygrid-more-link {
-  color: #0ea5e9;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-/* Remove blue highlight on select */
-.fc .fc-highlight {
-  background: rgba(14, 165, 233, 0.08) !important;
-}
-
-/* Scrollbar styling */
-.fc .fc-scroller::-webkit-scrollbar {
-  width: 4px;
-}
-.fc .fc-scroller::-webkit-scrollbar-track {
-  background: transparent;
-}
-.fc .fc-scroller::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
+/* Dark mode calendar bg */
+.dark .fc-view-harness, .dark .fc-scrollgrid { background: #0f172a; }

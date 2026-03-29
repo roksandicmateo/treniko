@@ -3,11 +3,16 @@ import { useState, useEffect } from 'react';
 import DpaAcceptanceModal from '../components/DpaAcceptanceModal';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import SubscriptionBanner from '../components/SubscriptionBanner';
 import ProfileMenu from '../components/ProfileMenu';
+import LanguageSelector from '../components/LanguageSelector';
+import { useTranslation } from 'react-i18next';
 
 const DashboardLayout = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { isDark, toggle } = useTheme();
+  const { t } = useTranslation();
   const [dpaAccepted, setDpaAccepted] = useState(true);
   const [dpaLoading,  setDpaLoading]  = useState(true);
   const navigate = useNavigate();
@@ -31,61 +36,72 @@ const DashboardLayout = () => {
     else setDpaLoading(false);
   }, [user]);
 
-  const handleLogout = () => { logout(); navigate('/login'); };
-
-  // Bottom nav shows 5 items max on mobile — pick the most important
   const bottomNavItems = [
-    { to: '/dashboard',          label: 'Home',      icon: '🏠' },
-    { to: '/dashboard/calendar', label: 'Calendar',  icon: '📅' },
-    { to: '/dashboard/clients',  label: 'Clients',   icon: '👥' },
-    { to: '/dashboard/trainings',label: 'Trainings', icon: '🏋️' },
-    { to: '/dashboard/packages', label: 'Packages',  icon: '📦' },
+    { to: '/dashboard',           label: t('nav.dashboard'), icon: '🏠' },
+    { to: '/dashboard/calendar',  label: t('nav.calendar'),  icon: '📅' },
+    { to: '/dashboard/clients',   label: t('nav.clients'),   icon: '👥' },
+    { to: '/dashboard/trainings', label: t('nav.trainings'), icon: '🏋️' },
+    { to: '/dashboard/packages',  label: t('nav.packages'),  icon: '📦' },
   ];
 
   const allNavItems = [
-    { to: '/dashboard',           label: 'Dashboard', icon: '🏠' },
-    { to: '/dashboard/calendar',  label: 'Calendar',  icon: '📅' },
-    { to: '/dashboard/trainings', label: 'Trainings', icon: '🏋️' },
-    { to: '/dashboard/exercises', label: 'Exercises', icon: '💪' },
-    { to: '/dashboard/clients',   label: 'Clients',   icon: '👥' },
-    { to: '/dashboard/groups', label: 'Groups', icon: '👥' },
-    { to: '/dashboard/packages',  label: 'Packages',  icon: '📦' },
+    { to: '/dashboard',           label: t('nav.dashboard'), icon: '🏠' },
+    { to: '/dashboard/calendar',  label: t('nav.calendar'),  icon: '📅' },
+    { to: '/dashboard/trainings', label: t('nav.trainings'), icon: '🏋️' },
+    { to: '/dashboard/clients',   label: t('nav.clients'),   icon: '👥' },
+    { to: '/dashboard/packages',  label: t('nav.packages'),  icon: '📦' },
+    { to: '/dashboard/exercises', label: t('nav.exercises'), icon: '💪' },
+    { to: '/dashboard/groups',    label: t('nav.groups'),    icon: '🤝' },
   ];
 
   if (dpaLoading) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
       {!dpaAccepted && <DpaAcceptanceModal onAccepted={() => setDpaAccepted(true)} />}
 
       {/* ── Header ── */}
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 sticky top-0 z-40 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 sm:h-16">
-            <h1 className="text-xl sm:text-2xl font-bold text-primary-600">TRENIKO</h1>
-            <ProfileMenu />
+            <h1 className="text-xl sm:text-2xl font-bold text-primary-500 tracking-tight">TRENIKO</h1>
+            <div className="flex items-center gap-2">
+              {/* Language selector — compact dropdown */}
+              <div className="hidden sm:block">
+                <LanguageSelector compact />
+              </div>
+              {/* Dark mode toggle */}
+              <button
+                onClick={toggle}
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title={isDark ? t('profile.lightMode') : t('profile.darkMode')}
+              >
+                {isDark ? '☀️' : '🌙'}
+              </button>
+              <ProfileMenu />
+            </div>
           </div>
         </div>
       </header>
 
       {/* ── Desktop top nav (hidden on mobile) ── */}
-      <nav className="hidden sm:block bg-white border-b border-gray-200">
+      <nav className="hidden sm:block bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-1 overflow-x-auto">
+          <div className="flex space-x-0 overflow-x-auto">
             {allNavItems.map(item => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === '/dashboard'}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  `flex items-center gap-2 px-4 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                     isActive
-                      ? 'border-primary-600 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700'
                   }`
                 }
               >
-                <span>{item.icon}</span>
+                <span className="text-base">{item.icon}</span>
                 <span>{item.label}</span>
               </NavLink>
             ))}
@@ -94,14 +110,13 @@ const DashboardLayout = () => {
       </nav>
 
       {/* ── Main content ── */}
-      {/* pb-20 on mobile to clear the bottom nav */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-8">
         <SubscriptionBanner />
         <Outlet />
       </main>
 
-      {/* ── Mobile bottom nav (hidden on desktop) ── */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-pb">
+      {/* ── Mobile bottom nav ── */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 z-40 safe-area-pb transition-colors duration-200">
         <div className="flex">
           {bottomNavItems.map(item => (
             <NavLink
@@ -110,7 +125,9 @@ const DashboardLayout = () => {
               end={item.to === '/dashboard'}
               className={({ isActive }) =>
                 `flex-1 flex flex-col items-center justify-center py-2 pt-3 text-xs font-medium transition-colors ${
-                  isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                  isActive
+                    ? 'text-primary-500 dark:text-primary-400'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
                 }`
               }
             >
@@ -119,9 +136,7 @@ const DashboardLayout = () => {
                   <span className={`text-xl mb-0.5 transition-transform ${isActive ? 'scale-110' : ''}`}>
                     {item.icon}
                   </span>
-                  <span className={isActive ? 'text-primary-600 font-semibold' : ''}>
-                    {item.label}
-                  </span>
+                  <span className={isActive ? 'font-semibold' : ''}>{item.label}</span>
                 </>
               )}
             </NavLink>

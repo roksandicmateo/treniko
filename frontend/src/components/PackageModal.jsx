@@ -1,28 +1,8 @@
-// frontend/src/components/PackageModal.jsx  (NEW FILE)
+// frontend/src/components/PackageModal.jsx
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const PACKAGE_TYPES = [
-  {
-    value: 'session_based',
-    label: 'Session-based',
-    icon: '🎯',
-    desc: 'A fixed number of sessions (e.g. "10 Training Sessions")'
-  },
-  {
-    value: 'time_based',
-    label: 'Time-based',
-    icon: '📅',
-    desc: 'Valid for a set number of days (e.g. "30-Day Pass")'
-  },
-  {
-    value: 'unlimited',
-    label: 'Unlimited',
-    icon: '♾️',
-    desc: 'Unlimited sessions within a time period (e.g. "Monthly Unlimited")'
-  },
-];
 
 const empty = {
   name: '', description: '', price: '', currency: 'EUR',
@@ -32,22 +12,25 @@ const empty = {
 };
 
 const PackageModal = ({ pkg, onClose, onSaved }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const PACKAGE_TYPES = [
+    { value: 'session_based', label: t('packages.sessionBased'), icon: '🎯', desc: 'A fixed number of sessions (e.g. "10 Training Sessions")' },
+    { value: 'time_based',    label: t('packages.timeBased'),    icon: '📅', desc: 'Valid for a set number of days (e.g. "30-Day Pass")' },
+    { value: 'unlimited',     label: t('packages.unlimited'),    icon: '♾️', desc: 'Unlimited sessions within a time period (e.g. "Monthly Unlimited")' },
+  ];
+
   useEffect(() => {
     if (pkg) {
       setForm({
-        name: pkg.name || '',
-        description: pkg.description || '',
-        price: pkg.price || '',
-        currency: pkg.currency || 'EUR',
+        name: pkg.name || '', description: pkg.description || '',
+        price: pkg.price || '', currency: pkg.currency || 'EUR',
         packageType: pkg.package_type || 'session_based',
-        totalSessions: pkg.total_sessions || '',
-        durationDays: pkg.duration_days || '',
-        sessionsPerPeriod: pkg.sessions_per_period || '',
-        periodDays: pkg.period_days || '',
+        totalSessions: pkg.total_sessions || '', durationDays: pkg.duration_days || '',
+        sessionsPerPeriod: pkg.sessions_per_period || '', periodDays: pkg.period_days || '',
       });
     }
   }, [pkg]);
@@ -56,22 +39,14 @@ const PackageModal = ({ pkg, onClose, onSaved }) => {
 
   const handleSave = async () => {
     if (!form.name.trim()) { setError('Package name is required.'); return; }
-    if (form.packageType === 'session_based' && !form.totalSessions) {
-      setError('Total sessions is required for session-based packages.'); return;
-    }
-    if (form.packageType !== 'session_based' && !form.durationDays) {
-      setError('Duration (days) is required for time-based and unlimited packages.'); return;
-    }
-
+    if (form.packageType === 'session_based' && !form.totalSessions) { setError('Total sessions is required.'); return; }
+    if (form.packageType !== 'session_based' && !form.durationDays) { setError('Duration (days) is required.'); return; }
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      const url = pkg
-        ? `${API_URL}/packages/${pkg.id}`
-        : `${API_URL}/packages`;
+      const url    = pkg ? `${API_URL}/packages/${pkg.id}` : `${API_URL}/packages`;
       const method = pkg ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
+      const res  = await fetch(url, {
         method,
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
@@ -79,169 +54,83 @@ const PackageModal = ({ pkg, onClose, onSaved }) => {
       const data = await res.json();
       if (!data.success) { setError(data.error || 'Failed to save.'); return; }
       onSaved(data.package);
-    } catch {
-      setError('Failed to save package.');
-    } finally {
-      setSaving(false);
-    }
+    } catch { setError('Failed to save package.'); }
+    finally { setSaving(false); }
   };
+
+  const lbl = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold text-gray-900 mb-5">
-          {pkg ? 'Edit Package' : 'Create Package'}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-800">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-5">
+          {pkg ? `${t('common.edit')} ${t('packages.title').slice(0, -1)}` : t('packages.newPackage').replace('+ ', '')}
         </h2>
-
         <div className="space-y-4">
-
-          {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Package Name *</label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={e => set('name', e.target.value)}
-              className="input"
-              placeholder='e.g. "10 Training Sessions"'
-            />
+            <label className={lbl}>{t('form.packageName')} *</label>
+            <input type="text" value={form.name} onChange={e => set('name', e.target.value)} className="input" placeholder='e.g. "10 Training Sessions"' />
           </div>
-
-          {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              className="input resize-none"
-              rows={2}
-              placeholder="Optional description visible to you"
-            />
+            <label className={lbl}>{t('exercises.description')}</label>
+            <textarea value={form.description} onChange={e => set('description', e.target.value)} className="input resize-none" rows={2} />
           </div>
-
-          {/* Price */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.price}
-                onChange={e => set('price', e.target.value)}
-                className="input"
-                placeholder="0.00"
-              />
+              <label className={lbl}>{t('form.price')}</label>
+              <input type="number" min="0" step="0.01" value={form.price} onChange={e => set('price', e.target.value)} className="input" placeholder="0.00" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
-              <select
-                value={form.currency}
-                onChange={e => set('currency', e.target.value)}
-                className="input"
-              >
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-                <option value="GBP">GBP</option>
-                <option value="HRK">HRK</option>
+              <label className={lbl}>{t('form.currency')}</label>
+              <select value={form.currency} onChange={e => set('currency', e.target.value)} className="input">
+                <option value="EUR">EUR</option><option value="USD">USD</option>
+                <option value="GBP">GBP</option><option value="HRK">HRK</option>
               </select>
             </div>
           </div>
-
-          {/* Package type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Package Type *</label>
+            <label className={lbl}>{t('form.packageType')} *</label>
             <div className="space-y-2">
-              {PACKAGE_TYPES.map(t => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => set('packageType', t.value)}
+              {PACKAGE_TYPES.map(type => (
+                <button key={type.value} type="button" onClick={() => set('packageType', type.value)}
                   className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-colors ${
-                    form.packageType === t.value
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="text-xl mt-0.5">{t.icon}</span>
+                    form.packageType === type.value
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}>
+                  <span className="text-xl mt-0.5">{type.icon}</span>
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">{t.label}</p>
-                    <p className="text-xs text-gray-500">{t.desc}</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{type.label}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{type.desc}</p>
                   </div>
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Session-based rules */}
           {form.packageType === 'session_based' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Total Sessions *</label>
-              <input
-                type="number"
-                min="1"
-                value={form.totalSessions}
-                onChange={e => set('totalSessions', e.target.value)}
-                className="input"
-                placeholder="e.g. 10"
-              />
+              <label className={lbl}>{t('form.totalSessions')} *</label>
+              <input type="number" min="1" value={form.totalSessions} onChange={e => set('totalSessions', e.target.value)} className="input" placeholder="e.g. 10" />
             </div>
           )}
-
-          {/* Time-based / unlimited rules */}
           {(form.packageType === 'time_based' || form.packageType === 'unlimited') && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Duration (days) *</label>
-              <input
-                type="number"
-                min="1"
-                value={form.durationDays}
-                onChange={e => set('durationDays', e.target.value)}
-                className="input"
-                placeholder="e.g. 30"
-              />
+              <label className={lbl}>{t('form.duration')} *</label>
+              <input type="number" min="1" value={form.durationDays} onChange={e => set('durationDays', e.target.value)} className="input" placeholder="e.g. 30" />
             </div>
           )}
-
-          {/* Sessions per period (optional for all types) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sessions per period <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
+            <label className={lbl}>{t('form.sessionsPerPeriod')} <span className="text-gray-400 font-normal">({t('common.optional')})</span></label>
             <div className="grid grid-cols-2 gap-3">
-              <input
-                type="number"
-                min="1"
-                value={form.sessionsPerPeriod}
-                onChange={e => set('sessionsPerPeriod', e.target.value)}
-                className="input"
-                placeholder="e.g. 8 sessions"
-              />
-              <input
-                type="number"
-                min="1"
-                value={form.periodDays}
-                onChange={e => set('periodDays', e.target.value)}
-                className="input"
-                placeholder="per X days"
-              />
+              <input type="number" min="1" value={form.sessionsPerPeriod} onChange={e => set('sessionsPerPeriod', e.target.value)} className="input" placeholder="e.g. 8" />
+              <input type="number" min="1" value={form.periodDays} onChange={e => set('periodDays', e.target.value)} className="input" placeholder="per X days" />
             </div>
-            <p className="text-xs text-gray-400 mt-1">e.g. 8 sessions per 30 days</p>
           </div>
-
-          {error && (
-            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>
-          )}
-
+          {error && <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm">{error}</div>}
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 btn-secondary">Cancel</button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 btn-primary disabled:opacity-50"
-            >
-              {saving ? 'Saving...' : pkg ? 'Save Changes' : 'Create Package'}
+            <button type="button" onClick={onClose} className="flex-1 btn-secondary">{t('common.cancel')}</button>
+            <button type="button" onClick={handleSave} disabled={saving} className="flex-1 btn-primary disabled:opacity-50">
+              {saving ? t('common.saving') : pkg ? t('profile.saveChanges') : t('packages.newPackage').replace('+ ', '')}
             </button>
           </div>
         </div>

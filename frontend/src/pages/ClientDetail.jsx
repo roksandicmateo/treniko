@@ -1,5 +1,6 @@
 // frontend/src/pages/ClientDetail.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from '../components/training/AddTrainingModal';
@@ -182,6 +183,7 @@ function PackagesSection({ clientId, clientName }) {
 }
 
 export default function ClientDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -298,7 +300,7 @@ export default function ClientDetail() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-8">
-      <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-sm mt-4 mb-4 flex items-center gap-1">← Back</button>
+      <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-sm mt-4 mb-4 flex items-center gap-1">{t('common.back')}</button>
 
       {/* Client header */}
       <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-6">
@@ -308,8 +310,8 @@ export default function ClientDetail() {
         <div className="flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{client.first_name} {client.last_name}</h1>
-              {client.email && <p className="text-gray-500 text-sm">{client.email}</p>}
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{client.first_name} {client.last_name}</h1>
+              {client.email && <p className="text-gray-500 dark:text-gray-400 text-sm">{client.email}</p>}
               <div className="flex items-center gap-2 mt-1">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                   client.is_archived ? 'bg-yellow-100 text-yellow-700' :
@@ -335,18 +337,18 @@ export default function ClientDetail() {
                       setEditProfileForm({ firstName: client.first_name, lastName: client.last_name, email: client.email || '', phone: client.phone || '' });
                       setEditProfileOpen(true);
                       setMenuOpen(false);
-                    }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 rounded-t-xl">Edit profile</button>
+                    }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 rounded-t-xl">{t('clients.editProfile')}</button>
                     {client.is_active && client.is_archived !== true && (
-                      <button onClick={deactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-yellow-600 hover:bg-yellow-50">Deactivate</button>
+                      <button onClick={deactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-yellow-600 hover:bg-yellow-50">{t('clients.deactivate')}</button>
                     )}
                     {client.is_archived !== true && (
-                      <button onClick={archiveClient} className="w-full text-left px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">Archive</button>
+                      <button onClick={archiveClient} className="w-full text-left px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">{t('clients.archive')}</button>
                     )}
                     {!client.is_active && client.is_archived !== true && (
-                      <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50">Reactivate</button>
+                      <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50">{t('clients.reactivate')}</button>
                     )}
                     {client.is_archived === true && (
-                      <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 rounded-b-xl">Reactivate</button>
+                      <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 rounded-b-xl">{t('clients.reactivate')}</button>
                     )}
                   </div>
                 )}
@@ -358,15 +360,15 @@ export default function ClientDetail() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-blue-50 rounded-xl p-3 text-center">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-blue-600">{trainings.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Total</p>
         </div>
-        <div className="bg-green-50 rounded-xl p-3 text-center">
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-green-600">{trainings.filter(t => t.is_completed).length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Completed</p>
         </div>
-        <div className="bg-orange-50 rounded-xl p-3 text-center">
+        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-orange-500">{upcoming.length}</p>
           <p className="text-xs text-gray-500 mt-0.5">Upcoming</p>
         </div>
@@ -389,9 +391,9 @@ export default function ClientDetail() {
         <div className="space-y-4">
           {[['Phone', client.phone], ['Date of Birth', client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString() : null], ['Notes', client.notes]]
             .map(([label, value]) => value ? (
-              <div key={label} className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-                <p className="text-gray-800 text-sm">{value}</p>
+              <div key={label} className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{label}</p>
+                <p className="text-gray-800 dark:text-gray-200 text-sm">{value}</p>
               </div>
             ) : null)}
           {!client.phone && !client.date_of_birth && !client.notes && (
@@ -400,7 +402,7 @@ export default function ClientDetail() {
               <button onClick={() => {
                 setEditProfileForm({ firstName: client.first_name, lastName: client.last_name, email: client.email || '', phone: client.phone || '' });
                 setEditProfileOpen(true);
-              }} className="text-blue-600 hover:underline">Edit profile</button>
+              }} className="text-blue-600 hover:underline">{t('clients.editProfile')}</button>
             </p>
           )}
         </div>
@@ -421,7 +423,7 @@ export default function ClientDetail() {
               {trainings.map(t => (
                 <div key={t.id} onClick={() => openEdit(t.id)} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 truncate">{t.title || t.workout_type}</p>
+                    <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{t.title || t.workout_type}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {new Date(t.start_time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
                     </p>
@@ -445,7 +447,7 @@ export default function ClientDetail() {
       {/* Edit Profile Modal */}
       {editProfileOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
               <button onClick={() => setEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light">×</button>
@@ -453,24 +455,24 @@ export default function ClientDetail() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name *</label>
                   <input type="text" value={editProfileForm.firstName} onChange={e => setEditProfileForm(f => ({ ...f, firstName: e.target.value }))} className="input" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name *</label>
                   <input type="text" value={editProfileForm.lastName} onChange={e => setEditProfileForm(f => ({ ...f, lastName: e.target.value }))} className="input" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
                 <input type="email" value={editProfileForm.email} onChange={e => setEditProfileForm(f => ({ ...f, email: e.target.value }))} className="input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
                 <input type="tel" value={editProfileForm.phone} onChange={e => setEditProfileForm(f => ({ ...f, phone: e.target.value }))} className="input" />
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditProfileOpen(false)} className="flex-1 btn-secondary">Cancel</button>
+                <button onClick={() => setEditProfileOpen(false)} className="flex-1 btn-secondary">{t('common.cancel')}</button>
                 <button onClick={saveProfile} disabled={editProfileSaving} className="flex-1 btn-primary disabled:opacity-50">
                   {editProfileSaving ? 'Saving...' : 'Save'}
                 </button>

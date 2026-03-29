@@ -1,5 +1,6 @@
 // frontend/src/pages/GroupsPage.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '../components/Toast';
 
@@ -12,6 +13,7 @@ const GROUP_COLORS = [
 ];
 
 const GroupModal = ({ group, onClose, onSaved }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name:        group?.name        || '',
     description: group?.description || '',
@@ -40,24 +42,26 @@ const GroupModal = ({ group, onClose, onSaved }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 border border-gray-100 dark:border-gray-800">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xl font-bold text-gray-900">{group ? 'Edit Group' : 'New Group'}</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            {group ? t('common.edit') : t('groups.addGroup').replace('+ ', '')}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Group Name *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('form.name')} *</label>
             <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="input" placeholder="e.g. Morning HIIT, Monday Squad..." autoFocus />
+              className="input" placeholder="e.g. Morning HIIT..." autoFocus />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('form.description')} <span className="text-gray-400 font-normal">({t('common.optional')})</span></label>
             <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2} className="input" placeholder="What is this group for?" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('form.color')}</label>
             <div className="flex gap-2 flex-wrap">
               {GROUP_COLORS.map(c => (
                 <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
@@ -66,11 +70,11 @@ const GroupModal = ({ group, onClose, onSaved }) => {
               ))}
             </div>
           </div>
-          {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
+          {error && <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">{error}</div>}
           <div className="flex gap-3 pt-2">
-            <button onClick={onClose} className="flex-1 btn-secondary">Cancel</button>
+            <button onClick={onClose} className="flex-1 btn-secondary">{t('common.cancel')}</button>
             <button onClick={handleSave} disabled={saving} className="flex-1 btn-primary disabled:opacity-50">
-              {saving ? 'Saving...' : group ? 'Save Changes' : 'Create Group'}
+              {saving ? t('common.saving') : group ? t('profile.saveChanges') : t('groups.addGroup').replace('+ ', '')}
             </button>
           </div>
         </div>
@@ -80,11 +84,12 @@ const GroupModal = ({ group, onClose, onSaved }) => {
 };
 
 export default function GroupsPage() {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [groups,      setGroups]      = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [modalOpen,   setModalOpen]   = useState(false);
-  const [editing,     setEditing]     = useState(null);
+  const [groups,        setGroups]        = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [modalOpen,     setModalOpen]     = useState(false);
+  const [editing,       setEditing]       = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const load = useCallback(async () => {
@@ -121,33 +126,37 @@ export default function GroupsPage() {
     finally { setDeleteConfirm(null); }
   };
 
+  const locale = i18n.language === 'hr' ? 'hr-HR' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Groups</h1>
-          <p className="text-sm text-gray-500 mt-1">{groups.length} group{groups.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t('groups.title')}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {groups.length} {groups.length === 1 ? t('groups.group') : t('groups.title').toLowerCase()}
+          </p>
         </div>
         <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
-          + New Group
+          {t('groups.addGroup')}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400">Loading groups...</div>
+        <div className="text-center py-16 text-gray-400 dark:text-gray-500">{t('common.loading')}</div>
       ) : groups.length === 0 ? (
-        <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-2xl">
+        <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           <p className="text-4xl mb-3">👥</p>
-          <p className="text-gray-600 font-medium mb-1">No groups yet</p>
-          <p className="text-sm text-gray-400 mb-5">Create groups to organise clients and manage group sessions.</p>
-          <button onClick={() => setModalOpen(true)} className="btn-primary">Create Your First Group</button>
+          <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">{t('groups.noGroups')}</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">Create groups to organise clients and manage group sessions.</p>
+          <button onClick={() => setModalOpen(true)} className="btn-primary">{t('groups.addFirst')}</button>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {groups.map(group => (
             <div key={group.id}
               onClick={() => navigate(`/dashboard/groups/${group.id}`)}
-              className="bg-white border border-gray-200 rounded-2xl p-5 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all group-card">
+              className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
@@ -155,31 +164,31 @@ export default function GroupsPage() {
                     {group.name?.[0]?.toUpperCase()}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{group.name}</h3>
-                    <p className="text-xs text-gray-400">
-                      {group.member_count} member{group.member_count !== 1 ? 's' : ''}
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">{group.name}</h3>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {group.member_count} {t('groups.members')}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-card:opacity-100 transition-opacity">
+                <div className="flex gap-1">
                   <button onClick={e => { e.stopPropagation(); setEditing(group); setModalOpen(true); }}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                     ✏️
                   </button>
                   <button onClick={e => { e.stopPropagation(); setDeleteConfirm(group); }}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                     🗑️
                   </button>
                 </div>
               </div>
               {group.description && (
-                <p className="text-sm text-gray-500 line-clamp-2">{group.description}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{group.description}</p>
               )}
-              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs text-gray-400">
-                  Created {new Date(group.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {t('groups.created')} {new Date(group.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
-                <span className="text-xs text-blue-600 font-medium">View →</span>
+                <span className="text-xs text-primary-500 font-medium">{t('groups.view')}</span>
               </div>
             </div>
           ))}
@@ -192,14 +201,14 @@ export default function GroupsPage() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Group?</h3>
-            <p className="text-sm text-gray-500 mb-5">
-              Delete <strong>{deleteConfirm.name}</strong>? Members will not be deleted — only the group.
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full p-6 border border-gray-100 dark:border-gray-800">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">{t('common.delete')}?</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+              {t('groups.deleteConfirm')}
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 btn-secondary">Cancel</button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="flex-1 btn-danger">Delete Group</button>
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 btn-secondary">{t('common.cancel')}</button>
+              <button onClick={() => handleDelete(deleteConfirm)} className="flex-1 btn-danger">{t('common.delete')}</button>
             </div>
           </div>
         </div>

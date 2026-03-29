@@ -1,5 +1,6 @@
 // frontend/src/pages/GroupSessionDetail.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { showToast } from '../components/Toast';
 import ExerciseBuilder from '../components/training/ExerciseBuilder';
@@ -18,6 +19,7 @@ const STATUS_CONFIG = {
 };
 
 export default function GroupSessionDetail() {
+  const { t } = useTranslation();
   const { groupId, sessionId } = useParams();
   const navigate = useNavigate();
 
@@ -128,7 +130,7 @@ export default function GroupSessionDetail() {
             👥
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{session.group_name}</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{session.group_name}</h1>
             <p className="text-sm text-gray-400">
               {fmtDate(session.session_date)} · {fmtT(session.start_time)} – {fmtT(session.end_time)}
             </p>
@@ -149,11 +151,11 @@ export default function GroupSessionDetail() {
       <div className="grid sm:grid-cols-2 gap-5">
 
         {/* Left: Attendance */}
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/60">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
             <div>
-              <h2 className="text-sm font-semibold text-gray-800">Attendance</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{attendedCount}/{attendance.length} present</p>
+              <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Attendance</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{attendedCount}/{attendance.length} present</p>
             </div>
             <div className="flex gap-1">
               <button onClick={markAllPresent}
@@ -166,7 +168,7 @@ export default function GroupSessionDetail() {
               </button>
             </div>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 dark:divide-gray-800">
             {attendance.map(a => {
               const present = a.status === 'completed';
               return (
@@ -205,7 +207,7 @@ export default function GroupSessionDetail() {
         {/* Right: Session info */}
         <div className="space-y-3">
           <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-800">Session Details</h2>
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Session Details</h2>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -255,11 +257,11 @@ export default function GroupSessionDetail() {
       </div>
 
       {/* Exercise log */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/60">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">Exercise Log</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Shared workout for all members</p>
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Exercise Log</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Shared workout for all members</p>
           </div>
           {exercises.length > 0 && (
             <span className="text-xs text-gray-400">{exercises.length} exercise{exercises.length !== 1 ? 's' : ''}</span>

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -15,15 +16,16 @@ const STATUS_COLORS = {
   scheduled: { bg: '#38bdf8', border: '#0ea5e9' },
 };
 
-const LEGEND = [
-  { label: 'Scheduled', color: '#38bdf8' },
-  { label: 'Completed', color: '#22c55e' },
-  { label: 'No-show',   color: '#f87171' },
-  { label: 'Cancelled', color: '#cbd5e1' },
+const LEGEND_KEYS = [
+  { key: 'sessions.legend_scheduled', color: '#38bdf8' },
+  { key: 'sessions.legend_completed', color: '#22c55e' },
+  { key: 'sessions.legend_noshow',    color: '#f87171' },
+  { key: 'sessions.legend_cancelled', color: '#cbd5e1' },
 ];
 
 export default function Calendar() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const calRef = useRef(null);
   const mobile = window.innerWidth < 640;
 
@@ -163,8 +165,8 @@ export default function Calendar() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Schedule</h1>
-          <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">Click a slot to create · Click a session to edit</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t('sessions.title')}</h1>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden sm:block">Click a slot to create · Click a session to edit</p>
         </div>
         <button
           onClick={() => {
@@ -176,7 +178,7 @@ export default function Calendar() {
           }}
           className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-sm shadow-sm transition-colors"
         >
-          <span className="text-lg leading-none">+</span> Session
+          <span className="text-lg leading-none">+</span> {t('sessions.newSession').replace('New ', '')}
         </button>
       </div>
 
@@ -184,26 +186,26 @@ export default function Calendar() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-100 bg-white">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
 
           {/* Left: nav buttons */}
           <div className="flex items-center gap-1">
             <button onClick={() => go('prev')}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 active:bg-gray-200 transition-colors font-bold text-lg">
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 transition-colors font-bold text-lg">
               ‹
             </button>
             <button onClick={() => go('today')}
-              className="h-8 px-3 rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors text-xs font-semibold">
+              className="h-8 px-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 transition-colors text-xs font-semibold">
               Today
             </button>
             <button onClick={() => go('next')}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 active:bg-gray-200 transition-colors font-bold text-lg">
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 transition-colors font-bold text-lg">
               ›
             </button>
           </div>
 
           {/* Center: title */}
-          <span className="text-sm font-semibold text-gray-700 hidden sm:block select-none">{title}</span>
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 hidden sm:block select-none">{title}</span>
 
           {/* Right: view switcher */}
           <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1">
@@ -262,11 +264,11 @@ export default function Calendar() {
         />
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-3 border-t border-gray-100 bg-gray-50/60">
-          {LEGEND.map(({ label, color }) => (
-            <div key={label} className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+          {LEGEND_KEYS.map(({ key, color }) => (
+            <div key={key} className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-              <span className="text-xs text-gray-400 font-medium">{label}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{t(key)}</span>
             </div>
           ))}
         </div>
