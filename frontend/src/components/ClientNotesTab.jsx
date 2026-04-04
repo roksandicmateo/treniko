@@ -1,5 +1,6 @@
 // frontend/src/components/ClientNotesTab.jsx  (NEW FILE)
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -11,6 +12,7 @@ const NOTE_FIELDS = [
 ];
 
 const ClientNotesTab = ({ client, onUpdated }) => {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -152,9 +154,9 @@ const ClientNotesTab = ({ client, onUpdated }) => {
       )}
 
       <div className="flex gap-3 pt-1">
-        <button onClick={handleCancel} className="flex-1 btn-secondary" disabled={saving}>Cancel</button>
+        <button onClick={handleCancel} className="flex-1 btn-secondary" disabled={saving}>{t('common.cancel')}</button>
         <button onClick={handleSave} className="flex-1 btn-primary disabled:opacity-50" disabled={saving}>
-          {saving ? 'Saving...' : 'Save Notes'}
+          {saving ? t('common.saving') : 'Save Notes'}
         </button>
       </div>
     </div>

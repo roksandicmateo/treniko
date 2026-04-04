@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { clientsAPI } from '../services/api';
 import ConsentModal from './ConsentModal';
+import { useTranslation } from 'react-i18next';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -232,7 +233,7 @@ const ClientModal = ({ client, onClose, onSave }) => {
                 className="flex-1 btn-primary"
                 disabled={loading || consentLoading || !formData.firstName || !formData.lastName}
               >
-                {loading || consentLoading ? 'Saving...' : 'Save'}
+                {loading || consentLoading ? t('common.saving') : 'Save'}
               </button>
             </div>
           </div>

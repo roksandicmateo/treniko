@@ -1,6 +1,7 @@
 // frontend/src/components/AssignPackageModal.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -11,6 +12,7 @@ const TYPE_LABELS = {
 };
 
 const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
+  const { t } = useTranslation();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -139,7 +141,7 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
             {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={onClose} className="flex-1 btn-secondary">Cancel</button>
+              <button type="button" onClick={onClose} className="flex-1 btn-secondary">{t('common.cancel')}</button>
               <button type="button" onClick={handleAssign} disabled={saving || !selected} className="flex-1 btn-primary disabled:opacity-50">
                 {saving ? 'Assigning...' : 'Assign Package'}
               </button>

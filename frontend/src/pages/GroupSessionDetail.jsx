@@ -110,7 +110,7 @@ export default function GroupSessionDetail() {
     setSessionStatus('completed');
   };
 
-  if (loading) return <div className="flex items-center justify-center py-24 text-gray-400">Loading...</div>;
+  if (loading) return <div className="flex items-center justify-center py-24 text-gray-400">{t('common.loading')}</div>;
   if (!session) return null;
 
   const attendedCount = attendance.filter(a => a.status === 'completed').length;
@@ -141,7 +141,7 @@ export default function GroupSessionDetail() {
             className="btn-secondary text-sm">✅ Mark All Complete</button>
           <button onClick={handleSave} disabled={saving}
             className="btn-primary text-sm disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save Session'}
+            {saving ? t('common.saving') : 'Save Session'}
           </button>
         </div>
       </div>
@@ -282,7 +282,7 @@ export default function GroupSessionDetail() {
           Back to Group
         </button>
         <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-50">
-          {saving ? 'Saving...' : 'Save Session'}
+          {saving ? t('common.saving') : 'Save Session'}
         </button>
       </div>
     </div>

@@ -5,8 +5,10 @@ import {
 } from 'recharts';
 import { progressService } from '../../services/trainingService';
 import AddProgressModal from './AddProgressModal';
+import { useTranslation } from 'react-i18next';
 
 export default function ProgressChart({ clientId }) {
+  const { t } = useTranslation();
   const [data,           setData]           = useState({});
   const [selectedMetric, setSelectedMetric] = useState('');
   const [loading,        setLoading]        = useState(true);
@@ -55,7 +57,7 @@ export default function ProgressChart({ clientId }) {
   const diffStr  = diff != null ? (diff >= 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1)) : null;
   const diffColor = diff == null ? '' : diff >= 0 ? 'text-green-600' : 'text-red-600';
 
-  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">Loading...</div>;
+  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">{t('common.loading')}</div>;
 
   return (
     <div className="space-y-4">

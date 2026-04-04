@@ -9,10 +9,10 @@ import StrengthProgress from '../components/progress/StrengthProgress';
 import AssignPackageModal from '../components/AssignPackageModal';
 import ClientNotesTab from '../components/ClientNotesTab';
 import PRSummary from '../components/progress/PRSummary';
-
+import BillingTab from '../components/BillingTab';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-const TABS = ['profile', 'trainings', 'progress', 'packages', 'notes', 'prs'];
+const TABS = ['profile', 'trainings', 'progress', 'packages', 'notes', 'prs', 'billing'];
 
 const TYPE_COLORS = {
   Gym:        'bg-blue-100 text-blue-700',
@@ -56,6 +56,7 @@ function ProgressSection({ clientId }) {
 }
 
 function PackagesSection({ clientId, clientName }) {
+  const { t } = useTranslation();
   const [clientPackages, setClientPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -99,7 +100,7 @@ function PackagesSection({ clientId, clientName }) {
     return Math.min(100, Math.round((cp.sessions_used / cp.total_sessions) * 100));
   };
 
-  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>;
+  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">{t('common.loading')}</div>;
 
   return (
     <div className="space-y-6">
@@ -290,7 +291,7 @@ export default function ClientDetail() {
 
   const upcoming = trainings.filter(t => !t.is_completed && new Date(t.start_time) >= new Date());
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-gray-400">Loading...</div></div>;
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-gray-400">{t('common.loading')}</div></div>;
   if (error) return (
     <div className="p-4 text-center">
       <p className="text-red-600 mb-4">{error}</p>
@@ -381,7 +382,7 @@ export default function ClientDetail() {
             className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px whitespace-nowrap ${
               tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}>
-            {t === 'packages' ? '📦 Packages' : t === 'notes' ? '📋 Notes' : t === 'prs' ? '🏆 PRs' : t}
+{t === 'packages' ? '📦 Packages' : t === 'notes' ? '📋 Notes' : t === 'prs' ? '🏆 PRs' : t === 'billing' ? '💳 Billing' : t}
           </button>
         ))}
       </div>
@@ -430,7 +431,7 @@ export default function ClientDetail() {
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[t.workout_type] || 'bg-gray-100 text-gray-600'}`}>{t.workout_type}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${t.is_completed ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.is_completed ? 'Done' : 'Sched.'}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${t.is_completed ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.is_completed ? t('trainings.completed') : t('trainings.scheduled')}</span>
                   </div>
                 </div>
               ))}
@@ -443,7 +444,7 @@ export default function ClientDetail() {
       {tab === 'packages'  && <PackagesSection clientId={id} clientName={`${client.first_name} ${client.last_name}`} />}
       {tab === 'notes'     && <ClientNotesTab client={client} onUpdated={updated => setClient(c => ({ ...c, ...updated }))} />}
       {tab === 'prs'       && <PRSummary clientId={id} />}
-
+      {tab === 'billing' && <BillingTab clientId={id} />}
       {/* Edit Profile Modal */}
       {editProfileOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -474,7 +475,7 @@ export default function ClientDetail() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setEditProfileOpen(false)} className="flex-1 btn-secondary">{t('common.cancel')}</button>
                 <button onClick={saveProfile} disabled={editProfileSaving} className="flex-1 btn-primary disabled:opacity-50">
-                  {editProfileSaving ? 'Saving...' : 'Save'}
+                  {editProfileSaving ? t('common.saving') : 'Save'}
                 </button>
               </div>
             </div>

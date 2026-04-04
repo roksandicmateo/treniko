@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { progressService } from '../../services/trainingService';
+import { useTranslation } from 'react-i18next';
 
 const COMMON_METRICS = [
   { name: 'Weight',      unit: 'kg' },
@@ -12,7 +13,9 @@ const COMMON_METRICS = [
   { name: 'BMI',         unit: ''   },
 ];
 
-export default function AddProgressModal({ clientId, onClose, onSaved }) {
+export default function AddProgressModal({
+  clientId, onClose, onSaved }) {
+  const { t } = useTranslation();
   const [custom, setCustom] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
@@ -167,7 +170,7 @@ export default function AddProgressModal({ clientId, onClose, onSaved }) {
             disabled={saving}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 rounded-xl text-sm font-semibold"
           >
-            {saving ? 'Saving...' : 'Save Entry'}
+            {saving ? t('common.saving') : 'Save Entry'}
           </button>
         </div>
       </div>

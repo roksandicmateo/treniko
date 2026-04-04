@@ -132,4 +132,25 @@ export const subscriptionsAPI = {
     api.post('/subscriptions/cancel', { cancelAtPeriodEnd })
 };
 
+
+export const packagesAPI = {
+  getClientPackages: (clientId) =>
+    api.get(`/clients/${clientId}/packages`),
+};
+
+export const paymentsAPI = {
+  getClientPayments: (clientId) =>
+    api.get(`/clients/${clientId}/payments`),
+  createPayment: (clientId, data) =>
+    api.post(`/clients/${clientId}/payments`, data),
+  updatePayment: (clientId, paymentId, data) =>
+    api.put(`/clients/${clientId}/payments/${paymentId}`, data),
+  deletePayment: (clientId, paymentId) =>
+    api.delete(`/clients/${clientId}/payments/${paymentId}`),
+};
+
+export const billingAPI = {
+  getSummary: () => api.get('/billing/summary'),
+};
+
 export default api;

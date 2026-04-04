@@ -173,7 +173,7 @@ export default function ProgressPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatCard label="Sessions" value={stats?.total_sessions} icon="📅" color="bg-blue-50 dark:bg-blue-900/20" />
             <StatCard label="Total Hours" value={stats?.total_hours} unit="h" icon="⏱️" color="bg-purple-50 dark:bg-purple-900/20" />
-            <StatCard label="Total Sets" value={stats?.total_sets} icon="💪" color="bg-green-50 dark:bg-green-900/20" />
+            <StatCard label={t('trainings.fields.totalSets')} value={stats?.total_sets} icon="💪" color="bg-green-50 dark:bg-green-900/20" />
             <StatCard label="Exercises" value={stats?.unique_exercises} icon="🏋️" color="bg-orange-50 dark:bg-orange-900/20" />
           </div>
 

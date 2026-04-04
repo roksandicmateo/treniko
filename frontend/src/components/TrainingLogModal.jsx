@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { trainingLogsAPI } from '../services/api';
+import { useTranslation } from 'react-i18next';
 
 const TrainingLogModal = ({ session, onClose, onSave }) => {
   const [loading, setLoading] = useState(false);
@@ -359,7 +360,7 @@ const TrainingLogModal = ({ session, onClose, onSave }) => {
               className="flex-1 btn-primary"
               disabled={loading}
             >
-              {loading ? 'Saving...' : 'Save Training Log'}
+              {loading ? t('common.saving') : 'Save Training Log'}
             </button>
           </div>
         </form>
