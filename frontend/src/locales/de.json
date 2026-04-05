@@ -53,7 +53,11 @@
     "yesterday": "Gestern",
     "upcoming": "Bevorstehend",
     "history": "Verlauf",
-    "noData": "Keine Daten verfügbar"
+    "noData": "Keine Daten verfügbar",
+    "showing": "Zeige",
+    "of": "von",
+    "tryAgain": "Erneut versuchen",
+    "clearSearch": "Suche löschen"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -87,7 +91,21 @@
     "loginError": "Ungültige E-Mail oder Passwort",
     "createAccount": "Konto erstellen",
     "loggingIn": "Anmeldung...",
-    "registering": "Konto wird erstellt..."
+    "registering": "Konto wird erstellt...",
+    "resetPassword": "Passwort zurücksetzen",
+    "resetPasswordDesc": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen des Passworts.",
+    "sendResetLink": "Reset-Link senden",
+    "checkYourEmail": "E-Mail überprüfen",
+    "resetEmailSent": "Wenn ein Konto für diese E-Mail existiert, erhalten Sie in Kürze einen Reset-Link. Überprüfen Sie Ihren Spam-Ordner, wenn Sie ihn nicht sehen.",
+    "backToLogin": "Zurück zur Anmeldung",
+    "setNewPassword": "Neues Passwort setzen",
+    "newPassword": "Neues Passwort",
+    "passwordChanged": "Passwort geändert!",
+    "redirectingToLogin": "Weiterleitung zur Anmeldung in 3 Sekunden...",
+    "invalidResetLink": "Dieser Reset-Link ist ungültig oder abgelaufen.",
+    "requestNewLink": "Neuen Link anfordern",
+    "passwordTooShort": "Das Passwort muss mindestens 6 Zeichen lang sein",
+    "passwordMismatch": "Passwörter stimmen nicht überein"
   },
   "dashboard": {
     "greeting_morning": "Guten Morgen",
@@ -151,7 +169,14 @@
       "notes": "Notizen",
       "prs": "Bestleistungen",
       "billing": "Abrechnung"
-    }
+    },
+    "stats": {
+      "total": "Gesamt",
+      "completed": "Abgeschlossen",
+      "upcoming": "Bevorstehend"
+    },
+    "noAdditionalInfo": "Keine weiteren Informationen.",
+    "sessions": "Einheiten"
   },
   "sessions": {
     "title": "Kalender",
@@ -183,7 +208,10 @@
     "legend_scheduled": "Geplant",
     "legend_completed": "Abgeschlossen",
     "legend_noshow": "Nicht erschienen",
-    "legend_cancelled": "Abgesagt"
+    "legend_cancelled": "Abgesagt",
+    "deleteSession": "Einheit löschen",
+    "deleteConfirm": "Sind Sie sicher, dass Sie diese Einheit löschen möchten? Dies kann nicht rückgängig gemacht werden.",
+    "allClients": "Alle Klienten"
   },
   "calendar": {
     "title": "Kalender",
@@ -205,7 +233,9 @@
     "sets": "Sätze",
     "duration": "Dauer",
     "markDone": "Als erledigt markieren",
-    "noExercises": "Keine Übungen protokolliert"
+    "noExercises": "Keine Übungen protokolliert",
+    "deleteLog": "Trainingsprotokoll löschen",
+    "deleteLogConfirm": "Sind Sie sicher, dass Sie dieses Trainingsprotokoll löschen möchten? Dies kann nicht rückgängig gemacht werden."
   },
   "exercises": {
     "title": "Übungsbibliothek",
@@ -256,7 +286,13 @@
       "completed": "Abgeschlossen",
       "expired": "Abgelaufen",
       "cancelled": "Gekündigt"
-    }
+    },
+    "assignTo": "für",
+    "selectPackage": "Paket auswählen",
+    "startDate": "Startdatum",
+    "notesPH": "z.B. Bezahlt per Banküberweisung",
+    "createFirst": "Erstellen Sie zuerst Pakete, bevor Sie sie Klienten zuweisen.",
+    "goToPackages": "Zu Paketen →"
   },
   "billing": {
     "title": "Abrechnung",
@@ -314,7 +350,32 @@
     "strength": "Kraft",
     "addEntry": "Eintrag hinzufügen",
     "noData": "Keine Fortschrittsdaten",
-    "noStrengthData": "Keine Kraftdaten"
+    "noStrengthData": "Keine Kraftdaten",
+    "statSessions": "Einheiten",
+    "statHours": "Gesamtstunden",
+    "statSets": "Sätze gesamt",
+    "statExercises": "Übungen",
+    "subtitle": "Kraft und Trainingsgewohnheiten der Klienten verfolgen",
+    "strengthProgress": "Kraftfortschritt",
+    "maxWeightPerSession": "Maximales Gewicht pro Einheit",
+    "sessionFrequency": "Einheitenhäufigkeit",
+    "sessionsPerWeek": "Einheiten pro Woche",
+    "personalRecords": "Persönliche Bestleistungen",
+    "noMetrics": "Noch keine Messwerte verfolgt",
+    "noEntries": "Noch keine Einträge für {{metric}}",
+    "addFirstEntry": "Ersten Eintrag hinzufügen →",
+    "addMoreEntries": "Fügen Sie weitere Einträge hinzu, um ein Trenddiagramm anzuzeigen.",
+    "value": "Wert",
+    "change": "Änderung",
+    "chartWeight": "Max. Gewicht (kg)",
+    "chartVolume": "Volumen (kg·Wdh.)",
+    "strengthAutoTracked": "Kraftstatistiken werden automatisch verfolgt, wenn Sie Trainings mit Gewichtsübungen protokollieren.",
+    "thisMetric": "diese Messgröße",
+    "first": "Erster",
+    "latest": "Aktuell",
+    "logMoreSessions": "Protokollieren Sie diese Übung in mehr Einheiten, um ein Trenddiagramm zu sehen.",
+    "strengthFormula": "Kraftstatistiken nur aus Arbeitssätzen (ohne Aufwärmen) · 1RM via Epley-Formel",
+    "maxKg": "Max. kg"
   },
   "groups": {
     "title": "Gruppen",
@@ -340,7 +401,11 @@
     "viewHistory": "Verlauf anzeigen",
     "deleteConfirm": "Diese Gruppe löschen? Alle Sitzungshistorie geht verloren.",
     "view": "Anzeigen →",
-    "created": "Erstellt"
+    "created": "Erstellt",
+    "viewGroup": "Gruppe anzeigen",
+    "openSession": "Einheit öffnen",
+    "updateAttendance": "Anwesenheit aktualisieren",
+    "groupSession": "Gruppeneinheit"
   },
   "subscription": {
     "title": "Abonnement",
@@ -355,7 +420,37 @@
     "approachingLimits": "Limit wird erreicht",
     "clients": "Klienten",
     "sessions": "Einheiten",
-    "used": "genutzt"
+    "used": "genutzt",
+    "loadError": "Abonnementdaten konnten nicht geladen werden.",
+    "plan": "Plan",
+    "statusActive": "Aktiv",
+    "statusExpired": "Abgelaufen",
+    "trialEnds": "Testphase endet",
+    "renews": "Verlängert sich",
+    "usageThisPeriod": "Nutzung in diesem Zeitraum",
+    "sessionsThisMonth": "Einheiten diesen Monat",
+    "unlimited": "unbegrenzt",
+    "cancelSubscription": "Abonnement kündigen",
+    "availablePlans": "Verfügbare Pläne",
+    "clientsLabel": "Klienten",
+    "unlimitedClients": "Unbegrenzte Klienten",
+    "sessionsPerMonth": "Einheiten/Monat",
+    "unlimitedSessions": "Unbegrenzte Einheiten",
+    "featureTrainingLogs": "Trainingsprotokolle",
+    "featureAnalytics": "Analysen",
+    "featureExport": "Daten exportieren",
+    "upgradeTo": "Upgraden auf",
+    "billingMonthly": "Monatlich",
+    "billingYearly": "Jährlich",
+    "savePercent": "17% sparen",
+    "cancelConfirm": "Sind Sie sicher, dass Sie kündigen möchten? Sie verlieren den Zugang am Ende des Abrechnungszeitraums.",
+    "yesCancelBtn": "Ja, kündigen",
+    "keepPlan": "Abonnement behalten",
+    "orYearly": "oder €{{price}}/Jahr (17% sparen)",
+    "readOnly": "Nur-Lesen",
+    "trial": "Testphase",
+    "manage": "Verwalten",
+    "removeClientsFirst": "Entfernen Sie {{count}} Klient(en) vor dem Downgrade."
   },
   "profile": {
     "title": "Profil",
@@ -390,7 +485,8 @@
       "en": "Englisch",
       "hr": "Kroatisch",
       "de": "Deutsch"
-    }
+    },
+    "exportSuccess": "Export wird heruntergeladen..."
   },
   "form": {
     "packageName": "Paketname",
@@ -436,6 +532,48 @@
     "deleteFailed": "Löschen fehlgeschlagen",
     "notFound": "Nicht gefunden",
     "serverError": "Serverfehler. Bitte versuchen Sie es erneut.",
-    "networkError": "Netzwerkfehler. Überprüfen Sie Ihre Verbindung."
+    "networkError": "Netzwerkfehler. Überprüfen Sie Ihre Verbindung.",
+    "pageNotFound": "Seite nicht gefunden",
+    "pageNotFoundDesc": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "exportFailed": "Export fehlgeschlagen. Bitte erneut versuchen."
+  },
+  "notes": {
+    "clientNotes": "Klientennotizen",
+    "addNotes": "Notizen hinzufügen",
+    "noNotes": "Noch keine Notizen hinzugefügt",
+    "addGoals": "Ziele, Verletzungen, Ernährungsnotizen hinzufügen...",
+    "editNotes": "Notizen bearbeiten",
+    "saveNotes": "Notizen speichern",
+    "goals": "Ziele",
+    "injuries": "Verletzungen & Gesundheit",
+    "diet": "Ernährung",
+    "general": "Allgemeine Notizen",
+    "goalsPlaceholder": "z.B. 10 kg abnehmen, 5K laufen, Muskeln aufbauen...",
+    "injuriesPlaceholder": "z.B. Rückenschmerzen, Knieverletzung 2023...",
+    "dietPlaceholder": "z.B. Vegetarier, Laktoseintoleranz, hoher Proteingehalt...",
+    "generalPlaceholder": "Alle anderen Notizen zu diesem Klienten...",
+    "age": "Alter"
+  },
+  "prs": {
+    "title": "Persönliche Bestleistungen",
+    "noPRs": "Noch keine Bestleistungen",
+    "autoTracked": "Bestleistungen werden automatisch erfasst, wenn Sie Gewichtsübungen protokollieren.",
+    "sortWeight": "Gewicht",
+    "sortRecent": "Aktuell",
+    "maxWeight": "Max. Gewicht",
+    "est1RM": "Gesch. 1RM",
+    "formula": "Bestleistungen nur aus Arbeitssätzen · 1RM via Epley-Formel"
+  },
+  "onboarding": {
+    "title": "Erste Schritte",
+    "completed": "abgeschlossen",
+    "addClient": "Ersten Klienten hinzufügen",
+    "createPackage": "Trainingspaket erstellen",
+    "scheduleSession": "Einheit planen",
+    "goToClients": "Zu Klienten",
+    "goToPackages": "Zu Paketen",
+    "goToCalendar": "Zum Kalender",
+    "nextStep": "Nächster Schritt",
+    "dismiss": "Schließen"
   }
 }

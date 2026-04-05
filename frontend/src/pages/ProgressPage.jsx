@@ -132,7 +132,7 @@ export default function ProgressPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">📈 Progress</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track client strength & training habits</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('progress.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Client selector */}
@@ -171,23 +171,23 @@ export default function ProgressPage() {
         <>
           {/* Stats row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label="Sessions" value={stats?.total_sessions} icon="📅" color="bg-blue-50 dark:bg-blue-900/20" />
-            <StatCard label="Total Hours" value={stats?.total_hours} unit="h" icon="⏱️" color="bg-purple-50 dark:bg-purple-900/20" />
-            <StatCard label={t('trainings.fields.totalSets')} value={stats?.total_sets} icon="💪" color="bg-green-50 dark:bg-green-900/20" />
-            <StatCard label="Exercises" value={stats?.unique_exercises} icon="🏋️" color="bg-orange-50 dark:bg-orange-900/20" />
+            <StatCard label={t('progress.statSessions')} value={stats?.total_sessions} icon="📅" color="bg-blue-50 dark:bg-blue-900/20" />
+            <StatCard label={t('progress.statHours')} value={stats?.total_hours} unit="h" icon="⏱️" color="bg-purple-50 dark:bg-purple-900/20" />
+            <StatCard label={t('progress.statSets')} value={stats?.total_sets} icon="💪" color="bg-green-50 dark:bg-green-900/20" />
+            <StatCard label={t('progress.statExercises')} value={stats?.unique_exercises} icon="🏋️" color="bg-orange-50 dark:bg-orange-900/20" />
           </div>
 
           {/* Strength chart */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
             <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
               <div>
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Strength Progress</h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('progress.strengthProgress')}</h2>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Max weight per session</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Chart mode toggle */}
                 <div className="flex gap-0.5 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg">
-                  {[['weight','Max Weight (kg)'],['volume','Volume (kg·reps)']].map(([mode, label]) => (
+                  {[["weight", t('progress.chartWeight')],["volume", t('progress.chartVolume')]].map(([mode, label]) => (
                     <button key={mode} onClick={() => setChartMode(mode)}
                       className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                         chartMode === mode ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400'
@@ -246,8 +246,8 @@ export default function ProgressPage() {
 
           {/* Session frequency */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Session Frequency</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Sessions per week</p>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{t('progress.sessionFrequency')}</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">{t('progress.sessionsPerWeek')}</p>
             {data.frequencyData.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={data.frequencyData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
@@ -269,7 +269,7 @@ export default function ProgressPage() {
           {/* Personal records */}
           {prs.length > 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">🏆 Personal Records</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">🏆 {t('progress.personalRecords')}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {prs.map((pr, i) => (
                   <div key={pr.exercise_id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">

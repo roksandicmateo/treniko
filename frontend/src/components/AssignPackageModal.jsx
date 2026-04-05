@@ -61,29 +61,29 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl font-bold text-gray-900">Assign Package</h2>
+          <h2 className="text-xl font-bold text-gray-900">{t('packages.assignPackage')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light">×</button>
         </div>
         <p className="text-sm text-gray-500 mb-5">to {clientName}</p>
 
         {loading ? (
-          <p className="text-gray-400 text-sm text-center py-8">Loading packages...</p>
+          <p className="text-gray-400 text-sm text-center py-8">{t('common.loading')}</p>
         ) : packages.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-4xl mb-3">📦</p>
-            <p className="text-gray-600 font-medium mb-1">No packages created yet</p>
-            <p className="text-sm text-gray-400 mb-5">Create packages first before assigning them to clients.</p>
+            <p className="text-gray-600 font-medium mb-1">{t('packages.noPackages')}</p>
+            <p className="text-sm text-gray-400 mb-5">{t('packages.createFirst')}</p>
             <button
               onClick={() => { onClose(); navigate('/dashboard/packages'); }}
               className="btn-primary text-sm"
             >
-              Go to Packages →
+              {t('packages.goToPackages')}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Package *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('packages.selectPackage')} *</label>
               <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                 {packages.map(p => (
                   <button
@@ -116,7 +116,7 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('packages.startDate')}</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="input" />
             </div>
 
@@ -133,9 +133,9 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes <span className="text-gray-400 font-normal">(optional)</span>
+                {t('common.notes')} <span className="text-gray-400 font-normal">({t('common.optional')})</span>
               </label>
-              <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="input" placeholder="e.g. Paid by bank transfer" />
+              <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="input" placeholder={t('packages.notesPH')} />
             </div>
 
             {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
@@ -143,7 +143,7 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose} className="flex-1 btn-secondary">{t('common.cancel')}</button>
               <button type="button" onClick={handleAssign} disabled={saving || !selected} className="flex-1 btn-primary disabled:opacity-50">
-                {saving ? 'Assigning...' : 'Assign Package'}
+                {saving ? t('common.saving') : t('packages.assignPackage')}
               </button>
             </div>
           </div>

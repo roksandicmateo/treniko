@@ -49,7 +49,8 @@ const ProfileMenu = () => {
       const a = document.createElement('a');
       a.href = url; a.download = `treniko-export-${Date.now()}.zip`; a.click();
       URL.revokeObjectURL(url);
-    } catch { alert('Export failed.'); }
+      showToast(t('profile.exportSuccess'), 'success');
+    } catch { showToast(t('errors.exportFailed'), 'error'); }
     finally { setExporting(false); }
   };
 

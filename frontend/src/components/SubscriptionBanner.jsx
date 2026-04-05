@@ -58,7 +58,7 @@ const SubscriptionBanner = () => {
           <div className="flex items-center gap-3">
             <span className="text-2xl">🔒</span>
             <div>
-              <div className="font-semibold text-red-900 dark:text-red-400">{t('packages.expired')} — Read-Only</div>
+              <div className="font-semibold text-red-900 dark:text-red-400">{t('packages.expired')} — {t('subscription.readOnly')}</div>
               <div className="text-sm text-red-700 dark:text-red-500">
                 {t('subscription.avoidInterruption', { plan: subscription.plan_display_name })}
               </div>
@@ -108,14 +108,14 @@ const SubscriptionBanner = () => {
           <div>
             <strong className="text-gray-900 dark:text-gray-200">{subscription.plan_display_name} Plan</strong>
             {subscription.is_trial && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded-full">Trial</span>
+              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded-full">{t('subscription.trial')}</span>
             )}
           </div>
           <div>{t('subscription.clients')}: <strong>{subscription.clients_count}/{subscription.max_clients || '∞'}</strong></div>
           <div>{t('subscription.sessions')}: <strong>{subscription.sessions_count}/{subscription.max_sessions_per_month || '∞'}</strong></div>
         </div>
         <Link to="/dashboard/subscription" className="text-primary-500 hover:text-primary-600 font-medium whitespace-nowrap ml-4">
-          Manage →
+          {t('subscription.manage')} →
         </Link>
       </div>
     </div>

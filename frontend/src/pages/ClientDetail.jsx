@@ -10,6 +10,7 @@ import AssignPackageModal from '../components/AssignPackageModal';
 import ClientNotesTab from '../components/ClientNotesTab';
 import PRSummary from '../components/progress/PRSummary';
 import BillingTab from '../components/BillingTab';
+import ConfirmModal from '../components/ConfirmModal';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const TABS = ['profile', 'trainings', 'progress', 'packages', 'notes', 'prs', 'billing'];
@@ -36,17 +37,18 @@ const STATUS_STYLES = {
 };
 
 function ProgressSection({ clientId }) {
+  const { t } = useTranslation();
   const [progressTab, setProgressTab] = useState('body');
   return (
     <div className="space-y-4">
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
         <button onClick={() => setProgressTab('body')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'body' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-          📏 Body Metrics
+          {t('progress.bodyMetrics')}
         </button>
         <button onClick={() => setProgressTab('strength')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'strength' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-          🏋️ Strength
+          {t('progress.strength')}
         </button>
       </div>
       {progressTab === 'body'     && <ProgressChart    clientId={clientId} />}
@@ -74,13 +76,14 @@ function PackagesSection({ clientId, clientName }) {
   useEffect(() => { load(); }, [load]);
 
   const handleCancel = async (cp) => {
-    if (!window.confirm('Cancel this package?')) return;
-    await fetch(`${API_URL}/clients/${clientId}/packages/${cp.id}`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'cancelled' })
+    showConfirm(t('packages.cancelPackage'), t('packages.confirmCancel'), async () => {
+      await fetch(`${API_URL}/clients/${clientId}/packages/${cp.id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+      load();
     });
-    load();
   };
 
   const active = clientPackages.filter(p => p.status === 'active');
@@ -106,14 +109,14 @@ function PackagesSection({ clientId, clientName }) {
     <div className="space-y-6">
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Active Package</h3>
-          <button onClick={() => setAssignOpen(true)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">+ Assign Package</button>
+          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{t('packages.activePackage')}</h3>
+          <button onClick={() => setAssignOpen(true)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">+ {t('packages.assignPackage')}</button>
         </div>
 
         {active.length === 0 ? (
           <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
-            <p className="text-gray-400 text-sm mb-3">No active package</p>
-            <button onClick={() => setAssignOpen(true)} className="btn-primary text-sm">Assign a Package</button>
+            <p className="text-gray-400 text-sm mb-3">{t('packages.noActivePackage')}</p>
+            <button onClick={() => setAssignOpen(true)} className="btn-primary text-sm">{t('packages.assignFirst')}</button>
           </div>
         ) : (
           active.map(cp => {
@@ -125,7 +128,7 @@ function PackagesSection({ clientId, clientName }) {
                     <h4 className="font-semibold text-gray-900">{cp.package_name}</h4>
                     <p className="text-xs text-gray-500 mt-0.5">{TYPE_LABELS[cp.package_type]}</p>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-700 font-medium px-2.5 py-1 rounded-full">Active</span>
+                  <span className="text-xs bg-green-100 text-green-700 font-medium px-2.5 py-1 rounded-full">{t('packages.status.active')}</span>
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{formatUsage(cp)}</p>
                 {pct !== null && (
@@ -142,7 +145,7 @@ function PackagesSection({ clientId, clientName }) {
                 </div>
                 {cp.price && <p className="text-xs text-gray-400 mb-3">{Number(cp.price).toFixed(2)} {cp.currency}</p>}
                 {cp.notes && <p className="text-xs text-gray-500 italic mb-3">"{cp.notes}"</p>}
-                <button onClick={() => handleCancel(cp)} className="text-xs text-red-500 hover:text-red-700">Cancel package</button>
+                <button onClick={() => handleCancel(cp)} className="text-xs text-red-500 hover:text-red-700">{t('packages.cancelPackage')}</button>
               </div>
             );
           })
@@ -151,7 +154,7 @@ function PackagesSection({ clientId, clientName }) {
 
       {history.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">History</h3>
+          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">{t('common.history')}</h3>
           <div className="space-y-2">
             {history.map(cp => (
               <div key={cp.id} className="border border-gray-200 rounded-xl p-4 flex items-start justify-between gap-3">
@@ -196,6 +199,8 @@ export default function ClientDetail() {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
   const [menuOpen,     setMenuOpen]     = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'warning' });
+  const showConfirm = (title, message, onConfirm, type = 'warning') => setConfirmModal({ open: true, title, message, onConfirm, type });
 
   // Edit profile modal state
   const [editProfileOpen,   setEditProfileOpen]   = useState(false);
@@ -227,10 +232,10 @@ export default function ClientDetail() {
     return () => document.removeEventListener('click', handler);
   }, [menuOpen]);
 
-  function onTrainingSaved(t) {
+  function onTrainingSaved(saved) {
     setTrainings(prev => {
-      const idx = prev.findIndex(x => x.id === t.id);
-      return idx >= 0 ? prev.map((x, i) => i === idx ? t : x) : [t, ...prev];
+      const idx = prev.findIndex(x => x.id === saved.id);
+      return idx >= 0 ? prev.map((x, i) => i === idx ? saved : x) : [saved, ...prev];
     });
   }
 
@@ -261,23 +266,25 @@ export default function ClientDetail() {
   }
 
   async function deactivateClient() {
-    if (!window.confirm(`Deactivate ${client.first_name} ${client.last_name}?`)) return;
-    await fetch(`/api/clients/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-      body: JSON.stringify({ isActive: false }),
+    showConfirm(t('clients.deactivate'), `${t('clients.deactivate')} ${client.first_name} ${client.last_name}?`, async () => {
+      await fetch(`/api/clients/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ isActive: false }),
+      });
+      navigate('/dashboard/clients');
     });
-    navigate('/dashboard/clients');
   }
 
   async function archiveClient() {
-    if (!window.confirm(`Archive ${client.first_name} ${client.last_name}?`)) return;
-    await fetch(`/api/clients/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-      body: JSON.stringify({ isArchived: true, isActive: false }),
+    showConfirm(t('clients.archive'), `${t('clients.archive')} ${client.first_name} ${client.last_name}?`, async () => {
+      await fetch(`/api/clients/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ isArchived: true, isActive: false }),
+      });
+      navigate('/dashboard/clients');
     });
-    navigate('/dashboard/clients');
   }
 
   async function reactivateClient() {
@@ -289,7 +296,7 @@ export default function ClientDetail() {
     load();
   }
 
-  const upcoming = trainings.filter(t => !t.is_completed && new Date(t.start_time) >= new Date());
+  const upcoming = trainings.filter(tr => !tr.is_completed && new Date(tr.start_time) >= new Date());
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-gray-400">{t('common.loading')}</div></div>;
   if (error) return (
@@ -363,26 +370,26 @@ export default function ClientDetail() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-blue-600">{trainings.length}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Total</p>
+          <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.total')}</p>
         </div>
         <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-green-600">{trainings.filter(t => t.is_completed).length}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Completed</p>
+          <p className="text-2xl font-bold text-green-600">{trainings.filter(tr => tr.is_completed).length}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.completed')}</p>
         </div>
         <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-orange-500">{upcoming.length}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Upcoming</p>
+          <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.upcoming')}</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
+        {TABS.map(tabKey => (
+          <button key={tabKey} onClick={() => setTab(tabKey)}
             className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px whitespace-nowrap ${
-              tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              tab === tabKey ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}>
-{t === 'packages' ? '📦 Packages' : t === 'notes' ? '📋 Notes' : t === 'prs' ? '🏆 PRs' : t === 'billing' ? '💳 Billing' : t}
+{tabKey === 'packages' ? `📦 ${t('clients.tabs.packages')}` : tabKey === 'notes' ? `📋 ${t('clients.tabs.notes')}` : tabKey === 'prs' ? `🏆 ${t('clients.tabs.prs')}` : tabKey === 'billing' ? `💳 ${t('clients.tabs.billing')}` : t(`clients.tabs.${tabKey}`)}
           </button>
         ))}
       </div>
@@ -399,7 +406,7 @@ export default function ClientDetail() {
             ) : null)}
           {!client.phone && !client.date_of_birth && !client.notes && (
             <p className="text-gray-400 text-sm text-center py-8">
-              No additional info.{' '}
+              {t('clients.noAdditionalInfo')}{' '}
               <button onClick={() => {
                 setEditProfileForm({ firstName: client.first_name, lastName: client.last_name, email: client.email || '', phone: client.phone || '' });
                 setEditProfileOpen(true);
@@ -414,24 +421,24 @@ export default function ClientDetail() {
         <div>
           {trainings.length === 0 ? (
             <div className="text-center py-12 border border-dashed border-gray-200 rounded-2xl">
-              <p className="text-gray-400 text-sm mb-3">No trainings yet</p>
+              <p className="text-gray-400 text-sm mb-3">{t('training.noTrainings')}</p>
               {client.is_active && (
-                <button onClick={() => { setEditTraining(null); setModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium">+ Add First Training</button>
+                <button onClick={() => { setEditTraining(null); setModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium">{t('training.addTraining')}</button>
               )}
             </div>
           ) : (
             <div className="space-y-2">
-              {trainings.map(t => (
-                <div key={t.id} onClick={() => openEdit(t.id)} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+              {trainings.map(tr => (
+                <div key={tr.id} onClick={() => openEdit(tr.id)} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{t.title || t.workout_type}</p>
+                    <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{tr.title || tr.workout_type}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(t.start_time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                      {new Date(tr.start_time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[t.workout_type] || 'bg-gray-100 text-gray-600'}`}>{t.workout_type}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${t.is_completed ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{t.is_completed ? t('trainings.completed') : t('trainings.scheduled')}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[tr.workout_type] || 'bg-gray-100 text-gray-600'}`}>{tr.workout_type}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tr.is_completed ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{tr.is_completed ? t('trainings.completed') : t('trainings.scheduled')}</span>
                   </div>
                 </div>
               ))}
@@ -483,11 +490,21 @@ export default function ClientDetail() {
         </div>
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal(m => ({ ...m, open: false }))}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal(m => ({ ...m, open: false })); }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+      />
       {/* Add Training Modal */}
       <AddTrainingModal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditTraining(null); }}
-        onSaved={t => { onTrainingSaved(t); setModalOpen(false); }}
+        onSaved={saved => { onTrainingSaved(saved); setModalOpen(false); }}
         initialClientId={id}
         editTraining={editTraining}
       />

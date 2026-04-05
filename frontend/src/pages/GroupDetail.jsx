@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { showToast } from '../components/Toast';
 import SessionModal from '../components/SessionModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const token   = () => localStorage.getItem('token');
@@ -285,13 +286,17 @@ export default function GroupDetail() {
     finally { setMemberSessionsLoading(false); }
   };
 
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'warning' });
+  const showConfirm = (title, message, onConfirm, type = 'warning') => setConfirmModal({ open: true, title, message, onConfirm, type });
+
   const handleRemoveMember = async (member) => {
-    if (!window.confirm(`${t('groups.removeConfirm')}`)) return;
+    showConfirm(t('groups.removeMember'), t('groups.removeConfirm'), async () => {
     try {
       await fetch(`${API_URL}/groups/${id}/members/${member.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token()}` } });
       setGroup(g => ({ ...g, members: g.members.filter(m => m.id !== member.id) }));
       showToast('Member removed', 'success');
     } catch { showToast(t('common.error'), 'error'); }
+    });
   };
 
   const handleMemberSessionClick = (memberAttendance, groupSession) => {
@@ -345,7 +350,7 @@ export default function GroupDetail() {
       {/* Header */}
       <div className="flex items-center gap-4 flex-wrap">
         <button onClick={() => navigate('/dashboard/groups')} className="text-gray-400 hover:text-gray-600 text-sm">
-          ← {t('groups.title')}
+          ← {t('nav.groups')}
         </button>
         <div className="flex items-center gap-3 flex-1">
           <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0"
@@ -453,7 +458,7 @@ export default function GroupDetail() {
                       </button>
                       <button onClick={() => navigate(`/dashboard/clients/${m.id}`)}
                         className="text-xs text-gray-400 hover:text-primary-500 px-2 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        Profile →
+                        {t('nav.profile')} →
                       </button>
                       <button onClick={() => handleRemoveMember(m)}
                         className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
@@ -501,7 +506,7 @@ export default function GroupDetail() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full p-6 border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Update Attendance</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{t('groups.updateAttendance')}</h3>
               <button onClick={() => setAttendanceModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
@@ -535,6 +540,16 @@ export default function GroupDetail() {
         <ScheduleGroupSessionModal group={group} onClose={() => setScheduleGroupOpen(false)} onSaved={handleGroupSessionScheduled} />
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal(m => ({ ...m, open: false }))}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal(m => ({ ...m, open: false })); }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+      />
       {sessionModal && (
         <SessionModal session={selectedSession} initialDate={null} initialTime={null}
           initialClientId={selectedClientId}

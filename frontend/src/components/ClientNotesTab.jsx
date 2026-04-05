@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const NOTE_FIELDS = [
-  { key: 'goals',     label: 'Goals',          icon: '🎯', placeholder: 'e.g. Lose 10kg, run a 5K, build muscle...' },
-  { key: 'injuries',  label: 'Injuries & Health', icon: '🩹', placeholder: 'e.g. Lower back pain, knee injury 2023...' },
-  { key: 'dietNotes', label: 'Diet & Nutrition', icon: '🥗', placeholder: 'e.g. Vegetarian, lactose intolerant, high protein...' },
-  { key: 'notes',     label: 'General Notes',   icon: '📝', placeholder: 'Any other notes about this client...' },
+  { key: 'goals',     labelKey: 'notes.goals',     icon: '🎯', placeholderKey: 'notes.goalsPlaceholder' },
+  { key: 'injuries',  labelKey: 'notes.injuries',   icon: '🩹', placeholderKey: 'notes.injuriesPlaceholder' },
+  { key: 'dietNotes', labelKey: 'notes.diet',        icon: '🥗', placeholderKey: 'notes.dietPlaceholder' },
+  { key: 'notes',     labelKey: 'notes.general',     icon: '📝', placeholderKey: 'notes.generalPlaceholder' },
 ];
 
 const ClientNotesTab = ({ client, onUpdated }) => {
@@ -64,24 +64,24 @@ const ClientNotesTab = ({ client, onUpdated }) => {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Client Notes</h3>
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{t('notes.clientNotes')}</h3>
           <button
             onClick={() => setEditing(true)}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
-            {hasAnyContent ? 'Edit' : '+ Add Notes'}
+            {hasAnyContent ? t('common.edit') : `+ ${t('notes.addNotes')}`}
           </button>
         </div>
 
         {!hasAnyContent ? (
           <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
             <p className="text-3xl mb-2">📋</p>
-            <p className="text-sm text-gray-400 mb-3">No notes added yet</p>
+            <p className="text-sm text-gray-400 mb-3">{t('notes.noNotes')}</p>
             <button
               onClick={() => setEditing(true)}
               className="text-sm text-blue-600 hover:underline"
             >
-              Add goals, injuries, diet notes...
+{t('notes.addGoals')}
             </button>
           </div>
         ) : (
@@ -89,14 +89,14 @@ const ClientNotesTab = ({ client, onUpdated }) => {
             {/* Date of birth */}
             {client.date_of_birth && (
               <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">🎂 Date of Birth</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">🎂 {t('clients.dateOfBirth')}</p>
                 <p className="text-sm text-gray-800">
                   {new Date(client.date_of_birth).toLocaleDateString('en-GB', {
                     day: 'numeric', month: 'long', year: 'numeric'
                   })}
                   {' '}
                   <span className="text-gray-400 text-xs">
-                    (Age: {Math.floor((new Date() - new Date(client.date_of_birth)) / 31557600000)})
+                    ({t('notes.age')}: {Math.floor((new Date() - new Date(client.date_of_birth)) / 31557600000)})
                   </span>
                 </p>
               </div>
@@ -107,7 +107,7 @@ const ClientNotesTab = ({ client, onUpdated }) => {
               if (!value) return null;
               return (
                 <div key={key} className="bg-gray-50 rounded-xl px-4 py-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{icon} {label}</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{icon} {t(labelKey)}</p>
                   <p className="text-sm text-gray-800 whitespace-pre-wrap">{value}</p>
                 </div>
               );
@@ -127,7 +127,7 @@ const ClientNotesTab = ({ client, onUpdated }) => {
 
       {/* Date of birth */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">🎂 Date of Birth</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">🎂 {t('clients.dateOfBirth')}</label>
         <input
           type="date"
           value={form.dateOfBirth}
@@ -136,13 +136,13 @@ const ClientNotesTab = ({ client, onUpdated }) => {
         />
       </div>
 
-      {NOTE_FIELDS.map(({ key, label, icon, placeholder }) => (
+      {NOTE_FIELDS.map(({ key, labelKey, icon, placeholderKey }) => (
         <div key={key}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{icon} {label}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{icon} {t(labelKey)}</label>
           <textarea
             value={form[key]}
             onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-            placeholder={placeholder}
+            placeholder={t(placeholderKey)}
             rows={3}
             className="input resize-none"
           />
@@ -156,7 +156,7 @@ const ClientNotesTab = ({ client, onUpdated }) => {
       <div className="flex gap-3 pt-1">
         <button onClick={handleCancel} className="flex-1 btn-secondary" disabled={saving}>{t('common.cancel')}</button>
         <button onClick={handleSave} className="flex-1 btn-primary disabled:opacity-50" disabled={saving}>
-          {saving ? t('common.saving') : 'Save Notes'}
+          {saving ? t('common.saving') : t('notes.saveNotes')}
         </button>
       </div>
     </div>

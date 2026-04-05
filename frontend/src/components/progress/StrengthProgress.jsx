@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -12,6 +13,7 @@ const METRICS = [
 ];
 
 export default function StrengthProgress({ clientId }) {
+  const { t } = useTranslation();
   const [data,             setData]             = useState({});
   const [loading,          setLoading]          = useState(true);
   const [selectedExercise, setSelectedExercise] = useState('');
@@ -55,16 +57,15 @@ export default function StrengthProgress({ clientId }) {
   const latestEntry = entries[entries.length - 1];
   const firstEntry  = entries[0];
 
-  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">Loading strength data...</div>;
+  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">{t('common.loading')}</div>;
 
   if (Object.keys(data).length === 0) {
     return (
       <div className="border border-dashed border-gray-200 rounded-xl py-16 text-center">
         <div className="text-4xl mb-3">🏋️</div>
-        <p className="text-gray-500 font-medium mb-1">No strength data yet</p>
+        <p className="text-gray-500 font-medium mb-1">{t('progress.noStrengthData')}</p>
         <p className="text-gray-400 text-sm max-w-xs mx-auto">
-          Strength stats are automatically tracked when you log trainings
-          with weighted exercises.
+          {t('progress.strengthAutoTracked')}
         </p>
       </div>
     );
@@ -77,7 +78,7 @@ export default function StrengthProgress({ clientId }) {
       <div className="w-44 flex-shrink-0">
         <input
           className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs placeholder-gray-400 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search…"
+          placeholder={t('common.search') + '…'}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -102,7 +103,7 @@ export default function StrengthProgress({ clientId }) {
             );
           })}
           {exercises.length === 0 && (
-            <p className="text-gray-400 text-xs px-2 pt-1">No matches</p>
+            <p className="text-gray-400 text-xs px-2 pt-1">{t('common.noResults')}</p>
           )}
         </div>
       </div>
@@ -127,7 +128,7 @@ export default function StrengthProgress({ clientId }) {
               <span className="text-2xl">🏆</span>
               <div>
                 <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">
-                  Personal Record · {metricInfo?.label}
+                  {t('prs.title')} · {metricInfo?.label}
                 </p>
                 <p className="font-bold text-amber-900 text-xl">
                   {parseFloat(prValue).toFixed(1)} {metricInfo?.unit}
@@ -161,9 +162,9 @@ export default function StrengthProgress({ clientId }) {
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-2">
             {[
-              { label: 'Sessions', val: entries.length, unit: '' },
-              { label: 'First',    val: firstEntry  ? parseFloat(firstEntry[selectedMetric]).toFixed(1)  : '—', unit: metricInfo?.unit },
-              { label: 'Latest',   val: latestEntry ? parseFloat(latestEntry[selectedMetric]).toFixed(1) : '—', unit: metricInfo?.unit },
+              { label: t('progress.statSessions'), val: entries.length, unit: '' },
+              { label: t('progress.first'), val: firstEntry  ? parseFloat(firstEntry[selectedMetric]).toFixed(1)  : '—', unit: metricInfo?.unit },
+              { label: t('progress.latest'),  val: latestEntry ? parseFloat(latestEntry[selectedMetric]).toFixed(1) : '—', unit: metricInfo?.unit },
             ].map(({ label, val, unit }) => (
               <div key={label} className="bg-gray-50 rounded-xl p-2.5 text-center">
                 <p className="text-xs text-gray-400">{label}</p>
@@ -192,7 +193,7 @@ export default function StrengthProgress({ clientId }) {
             </div>
           ) : (
             <div className="bg-blue-50 rounded-xl p-4 text-center text-sm text-blue-600">
-              Log this exercise in more sessions to see a trend chart.
+  {t('progress.logMoreSessions')}
             </div>
           )}
 
@@ -201,11 +202,11 @@ export default function StrengthProgress({ clientId }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-gray-50 text-gray-400">
-                  <th className="px-3 py-2 text-left font-medium">Date</th>
-                  <th className="px-3 py-2 text-right font-medium">Max kg</th>
-                  <th className="px-3 py-2 text-right font-medium">Est. 1RM</th>
-                  <th className="px-3 py-2 text-right font-medium">Volume</th>
-                  <th className="px-3 py-2 text-right font-medium">Sets</th>
+                  <th className="px-3 py-2 text-left font-medium">{t('common.date')}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t('progress.maxKg')}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t('prs.est1RM')}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t('progress.chartVolume')}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t('training.sets')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,7 +228,7 @@ export default function StrengthProgress({ clientId }) {
           </div>
 
           <p className="text-xs text-gray-400 text-center">
-            Strength stats use working sets only (warm-ups excluded) · 1RM via Epley formula
+  {t('progress.strengthFormula')}
           </p>
         </div>
       )}

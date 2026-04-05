@@ -106,12 +106,17 @@ const Register = () => {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-3">
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {t('auth.haveAccount')}{' '}
             <Link to="/login" className="text-primary-500 hover:text-primary-600 font-medium">
               {t('auth.login')}
             </Link>
+          </p>
+          <p className="text-xs text-gray-300 dark:text-gray-600">
+            <Link to="/privacy" className="hover:text-gray-400 dark:hover:text-gray-500">Privacy Policy</Link>
+            {' · '}
+            <Link to="/terms" className="hover:text-gray-400 dark:hover:text-gray-500">Terms of Service</Link>
           </p>
         </div>
       </div>

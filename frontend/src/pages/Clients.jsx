@@ -4,6 +4,8 @@ import { showToast } from '../components/Toast';
 import LimitReachedModal from '../components/LimitReachedModal';
 import ConsentModal from '../components/ConsentModal';
 import { useTranslation } from 'react-i18next';
+import { ClientListSkeleton } from '../components/SkeletonLoader';
+import ConfirmModal from '../components/ConfirmModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -19,6 +21,10 @@ const Clients = () => {
   const [subscription, setSubscription] = useState(null);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'warning' });
+  const showConfirm = (title, message, onConfirm, type = 'warning') => setConfirmModal({ open: true, title, message, onConfirm, type });
 
   const FILTERS = [
     { key: 'Active',   label: t('clients.active') },
@@ -43,12 +49,17 @@ const Clients = () => {
     } catch (error) { console.error('Failed to load subscription:', error); }
   };
 
+  // Reset to page 1 when filter changes
   const filteredClients = clients.filter(c => {
     if (filter === 'Active')   return c.is_active && !c.is_archived;
     if (filter === 'Inactive') return !c.is_active && !c.is_archived;
     if (filter === 'Archived') return c.is_archived;
     return true;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredClients.length / PAGE_SIZE);
+  const paginatedClients = filteredClients.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const counts = {
     Active:   clients.filter(c => c.is_active && !c.is_archived).length,
@@ -69,7 +80,7 @@ const Clients = () => {
     } catch { showToast(t('common.error'), 'error'); }
   };
 
-  const handleArchive    = (e, client) => { e.stopPropagation(); if (!window.confirm(t('clients.archiveConfirm'))) return; handleSetStatus(client, { isArchived: true, isActive: false }, t('clients.archived')); };
+  const handleArchive    = (e, client) => { e.stopPropagation(); showConfirm(t('clients.archive'), t('clients.archiveConfirm'), () => handleSetStatus(client, { isArchived: true, isActive: false }, t('clients.archived')), 'warning'); };
   const handleReactivate = (e, client) => { e.stopPropagation(); handleSetStatus(client, { isArchived: false, isActive: true }, t('clients.active')); };
   const handleDeactivate = (e, client) => { e.stopPropagation(); handleSetStatus(client, { isActive: false }, t('clients.inactive')); };
 
@@ -127,17 +138,26 @@ const Clients = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm(t('clients.deleteConfirm'))) return;
+    showConfirm(t('common.delete'), t('clients.deleteConfirm'), async () => {
     try {
       await clientsAPI.delete(id);
       showToast(t('common.delete'), 'success');
       loadClients(); loadSubscription();
     } catch { showToast(t('common.error'), 'error'); }
+    }, 'danger');
   };
 
   const handleViewClient = (id) => { window.location.href = `/dashboard/clients/${id}`; };
 
-  if (loading) return <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>;
+  if (loading) return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+        <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+      </div>
+      <ClientListSkeleton />
+    </div>
+  );
 
   const clientDisplayName = `${formData.firstName} ${formData.lastName}`.trim();
 
@@ -180,7 +200,7 @@ const Clients = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {filteredClients.map(client => (
+              {paginatedClients.map(client => (
                 <tr key={client.id} onClick={() => handleViewClient(client.id)}
                   className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -190,6 +210,23 @@ const Clients = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{client.email || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">{client.phone || '—'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {client.completed_sessions > 0 ? (
+                        <span className="font-medium text-gray-800 dark:text-gray-200">{client.completed_sessions}</span>
+                      ) : (
+                        <span className="text-gray-300 dark:text-gray-600">—</span>
+                      )}
+                      {client.completed_sessions > 0 && (
+                        <span className="text-gray-400 dark:text-gray-500 text-xs ml-1">{t('training.completed').toLowerCase()}</span>
+                      )}
+                    </div>
+                    {client.last_session_date && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        {new Date(client.last_session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      </p>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {client.is_archived
                       ? <span className="badge-yellow">{t('clients.archived')}</span>
@@ -219,6 +256,48 @@ const Clients = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 px-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {t('common.showing')} {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, filteredClients.length)} {t('common.of')} {filteredClients.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ←
+            </button>
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              if (totalPages <= 7 || Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages) {
+                return (
+                  <button key={page} onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 text-sm rounded-lg font-medium ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}>
+                    {page}
+                  </button>
+                );
+              }
+              if (Math.abs(page - currentPage) === 3) return <span key={page} className="text-gray-400 px-1">…</span>;
+              return null;
+            })}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              →
+            </button>
+          </div>
         </div>
       )}
 
@@ -266,6 +345,16 @@ const Clients = () => {
         <ConsentModal clientName={clientDisplayName} onAccept={handleConsentAccepted} onDecline={() => setShowConsentModal(false)} />
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal(m => ({ ...m, open: false }))}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal(m => ({ ...m, open: false })); }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+      />
       <LimitReachedModal
         isOpen={limitModalOpen} onClose={() => setLimitModalOpen(false)}
         limitType="clients" currentCount={subscription?.clients_count || 0}

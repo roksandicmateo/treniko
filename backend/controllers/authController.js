@@ -115,6 +115,38 @@ const register = async (req, res) => {
 
     const user = userResult.rows[0];
 
+    // Create free trial subscription for the new tenant
+    await query(
+      `INSERT INTO tenant_subscriptions (
+         tenant_id, plan_id, status, billing_period,
+         current_period_start, current_period_end,
+         is_trial, trial_start, trial_end
+       )
+       SELECT
+         $1,
+         (SELECT id FROM subscription_plans WHERE name = 'free'),
+         'active', 'monthly',
+         CURRENT_DATE,
+         CURRENT_DATE + INTERVAL '30 days',
+         true,
+         CURRENT_DATE,
+         CURRENT_DATE + INTERVAL '14 days'
+       WHERE NOT EXISTS (
+         SELECT 1 FROM tenant_subscriptions WHERE tenant_id = $1
+       )`,
+      [tenantId]
+    );
+
+    // Initialize the usage record for this period
+    await query(
+      `INSERT INTO subscription_usage (tenant_id, period_start, period_end, clients_count, sessions_count)
+       SELECT $1, CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days', 0, 0
+       WHERE NOT EXISTS (
+         SELECT 1 FROM subscription_usage WHERE tenant_id = $1
+       )`,
+      [tenantId]
+    );
+
     const token = jwt.sign(
       {
         userId: user.id,

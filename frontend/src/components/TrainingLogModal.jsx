@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { trainingLogsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
+import ConfirmModal from './ConfirmModal';
 
 const TrainingLogModal = ({ session, onClose, onSave }) => {
   const [loading, setLoading] = useState(false);

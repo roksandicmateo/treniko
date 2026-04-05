@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import PackageModal from '../components/PackageModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -17,6 +18,8 @@ const PackagesPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPkg, setEditingPkg] = useState(null);
   const [filter, setFilter] = useState('active');
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'danger' });
+  const showConfirm = (title, message, onConfirm) => setConfirmModal({ open: true, title, message, onConfirm, type: 'danger' });
 
   const token = () => localStorage.getItem('token');
 
@@ -45,11 +48,12 @@ const PackagesPage = () => {
     load();
   };
 
-  const handleDelete = async (pkg) => {
-    if (!window.confirm(`Delete "${pkg.name}"?`)) return;
-    const res = await fetch(`${API_URL}/packages/${pkg.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token()}` } });
-    const data = await res.json();
-    if (data.error) { alert(data.error); } else { load(); }
+  const handleDelete = (pkg) => {
+    showConfirm(t('packages.deletePackage'), `${t('common.delete')} "${pkg.name}"?`, async () => {
+      const res = await fetch(`${API_URL}/packages/${pkg.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token()}` } });
+      const data = await res.json();
+      if (data.error) { showToast(data.error, 'error'); } else { load(); }
+    });
   };
 
   const handleSaved = () => { setModalOpen(false); setEditingPkg(null); load(); };
@@ -159,6 +163,16 @@ const PackagesPage = () => {
         </div>
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal(m => ({ ...m, open: false }))}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal(m => ({ ...m, open: false })); }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+      />
       {modalOpen && (
         <PackageModal pkg={editingPkg}
           onClose={() => { setModalOpen(false); setEditingPkg(null); }}

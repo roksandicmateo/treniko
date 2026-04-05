@@ -57,6 +57,12 @@ const Login = () => {
               onChange={handleChange} required className="input" placeholder="••••••••" />
           </div>
 
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-sm text-primary-500 hover:text-primary-600">
+              {t('auth.forgotPassword')}
+            </Link>
+          </div>
+
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm border border-red-100 dark:border-red-800">
               {error}
@@ -78,9 +84,11 @@ const Login = () => {
           </p>
         </div>
 
-        <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800 text-center">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            Demo: <span className="font-medium text-gray-500 dark:text-gray-400">demo@treniko.com</span> / password123
+        <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800 text-center space-y-2">
+          <p className="text-xs text-gray-300 dark:text-gray-600">
+            <Link to="/privacy" className="hover:text-gray-400 dark:hover:text-gray-500">Privacy Policy</Link>
+            {' · '}
+            <Link to="/terms" className="hover:text-gray-400 dark:hover:text-gray-500">Terms of Service</Link>
           </p>
         </div>
       </div>

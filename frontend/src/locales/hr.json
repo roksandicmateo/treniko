@@ -53,7 +53,11 @@
     "yesterday": "Jučer",
     "upcoming": "Nadolazeće",
     "history": "Povijest",
-    "noData": "Nema dostupnih podataka"
+    "noData": "Nema dostupnih podataka",
+    "showing": "Prikaz",
+    "of": "od",
+    "tryAgain": "Pokušaj ponovo",
+    "clearSearch": "Poništi pretragu"
   },
   "nav": {
     "dashboard": "Nadzorna ploča",
@@ -87,7 +91,21 @@
     "loginError": "Neispravni email ili lozinka",
     "createAccount": "Kreirajte račun",
     "loggingIn": "Prijava...",
-    "registering": "Kreiranje računa..."
+    "registering": "Kreiranje računa...",
+    "resetPassword": "Resetirajte lozinku",
+    "resetPasswordDesc": "Unesite svoju email adresu i poslat ćemo vam link za resetiranje lozinke.",
+    "sendResetLink": "Pošalji link za resetiranje",
+    "checkYourEmail": "Provjerite email",
+    "resetEmailSent": "Ako račun postoji za taj email, uskoro ćete primiti link za resetiranje. Provjerite spam mapu ako ga ne vidite.",
+    "backToLogin": "Natrag na prijavu",
+    "setNewPassword": "Postavi novu lozinku",
+    "newPassword": "Nova lozinka",
+    "passwordChanged": "Lozinka promijenjena!",
+    "redirectingToLogin": "Preusmjeravanje na prijavu za 3 sekunde...",
+    "invalidResetLink": "Ovaj link za resetiranje je nevažeći ili je istekao.",
+    "requestNewLink": "Zatraži novi link",
+    "passwordTooShort": "Lozinka mora imati najmanje 6 znakova",
+    "passwordMismatch": "Lozinke se ne podudaraju"
   },
   "dashboard": {
     "greeting_morning": "Dobro jutro",
@@ -151,7 +169,14 @@
       "notes": "Bilješke",
       "prs": "Rekordi",
       "billing": "Plaćanje"
-    }
+    },
+    "stats": {
+      "total": "Ukupno",
+      "completed": "Završeno",
+      "upcoming": "Nadolazeće"
+    },
+    "noAdditionalInfo": "Nema dodatnih informacija.",
+    "sessions": "Sesije"
   },
   "sessions": {
     "title": "Kalendar",
@@ -183,7 +208,10 @@
     "legend_scheduled": "Zakazano",
     "legend_completed": "Završeno",
     "legend_noshow": "Nije došao",
-    "legend_cancelled": "Otkazano"
+    "legend_cancelled": "Otkazano",
+    "deleteSession": "Obriši sesiju",
+    "deleteConfirm": "Jeste li sigurni da želite obrisati ovu sesiju? Ovo se ne može poništiti.",
+    "allClients": "Svi klijenti"
   },
   "calendar": {
     "title": "Kalendar",
@@ -205,7 +233,9 @@
     "sets": "Serije",
     "duration": "Trajanje",
     "markDone": "Označi kao gotovo",
-    "noExercises": "Nema upisanih vježbi"
+    "noExercises": "Nema upisanih vježbi",
+    "deleteLog": "Obriši dnevnik treninga",
+    "deleteLogConfirm": "Jeste li sigurni da želite obrisati ovaj dnevnik treninga? Ovo se ne može poništiti."
   },
   "exercises": {
     "title": "Biblioteka vježbi",
@@ -256,7 +286,13 @@
       "completed": "Završen",
       "expired": "Istekao",
       "cancelled": "Otkazan"
-    }
+    },
+    "assignTo": "za",
+    "selectPackage": "Odaberi paket",
+    "startDate": "Datum početka",
+    "notesPH": "npr. Plaćeno bankovnim transferom",
+    "createFirst": "Prvo kreirajte pakete prije dodjele klijentima.",
+    "goToPackages": "Idi na pakete →"
   },
   "billing": {
     "title": "Plaćanje",
@@ -314,7 +350,32 @@
     "strength": "Snaga",
     "addEntry": "Dodaj unos",
     "noData": "Nema podataka o napretku",
-    "noStrengthData": "Nema podataka o snazi"
+    "noStrengthData": "Nema podataka o snazi",
+    "statSessions": "Sesije",
+    "statHours": "Ukupno sati",
+    "statSets": "Ukupno serija",
+    "statExercises": "Vježbe",
+    "subtitle": "Pratite snagu i navike treninga klijenata",
+    "strengthProgress": "Napredak u snazi",
+    "maxWeightPerSession": "Maksimalna težina po sesiji",
+    "sessionFrequency": "Učestalost sesija",
+    "sessionsPerWeek": "Sesija tjedno",
+    "personalRecords": "Osobni rekordi",
+    "noMetrics": "Nema praćenih mjera",
+    "noEntries": "Nema unosa za {{metric}}",
+    "addFirstEntry": "Dodaj prvi unos →",
+    "addMoreEntries": "Dodajte više unosa za prikaz grafikona trenda.",
+    "value": "Vrijednost",
+    "change": "Promjena",
+    "chartWeight": "Maks. težina (kg)",
+    "chartVolume": "Volumen (kg·ponav.)",
+    "strengthAutoTracked": "Statistika snage automatski se prati kada unosite treninge s vježbama s utezima.",
+    "thisMetric": "ovu mjeru",
+    "first": "Prvo",
+    "latest": "Zadnje",
+    "logMoreSessions": "Unesite ovu vježbu u više sesija za prikaz grafikona trenda.",
+    "strengthFormula": "Statistika snage koristi samo radne serije (zagrijavanje isključeno) · 1RM po Epley formuli",
+    "maxKg": "Maks. kg"
   },
   "groups": {
     "title": "Grupe",
@@ -340,7 +401,11 @@
     "viewHistory": "Prikaži povijest",
     "deleteConfirm": "Obrisati ovu grupu? Sva povijest sesija bit će izgubljena.",
     "view": "Prikaži →",
-    "created": "Kreirano"
+    "created": "Kreirano",
+    "viewGroup": "Prikaži grupu",
+    "openSession": "Otvori sesiju",
+    "updateAttendance": "Ažuriraj prisutnost",
+    "groupSession": "Grupna sesija"
   },
   "subscription": {
     "title": "Pretplata",
@@ -355,7 +420,37 @@
     "approachingLimits": "Blizu limita",
     "clients": "Klijenti",
     "sessions": "Sesije",
-    "used": "iskorišteno"
+    "used": "iskorišteno",
+    "loadError": "Nije moguće učitati podatke o pretplati.",
+    "plan": "Plan",
+    "statusActive": "Aktivan",
+    "statusExpired": "Istekao",
+    "trialEnds": "Probno ističe",
+    "renews": "Obnavlja se",
+    "usageThisPeriod": "Korištenje u ovom periodu",
+    "sessionsThisMonth": "Sesije ovaj mjesec",
+    "unlimited": "neograničeno",
+    "cancelSubscription": "Otkaži pretplatu",
+    "availablePlans": "Dostupni planovi",
+    "clientsLabel": "klijenata",
+    "unlimitedClients": "Neograničeno klijenata",
+    "sessionsPerMonth": "sesija/mjesec",
+    "unlimitedSessions": "Neograničeno sesija",
+    "featureTrainingLogs": "Dnevnici treninga",
+    "featureAnalytics": "Analitika",
+    "featureExport": "Izvoz podataka",
+    "upgradeTo": "Nadogradi na",
+    "billingMonthly": "Mjesečno",
+    "billingYearly": "Godišnje",
+    "savePercent": "Uštedi 17%",
+    "cancelConfirm": "Jeste li sigurni da želite otkazati? Izgubit ćete pristup na kraju obračunskog perioda.",
+    "yesCancelBtn": "Da, otkaži",
+    "keepPlan": "Zadrži pretplatu",
+    "orYearly": "ili €{{price}}/god. (uštedi 17%)",
+    "readOnly": "Samo čitanje",
+    "trial": "Probno",
+    "manage": "Upravljaj",
+    "removeClientsFirst": "Uklonite {{count}} klijent(a) prije snižavanja plana."
   },
   "profile": {
     "title": "Profil",
@@ -390,7 +485,8 @@
       "en": "Engleski",
       "hr": "Hrvatski",
       "de": "Njemački"
-    }
+    },
+    "exportSuccess": "Izvoz se preuzima..."
   },
   "form": {
     "packageName": "Naziv paketa",
@@ -436,6 +532,48 @@
     "deleteFailed": "Neuspješno brisanje",
     "notFound": "Nije pronađeno",
     "serverError": "Greška servera. Molimo pokušajte ponovo.",
-    "networkError": "Greška mreže. Provjerite vezu."
+    "networkError": "Greška mreže. Provjerite vezu.",
+    "pageNotFound": "Stranica nije pronađena",
+    "pageNotFoundDesc": "Stranica koju tražite ne postoji ili je premještena.",
+    "exportFailed": "Izvoz nije uspio. Pokušajte ponovo."
+  },
+  "notes": {
+    "clientNotes": "Bilješke klijenta",
+    "addNotes": "Dodaj bilješke",
+    "noNotes": "Nema dodanih bilješki",
+    "addGoals": "Dodaj ciljeve, ozljede, bilješke o prehrani...",
+    "editNotes": "Uredi bilješke",
+    "saveNotes": "Spremi bilješke",
+    "goals": "Ciljevi",
+    "injuries": "Ozljede i zdravlje",
+    "diet": "Prehrana",
+    "general": "Opće bilješke",
+    "goalsPlaceholder": "npr. Izgubiti 10kg, istrčati 5K, izgraditi mišiće...",
+    "injuriesPlaceholder": "npr. Bol u donjem dijelu leđa, ozljeda koljena 2023...",
+    "dietPlaceholder": "npr. Vegetarijanac, netolerantnost na laktozu, visoko proteinska...",
+    "generalPlaceholder": "Sve ostale bilješke o ovom klijentu...",
+    "age": "Dob"
+  },
+  "prs": {
+    "title": "Osobni rekordi",
+    "noPRs": "Nema osobnih rekorda",
+    "autoTracked": "Osobni rekordi automatski se prate kada unosite vježbe s utezima.",
+    "sortWeight": "Težina",
+    "sortRecent": "Nedavno",
+    "maxWeight": "Maks. težina",
+    "est1RM": "Proc. 1RM",
+    "formula": "Rekordi koriste samo radne serije · 1RM procjena po Epley formuli"
+  },
+  "onboarding": {
+    "title": "Početak rada",
+    "completed": "završeno",
+    "addClient": "Dodajte prvog klijenta",
+    "createPackage": "Kreirajte trening paket",
+    "scheduleSession": "Zakazite sesiju",
+    "goToClients": "Idi na klijente",
+    "goToPackages": "Idi na pakete",
+    "goToCalendar": "Idi na kalendar",
+    "nextStep": "Sljedeći korak",
+    "dismiss": "Zatvori"
   }
 }

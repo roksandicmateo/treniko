@@ -21,4 +21,13 @@ router.post('/register', authController.register);
  */
 router.get('/validate', authenticateToken, authController.validateToken);
 
+const passwordResetController = require('../controllers/passwordResetController');
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', passwordResetController.forgotPassword);
+
+// POST /api/auth/reset-password  
+router.post('/reset-password', passwordResetController.resetPassword);
+
+
 module.exports = router;

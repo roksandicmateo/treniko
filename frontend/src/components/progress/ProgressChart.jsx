@@ -76,12 +76,12 @@ export default function ProgressChart({ clientId }) {
             </button>
           ))}
           {metrics.length === 0 && (
-            <span className="text-gray-400 text-sm">No metrics tracked yet</span>
+            <span className="text-gray-400 text-sm">{t('progress.noMetrics')}</span>
           )}
         </div>
         <button onClick={() => setShowAdd(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
-          + Add Entry
+          + {t('progress.addEntry')}
         </button>
       </div>
 
@@ -126,15 +126,15 @@ export default function ProgressChart({ clientId }) {
         </div>
       ) : chartData.length === 1 ? (
         <div className="bg-blue-50 rounded-xl p-4 text-center text-sm text-blue-600">
-          Add more entries to see a trend chart.
+{t('progress.addMoreEntries')}
         </div>
       ) : (
         <div className="border border-dashed border-gray-200 rounded-xl py-12 text-center">
           <p className="text-gray-400 text-sm">
-            No entries yet for <strong>{selectedMetric || 'this metric'}</strong>
+{t('progress.noEntries', { metric: selectedMetric || t('progress.thisMetric') })}
           </p>
           <button onClick={() => setShowAdd(true)} className="mt-2 text-blue-600 text-sm hover:underline">
-            Add first entry →
+{t('progress.addFirstEntry')}
           </button>
         </div>
       )}
@@ -145,9 +145,9 @@ export default function ProgressChart({ clientId }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-xs">
-                <th className="px-4 py-2 text-left font-medium">Date</th>
-                <th className="px-4 py-2 text-right font-medium">Value</th>
-                <th className="px-4 py-2 text-right font-medium">Change</th>
+                <th className="px-4 py-2 text-left font-medium">{t('common.date')}</th>
+                <th className="px-4 py-2 text-right font-medium">{t('progress.value')}</th>
+                <th className="px-4 py-2 text-right font-medium">{t('progress.change')}</th>
                 <th className="px-4 py-2 w-8" />
               </tr>
             </thead>

@@ -53,7 +53,11 @@
     "yesterday": "Yesterday",
     "upcoming": "Upcoming",
     "history": "History",
-    "noData": "No data available"
+    "noData": "No data available",
+    "showing": "Showing",
+    "of": "of",
+    "tryAgain": "Try again",
+    "clearSearch": "Clear search"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -87,7 +91,21 @@
     "loginError": "Invalid email or password",
     "createAccount": "Create your account",
     "loggingIn": "Logging in...",
-    "registering": "Creating account..."
+    "registering": "Creating account...",
+    "resetPassword": "Reset your password",
+    "resetPasswordDesc": "Enter your email address and we'll send you a link to reset your password.",
+    "sendResetLink": "Send Reset Link",
+    "checkYourEmail": "Check your email",
+    "resetEmailSent": "If an account exists for that email, you'll receive a reset link shortly. Check your spam folder if you don't see it.",
+    "backToLogin": "Back to login",
+    "setNewPassword": "Set new password",
+    "newPassword": "New Password",
+    "passwordChanged": "Password changed!",
+    "redirectingToLogin": "Redirecting to login in 3 seconds...",
+    "invalidResetLink": "This reset link is invalid or has expired.",
+    "requestNewLink": "Request a new link",
+    "passwordTooShort": "Password must be at least 6 characters",
+    "passwordMismatch": "Passwords do not match"
   },
   "dashboard": {
     "greeting_morning": "Good morning",
@@ -151,7 +169,14 @@
       "notes": "Notes",
       "prs": "PRs",
       "billing": "Billing"
-    }
+    },
+    "stats": {
+      "total": "Total",
+      "completed": "Completed",
+      "upcoming": "Upcoming"
+    },
+    "noAdditionalInfo": "No additional info.",
+    "sessions": "Sessions"
   },
   "sessions": {
     "title": "Calendar",
@@ -183,7 +208,10 @@
     "legend_scheduled": "Scheduled",
     "legend_completed": "Completed",
     "legend_noshow": "No-show",
-    "legend_cancelled": "Cancelled"
+    "legend_cancelled": "Cancelled",
+    "deleteSession": "Delete Session",
+    "deleteConfirm": "Are you sure you want to delete this session? This cannot be undone.",
+    "allClients": "All clients"
   },
   "calendar": {
     "title": "Calendar",
@@ -205,7 +233,9 @@
     "sets": "Sets",
     "duration": "Duration",
     "markDone": "Mark Done",
-    "noExercises": "No exercises logged"
+    "noExercises": "No exercises logged",
+    "deleteLog": "Delete Training Log",
+    "deleteLogConfirm": "Are you sure you want to delete this training log? This cannot be undone."
   },
   "exercises": {
     "title": "Exercise Library",
@@ -256,7 +286,13 @@
       "completed": "Completed",
       "expired": "Expired",
       "cancelled": "Cancelled"
-    }
+    },
+    "assignTo": "to",
+    "selectPackage": "Select Package",
+    "startDate": "Start Date",
+    "notesPH": "e.g. Paid by bank transfer",
+    "createFirst": "Create packages first before assigning them to clients.",
+    "goToPackages": "Go to Packages →"
   },
   "billing": {
     "title": "Billing",
@@ -314,7 +350,32 @@
     "strength": "Strength",
     "addEntry": "Add Entry",
     "noData": "No progress data yet",
-    "noStrengthData": "No strength data yet"
+    "noStrengthData": "No strength data yet",
+    "statSessions": "Sessions",
+    "statHours": "Total Hours",
+    "statSets": "Total Sets",
+    "statExercises": "Exercises",
+    "subtitle": "Track client strength & training habits",
+    "strengthProgress": "Strength Progress",
+    "maxWeightPerSession": "Max weight per session",
+    "sessionFrequency": "Session Frequency",
+    "sessionsPerWeek": "Sessions per week",
+    "personalRecords": "Personal Records",
+    "noMetrics": "No metrics tracked yet",
+    "noEntries": "No entries yet for {{metric}}",
+    "addFirstEntry": "Add first entry →",
+    "addMoreEntries": "Add more entries to see a trend chart.",
+    "value": "Value",
+    "change": "Change",
+    "chartWeight": "Max Weight (kg)",
+    "chartVolume": "Volume (kg·reps)",
+    "strengthAutoTracked": "Strength stats are automatically tracked when you log trainings with weighted exercises.",
+    "thisMetric": "this metric",
+    "first": "First",
+    "latest": "Latest",
+    "logMoreSessions": "Log this exercise in more sessions to see a trend chart.",
+    "strengthFormula": "Strength stats use working sets only (warm-ups excluded) · 1RM via Epley formula",
+    "maxKg": "Max kg"
   },
   "groups": {
     "title": "Groups",
@@ -340,7 +401,11 @@
     "viewHistory": "View history",
     "deleteConfirm": "Delete this group? All session history will be lost.",
     "view": "View →",
-    "created": "Created"
+    "created": "Created",
+    "viewGroup": "View Group",
+    "openSession": "Open Session",
+    "updateAttendance": "Update Attendance",
+    "groupSession": "Group Session"
   },
   "subscription": {
     "title": "Subscription",
@@ -355,7 +420,37 @@
     "approachingLimits": "Approaching Limits",
     "clients": "Clients",
     "sessions": "Sessions",
-    "used": "used"
+    "used": "used",
+    "loadError": "Could not load subscription data.",
+    "plan": "Plan",
+    "statusActive": "Active",
+    "statusExpired": "Expired",
+    "trialEnds": "Trial Ends",
+    "renews": "Renews",
+    "usageThisPeriod": "Usage This Period",
+    "sessionsThisMonth": "Sessions This Month",
+    "unlimited": "unlimited",
+    "cancelSubscription": "Cancel Subscription",
+    "availablePlans": "Available Plans",
+    "clientsLabel": "clients",
+    "unlimitedClients": "Unlimited clients",
+    "sessionsPerMonth": "sessions/month",
+    "unlimitedSessions": "Unlimited sessions",
+    "featureTrainingLogs": "Training logs",
+    "featureAnalytics": "Analytics",
+    "featureExport": "Export data",
+    "upgradeTo": "Upgrade to",
+    "billingMonthly": "Monthly",
+    "billingYearly": "Yearly",
+    "savePercent": "Save 17%",
+    "cancelConfirm": "Are you sure you want to cancel? You will lose access at the end of your billing period.",
+    "yesCancelBtn": "Yes, Cancel",
+    "keepPlan": "Keep Subscription",
+    "orYearly": "or €{{price}}/year (save 17%)",
+    "readOnly": "Read-Only",
+    "trial": "Trial",
+    "manage": "Manage",
+    "removeClientsFirst": "Remove {{count}} client(s) before downgrading."
   },
   "profile": {
     "title": "Profile",
@@ -390,7 +485,8 @@
       "en": "English",
       "hr": "Croatian",
       "de": "German"
-    }
+    },
+    "exportSuccess": "Export is downloading..."
   },
   "form": {
     "packageName": "Package Name",
@@ -436,6 +532,48 @@
     "deleteFailed": "Failed to delete",
     "notFound": "Not found",
     "serverError": "Server error. Please try again.",
-    "networkError": "Network error. Check your connection."
+    "networkError": "Network error. Check your connection.",
+    "pageNotFound": "Page not found",
+    "pageNotFoundDesc": "The page you're looking for doesn't exist or has been moved.",
+    "exportFailed": "Export failed. Please try again."
+  },
+  "notes": {
+    "clientNotes": "Client Notes",
+    "addNotes": "Add Notes",
+    "noNotes": "No notes added yet",
+    "addGoals": "Add goals, injuries, diet notes...",
+    "editNotes": "Edit Notes",
+    "saveNotes": "Save Notes",
+    "goals": "Goals",
+    "injuries": "Injuries & Health",
+    "diet": "Diet & Nutrition",
+    "general": "General Notes",
+    "goalsPlaceholder": "e.g. Lose 10kg, run a 5K, build muscle...",
+    "injuriesPlaceholder": "e.g. Lower back pain, knee injury 2023...",
+    "dietPlaceholder": "e.g. Vegetarian, lactose intolerant, high protein...",
+    "generalPlaceholder": "Any other notes about this client...",
+    "age": "Age"
+  },
+  "prs": {
+    "title": "Personal Records",
+    "noPRs": "No PRs yet",
+    "autoTracked": "PRs are automatically tracked when you log weighted exercises.",
+    "sortWeight": "Weight",
+    "sortRecent": "Recent",
+    "maxWeight": "Max Weight",
+    "est1RM": "Est. 1RM",
+    "formula": "PRs use working sets only · 1RM estimated via Epley formula"
+  },
+  "onboarding": {
+    "title": "Getting started",
+    "completed": "completed",
+    "addClient": "Add your first client",
+    "createPackage": "Create a training package",
+    "scheduleSession": "Schedule a session",
+    "goToClients": "Go to Clients",
+    "goToPackages": "Go to Packages",
+    "goToCalendar": "Go to Calendar",
+    "nextStep": "Next step",
+    "dismiss": "Dismiss"
   }
 }

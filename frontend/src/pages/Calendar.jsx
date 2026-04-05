@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
@@ -41,8 +41,11 @@ export default function Calendar() {
   const [selectedEndTime,  setSelectedEndTime]  = useState(null);
   const [groupSession,     setGroupSession]     = useState(null);
   const [groupModalOpen,   setGroupModalOpen]   = useState(false);
+  const [clientFilter,     setClientFilter]     = useState('');
+  const [clients,          setClients]          = useState([]);
 
   // FC manages fetch lifecycle — no infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchEvents = useCallback(async (fetchInfo, successCallback, failureCallback) => {
     try {
       const start = format(fetchInfo.start, 'yyyy-MM-dd');
@@ -110,9 +113,21 @@ export default function Calendar() {
         };
       });
 
-      successCallback([...individual, ...group]);
+      const filteredIndividual = clientFilter
+        ? individual.filter(e => String(e.extendedProps.clientId) === String(clientFilter))
+        : individual;
+      successCallback([...filteredIndividual, ...group]);
     } catch (e) { failureCallback(e); }
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    fetch(`${API_URL}/clients?isActive=true`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setClients(d.clients || []))
+      .catch(() => {});
+  }, [clientFilter]);
 
   const handleDatesSet   = (arg) => setTitle(arg.view.title);
   const handleSelect = (arg) => {
@@ -209,6 +224,20 @@ export default function Calendar() {
 
           {/* Center: title */}
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 hidden sm:block select-none">{title}</span>
+
+          {/* Center-right: client filter */}
+          {clients.length > 0 && (
+            <select
+              value={clientFilter}
+              onChange={e => { setClientFilter(e.target.value); calRef.current?.getApi().refetchEvents(); }}
+              className="hidden sm:block text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[160px]"
+            >
+              <option value="">{t('sessions.allClients')}</option>
+              {clients.map(cl => (
+                <option key={cl.id} value={cl.id}>{cl.first_name} {cl.last_name}</option>
+              ))}
+            </select>
+          )}
 
           {/* Right: view switcher */}
           <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1">

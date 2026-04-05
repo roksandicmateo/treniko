@@ -4,6 +4,7 @@ import { sessionsAPI, clientsAPI } from '../services/api';
 import { format } from 'date-fns';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from './training/AddTrainingModal';
+import ConfirmModal from './ConfirmModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -152,6 +153,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
   const [error,               setError]               = useState('');
   const [conflicts,           setConflicts]           = useState([]);
   const [showConflictWarning, setShowConflictWarning] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     loadClients();
@@ -259,8 +261,9 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
   const handleSubmit     = async (e) => { e.preventDefault(); await saveSession(false); };
   const handleForceSubmit = async () => { await saveSession(true); };
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this session?')) return;
+  const handleDelete = () => setConfirmDelete(true);
+  const doDelete = async () => {
+    setConfirmDelete(false);
     setLoading(true);
     try { await sessionsAPI.delete(session.id); onSave(); }
     catch { setError('Failed to delete session'); setLoading(false); }
@@ -473,6 +476,16 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
         </div>
       </div>
 
+      <ConfirmModal
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={doDelete}
+        title={t('sessions.deleteSession')}
+        message={t('sessions.deleteConfirm')}
+        type="danger"
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+      />
       {showAddTraining && session && (
         <AddTrainingModal
           isOpen={showAddTraining}

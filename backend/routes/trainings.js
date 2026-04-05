@@ -86,22 +86,40 @@ router.get('/by-session/:sessionId', async (req, res) => {
   }
 });
 
-// GET /api/trainings?clientId=&from=&to=
+// GET /api/trainings?clientId=&from=&to=&search=&page=&limit=
 router.get('/', async (req, res) => {
   try {
-    const { clientId, from, to } = req.query;
+    const { clientId, from, to, search } = req.query;
+    const page  = Math.max(1, parseInt(req.query.page  || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '50')));
+    const offset = (page - 1) * limit;
     const { tenantId } = req.user;
+
     let q = `SELECT t.*, c.first_name, c.last_name
              FROM trainings t
              JOIN clients c ON c.id = t.client_id
              WHERE t.tenant_id = $1`;
     const p = [tenantId];
+
     if (clientId) { p.push(clientId); q += ` AND t.client_id = $${p.length}`; }
     if (from)     { p.push(from);     q += ` AND t.start_time >= $${p.length}`; }
     if (to)       { p.push(to);       q += ` AND t.start_time <= $${p.length}`; }
-    q += ' ORDER BY t.start_time DESC';
+    if (search)   {
+      p.push(`%${search.toLowerCase()}%`);
+      q += ` AND (LOWER(c.first_name || ' ' || c.last_name) LIKE $${p.length} OR LOWER(t.title) LIKE $${p.length} OR LOWER(t.workout_type) LIKE $${p.length})`;
+    }
+
+    // Count total for pagination metadata
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM (${q}) sub`, p
+    );
+    const total = parseInt(countResult.rows[0].count);
+
+    q += ` ORDER BY t.start_time DESC LIMIT $${p.length + 1} OFFSET $${p.length + 2}`;
+    p.push(limit, offset);
+
     const { rows } = await pool.query(q, p);
-    res.json(rows);
+    res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });

@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import SessionModal from '../components/SessionModal';
+import { StatsSkeleton, SessionListSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import OnboardingChecklist from '../components/OnboardingChecklist';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -144,8 +146,19 @@ const DashboardPage = () => {
   );
 
   if (loading) return (
-    <div className="flex items-center justify-center py-24">
-      <div className="text-gray-400 text-sm">{t('common.loading')}</div>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+      <StatsSkeleton />
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <CardSkeleton lines={4} />
+          <CardSkeleton lines={3} />
+        </div>
+        <div className="space-y-6">
+          <CardSkeleton lines={2} />
+          <CardSkeleton lines={3} />
+        </div>
+      </div>
     </div>
   );
 
@@ -165,6 +178,8 @@ const DashboardPage = () => {
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">{dateStr}</p>
       </div>
+
+      <OnboardingChecklist />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

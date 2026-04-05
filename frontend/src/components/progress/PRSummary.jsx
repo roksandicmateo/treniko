@@ -1,5 +1,6 @@
 // frontend/src/components/progress/PRSummary.jsx  (NEW FILE)
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { progressService } from '../../services/trainingService';
 
 const ESTIMATE_1RM = (weight, reps) => {
@@ -8,6 +9,7 @@ const ESTIMATE_1RM = (weight, reps) => {
 };
 
 export default function PRSummary({ clientId }) {
+  const { t } = useTranslation();
   const [data,    setData]    = useState({});
   const [loading, setLoading] = useState(true);
   const [sortBy,  setSortBy]  = useState('exercise'); // exercise | date | weight
@@ -22,15 +24,15 @@ export default function PRSummary({ clientId }) {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">Loading PRs...</div>;
+  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">{t('common.loading')}</div>;
 
   if (Object.keys(data).length === 0) {
     return (
       <div className="border border-dashed border-gray-200 rounded-xl py-16 text-center">
         <div className="text-4xl mb-3">🏆</div>
-        <p className="text-gray-500 font-medium mb-1">No PRs yet</p>
+        <p className="text-gray-500 font-medium mb-1">{t('prs.noPRs')}</p>
         <p className="text-gray-400 text-sm max-w-xs mx-auto">
-          PRs are automatically tracked when you log weighted exercises.
+          {t('prs.autoTracked')}
         </p>
       </div>
     );
@@ -80,11 +82,11 @@ export default function PRSummary({ clientId }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Personal Records</h3>
+          <h3 className="text-base font-semibold text-gray-900">{t('prs.title')}</h3>
           <p className="text-xs text-gray-400 mt-0.5">{prs.length} exercise{prs.length !== 1 ? 's' : ''} tracked</p>
         </div>
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-          {[['exercise', 'A–Z'], ['weight', 'Weight'], ['date', 'Recent']].map(([val, label]) => (
+          {[['exercise', 'A–Z'], ['weight', t('prs.sortWeight')], ['date', t('prs.sortRecent')]].map(([val, label]) => (
             <button key={val} onClick={() => setSortBy(val)}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                 sortBy === val ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
@@ -120,14 +122,14 @@ export default function PRSummary({ clientId }) {
                 {pr.maxWeight != null && (
                   <div>
                     <p className="text-lg font-bold text-gray-900">{pr.maxWeight} <span className="text-xs font-normal text-gray-400">kg</span></p>
-                    <p className="text-xs text-gray-400">Max Weight</p>
+                    <p className="text-xs text-gray-400">{t('prs.maxWeight')}</p>
                     <p className="text-xs text-gray-300">{formatDate(pr.maxWeightDate)}</p>
                   </div>
                 )}
                 {pr.best1RM != null && (
                   <div>
                     <p className="text-lg font-bold text-blue-600">{pr.best1RM} <span className="text-xs font-normal text-gray-400">kg</span></p>
-                    <p className="text-xs text-gray-400">Est. 1RM</p>
+                    <p className="text-xs text-gray-400">{t('prs.est1RM')}</p>
                     <p className="text-xs text-gray-300">{formatDate(pr.best1RMDate)}</p>
                   </div>
                 )}
@@ -138,7 +140,7 @@ export default function PRSummary({ clientId }) {
       </div>
 
       <p className="text-xs text-gray-400 text-center">
-        PRs use working sets only · 1RM estimated via Epley formula
+        {t('prs.formula')}
       </p>
     </div>
   );
