@@ -36,9 +36,9 @@ pool.on('error', (err) => {
 const queryWithTenant = async (text, params, tenantId) => {
   const client = await pool.connect();
   try {
-    // Set tenant context for RLS
+    // Set tenant context for RLS using set_config (works on all PG versions)
     if (tenantId) {
-      await client.query(`SET LOCAL app.current_tenant_id = '${tenantId}'`);
+      await client.query("SELECT set_config('app.current_tenant_id', $1, true)", [tenantId]);
     }
     const result = await client.query(text, params);
     return result;
