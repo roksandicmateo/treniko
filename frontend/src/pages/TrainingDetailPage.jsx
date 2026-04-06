@@ -26,6 +26,7 @@ async function recordPackageUsage(clientId) {
 }
 
 function SetRow({ set }) {
+  const { t } = useTranslation();
   const fields = [];
   if (set.reps)             fields.push({ label: 'Reps',     value: set.reps });
   if (set.weight)           fields.push({ label: 'kg',       value: `${set.weight} kg` });
@@ -48,6 +49,7 @@ function SetRow({ set }) {
 }
 
 function ExerciseCard({ ex, index }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(true);
   return (
     <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
@@ -70,7 +72,7 @@ function ExerciseCard({ ex, index }) {
           {ex.notes && <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-2">📝 {ex.notes}</p>}
           {ex.sets && ex.sets.length > 0
             ? ex.sets.map((s, i) => <SetRow key={s.id || i} set={s} />)
-            : <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">t('training.noSets')</p>}
+            : <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">{t('training.noSets')}</p>}
         </div>
       )}
     </div>
