@@ -12,6 +12,7 @@ const SESSION_SELECT = `
 `;
 
 const checkConflicts = async (tenantId, sessionDate, startTime, endTime, excludeId = null) => {
+  // Check individual sessions
   let query = `
     SELECT ts.id, ts.start_time, ts.end_time, ts.session_type,
            c.first_name, c.last_name, ts.client_id
@@ -25,7 +26,21 @@ const checkConflicts = async (tenantId, sessionDate, startTime, endTime, exclude
   const params = [tenantId, sessionDate, startTime, endTime];
   if (excludeId) { query += ` AND ts.id != $${params.length + 1}`; params.push(excludeId); }
   const result = await queryWithTenant(query, params, tenantId);
-  return result.rows;
+
+  // Also check group sessions for conflicts
+  const groupQuery = `
+    SELECT gs.id, gs.start_time, gs.end_time, 'group' as session_type,
+           g.name as first_name, '' as last_name, null as client_id
+    FROM group_sessions gs
+    JOIN groups g ON g.id = gs.group_id
+    WHERE gs.tenant_id = $1
+      AND gs.session_date = $2
+      AND gs.status NOT IN ('cancelled')
+      AND (gs.start_time < $4 AND gs.end_time > $3)
+  `;
+  const groupResult = await queryWithTenant(groupQuery, [tenantId, sessionDate, startTime, endTime], tenantId);
+
+  return [...result.rows, ...groupResult.rows];
 };
 
 const getSessions = async (req, res) => {

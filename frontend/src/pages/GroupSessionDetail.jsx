@@ -155,7 +155,7 @@ export default function GroupSessionDetail() {
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
             <div>
-              <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Attendance</h2>
+              <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('groups.attendance')}</h2>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{attendedCount}/{attendance.length} {t('groups.present')}</p>
             </div>
             <div className="flex gap-1">
@@ -208,7 +208,7 @@ export default function GroupSessionDetail() {
         {/* Right: Session info */}
         <div className="space-y-3">
           <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Session Details</h2>
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('groups.sessionDetails')}</h2>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -261,8 +261,8 @@ export default function GroupSessionDetail() {
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Exercise Log</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Shared workout for all members</p>
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('groups.exerciseLog')}</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('groups.sharedWorkout')}</p>
           </div>
           {exercises.length > 0 && (
             <span className="text-xs text-gray-400">{exercises.length} exercise{exercises.length !== 1 ? 's' : ''}</span>
@@ -280,7 +280,7 @@ export default function GroupSessionDetail() {
       {/* Save button at bottom for convenience */}
       <div className="flex justify-end gap-3 pt-2">
         <button onClick={() => navigate(`/dashboard/groups/${groupId}`)} className="btn-secondary">
-          t('groups.backToGroup')
+          {t('groups.backToGroup')}
         </button>
         <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-50">
           {saving ? t('common.saving') : t('groups.saveSession')}
