@@ -41,7 +41,7 @@ function SetRow({ set }) {
           <span className="font-semibold text-gray-800 dark:text-gray-200">{f.value}</span>
         </div>
       ))}
-      {fields.length === 0 && <span className="text-gray-400 dark:text-gray-500 italic text-xs">No metrics recorded</span>}
+      {fields.length === 0 && <span className="text-gray-400 dark:text-gray-500 italic text-xs">{t('training.noMetrics')}</span>}
       {set.notes && <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto italic">"{set.notes}"</span>}
     </div>
   );
@@ -61,7 +61,7 @@ function ExerciseCard({ ex, index }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400 dark:text-gray-500">{ex.sets?.length || 0} sets</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{ex.sets?.length || 0} {t('training.sets')}</span>
           <span className="text-gray-400 dark:text-gray-500 text-sm">{open ? '▲' : '▼'}</span>
         </div>
       </button>
@@ -70,7 +70,7 @@ function ExerciseCard({ ex, index }) {
           {ex.notes && <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-2">📝 {ex.notes}</p>}
           {ex.sets && ex.sets.length > 0
             ? ex.sets.map((s, i) => <SetRow key={s.id || i} set={s} />)
-            : <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">No sets recorded</p>}
+            : <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">t('training.noSets')</p>}
         </div>
       )}
     </div>
@@ -135,7 +135,7 @@ export default function TrainingDetailPage() {
       {showConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 max-w-sm w-full border border-gray-100 dark:border-gray-800">
-            <p className="text-gray-800 dark:text-gray-200 text-sm mb-5">Delete this training? This cannot be undone.</p>
+            <p className="text-gray-800 dark:text-gray-200 text-sm mb-5">{t('training.deleteConfirm')}</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowConfirm(false)} className="btn-secondary">{t('common.cancel')}</button>
               <button onClick={confirmDelete} className="btn-danger">{t('common.delete')}</button>

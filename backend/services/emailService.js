@@ -12,6 +12,11 @@ const nodemailer = require('nodemailer');
 
 let transporter = null;
 
+// Warn loudly in production if APP_URL is not set
+if (process.env.NODE_ENV === 'production' && !process.env.APP_URL) {
+  console.warn('[Email] WARNING: APP_URL is not set. Password reset links will point to localhost!');
+}
+
 function getTransporter() {
   if (!transporter) {
     if (!process.env.EMAIL_HOST) {
@@ -87,7 +92,7 @@ function baseLayout(content) {
 }
 
 async function sendWelcomeEmail({ to, firstName }) {
-  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+  const appUrl = process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://treniko.com' : 'http://localhost:5173');
   return sendEmail({
     to,
     subject: 'Welcome to Treniko! 🏋️',
@@ -124,7 +129,7 @@ async function sendPasswordResetEmail({ to, firstName, resetUrl }) {
 }
 
 async function sendSubscriptionExpiryWarning({ to, firstName, daysLeft, planName }) {
-  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+  const appUrl = process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://treniko.com' : 'http://localhost:5173');
   return sendEmail({
     to,
     subject: `Your Treniko ${planName} plan expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,

@@ -66,10 +66,10 @@ const ProfilePage = () => {
   const handlePasswordChange = async () => {
     setPasswordError('');
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError(t('auth.confirmPassword') + ' does not match'); return;
+      setPasswordError(t('auth.passwordMismatch')); return;
     }
     if (passwordData.newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters'); return;
+      setPasswordError(t('auth.passwordTooShort')); return;
     }
     setPasswordSaving(true);
     try {

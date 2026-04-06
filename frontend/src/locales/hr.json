@@ -235,7 +235,10 @@
     "markDone": "Označi kao gotovo",
     "noExercises": "Nema upisanih vježbi",
     "deleteLog": "Obriši dnevnik treninga",
-    "deleteLogConfirm": "Jeste li sigurni da želite obrisati ovaj dnevnik treninga? Ovo se ne može poništiti."
+    "deleteLogConfirm": "Jeste li sigurni da želite obrisati ovaj dnevnik treninga? Ovo se ne može poništiti.",
+    "noMetrics": "Nema upisanih mjera",
+    "noSets": "Nema upisanih serija",
+    "deleteConfirm": "Obrisati ovaj trening? Ovo se ne može poništiti."
   },
   "exercises": {
     "title": "Biblioteka vježbi",
@@ -405,7 +408,20 @@
     "viewGroup": "Prikaži grupu",
     "openSession": "Otvori sesiju",
     "updateAttendance": "Ažuriraj prisutnost",
-    "groupSession": "Grupna sesija"
+    "groupSession": "Grupna sesija",
+    "attendance": "Prisutnost",
+    "present": "prisutnih",
+    "allPresent": "Svi ✓",
+    "allAbsent": "Svi ✗",
+    "sessionDetails": "Detalji sesije",
+    "workoutType": "Vrsta treninga",
+    "exerciseLog": "Dnevnik vježbi",
+    "sharedWorkout": "Zajednički trening za sve članove",
+    "markAllComplete": "✅ Označi sve kao prisutne",
+    "saveSession": "Spremi sesiju",
+    "backToGroup": "Natrag na grupu",
+    "locationPlaceholder": "npr. Glavni gym",
+    "sessionNotesPlaceholder": "Plan treninga, upute, opažanja..."
   },
   "subscription": {
     "title": "Pretplata",

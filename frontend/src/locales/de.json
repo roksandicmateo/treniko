@@ -235,7 +235,10 @@
     "markDone": "Als erledigt markieren",
     "noExercises": "Keine Übungen protokolliert",
     "deleteLog": "Trainingsprotokoll löschen",
-    "deleteLogConfirm": "Sind Sie sicher, dass Sie dieses Trainingsprotokoll löschen möchten? Dies kann nicht rückgängig gemacht werden."
+    "deleteLogConfirm": "Sind Sie sicher, dass Sie dieses Trainingsprotokoll löschen möchten? Dies kann nicht rückgängig gemacht werden.",
+    "noMetrics": "Keine Messwerte erfasst",
+    "noSets": "Keine Sätze erfasst",
+    "deleteConfirm": "Dieses Training löschen? Dies kann nicht rückgängig gemacht werden."
   },
   "exercises": {
     "title": "Übungsbibliothek",
@@ -405,7 +408,20 @@
     "viewGroup": "Gruppe anzeigen",
     "openSession": "Einheit öffnen",
     "updateAttendance": "Anwesenheit aktualisieren",
-    "groupSession": "Gruppeneinheit"
+    "groupSession": "Gruppeneinheit",
+    "attendance": "Anwesenheit",
+    "present": "anwesend",
+    "allPresent": "Alle ✓",
+    "allAbsent": "Alle ✗",
+    "sessionDetails": "Einheitendetails",
+    "workoutType": "Trainingstyp",
+    "exerciseLog": "Übungsprotokoll",
+    "sharedWorkout": "Gemeinsames Training für alle Mitglieder",
+    "markAllComplete": "✅ Alle als anwesend markieren",
+    "saveSession": "Einheit speichern",
+    "backToGroup": "Zurück zur Gruppe",
+    "locationPlaceholder": "z.B. Haupttrainingsfläche",
+    "sessionNotesPlaceholder": "Trainingsplan, Hinweise, Beobachtungen..."
   },
   "subscription": {
     "title": "Abonnement",

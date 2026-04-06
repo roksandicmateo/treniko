@@ -235,7 +235,10 @@
     "markDone": "Mark Done",
     "noExercises": "No exercises logged",
     "deleteLog": "Delete Training Log",
-    "deleteLogConfirm": "Are you sure you want to delete this training log? This cannot be undone."
+    "deleteLogConfirm": "Are you sure you want to delete this training log? This cannot be undone.",
+    "noMetrics": "No metrics recorded",
+    "noSets": "No sets recorded",
+    "deleteConfirm": "Delete this training? This cannot be undone."
   },
   "exercises": {
     "title": "Exercise Library",
@@ -405,7 +408,20 @@
     "viewGroup": "View Group",
     "openSession": "Open Session",
     "updateAttendance": "Update Attendance",
-    "groupSession": "Group Session"
+    "groupSession": "Group Session",
+    "attendance": "Attendance",
+    "present": "present",
+    "allPresent": "All ✓",
+    "allAbsent": "All ✗",
+    "sessionDetails": "Session Details",
+    "workoutType": "Workout Type",
+    "exerciseLog": "Exercise Log",
+    "sharedWorkout": "Shared workout for all members",
+    "markAllComplete": "✅ Mark All Complete",
+    "saveSession": "Save Session",
+    "backToGroup": "Back to Group",
+    "locationPlaceholder": "e.g. Main gym floor",
+    "sessionNotesPlaceholder": "Workout plan, cues, observations..."
   },
   "subscription": {
     "title": "Subscription",

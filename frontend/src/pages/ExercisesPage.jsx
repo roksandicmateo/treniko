@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showToast } from '../components/Toast';
+import ConfirmModal from '../components/ConfirmModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -273,23 +274,16 @@ export default function ExercisesPage() {
         <ExerciseModal exercise={editing} onClose={() => { setModalOpen(false); setEditing(null); }} onSaved={handleSaved} />
       )}
 
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full p-6 border border-gray-100 dark:border-gray-800">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">{t('exercises.deleteConfirm')}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-              Delete <strong>{deleteConfirm.name}</strong>?
-            </p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg mb-5">
-              ⚠️ {t('exercises.deleteWarning')}
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 btn-secondary">{t('common.cancel')}</button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="flex-1 btn-danger">{t('common.delete')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => handleDelete(deleteConfirm)}
+        title={t('exercises.deleteConfirm')}
+        message={`${t('common.delete')} "${deleteConfirm?.name}"? ⚠️ ${t('exercises.deleteWarning')}`}
+        type="danger"
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', cancelText = 'Cancel', type = 'warning' }) => {
+const ConfirmModal = ({ isOpen, onClose, onCancel, onConfirm, title, message, confirmText = 'Confirm', cancelText = 'Cancel', type = 'warning', loading = false }) => {
+  const handleClose = onClose || onCancel || (() => {});
   if (!isOpen) return null;
 
   const getColors = () => {
@@ -44,7 +45,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
 
         <div className="flex space-x-3">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
           >
             {cancelText}
@@ -52,11 +53,12 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
           <button
             onClick={() => {
               onConfirm();
-              onClose();
+              handleClose();
             }}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium ${colors.button}`}
+            disabled={loading}
+            className={`flex-1 px-4 py-2 rounded-lg font-medium ${colors.button} disabled:opacity-50`}
           >
-            {confirmText}
+            {loading ? '…' : confirmText}
           </button>
         </div>
       </div>

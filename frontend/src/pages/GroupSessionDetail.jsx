@@ -11,11 +11,12 @@ const token   = () => localStorage.getItem('token');
 const WORKOUT_TYPES = ['Gym', 'Cardio', 'HIIT', 'Bodyweight', 'Custom'];
 const SESSION_TYPES = ['Strength Training', 'Cardio', 'HIIT', 'Yoga', 'Pilates', 'Boxing', 'Consultation', 'Other'];
 
+// Labels resolved via t() in render, not at module level
 const STATUS_CONFIG = {
-  scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-700' },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-700' },
-  cancelled: { label: 'Cancelled', color: 'bg-gray-100 text-gray-500' },
-  no_show:   { label: 'No-show',   color: 'bg-red-100 text-red-600' },
+  scheduled: { labelKey: 'sessions.scheduled', color: 'bg-blue-100 text-blue-700' },
+  completed: { labelKey: 'sessions.completed', color: 'bg-green-100 text-green-700' },
+  cancelled: { labelKey: 'sessions.cancelled', color: 'bg-gray-100 text-gray-500' },
+  no_show:   { labelKey: 'sessions.noShow',    color: 'bg-red-100 text-red-600' },
 };
 
 export default function GroupSessionDetail() {
@@ -123,7 +124,7 @@ export default function GroupSessionDetail() {
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={() => navigate(`/dashboard/groups/${groupId}`)}
-          className="text-gray-400 hover:text-gray-600 text-sm">← Group</button>
+          className="text-gray-400 hover:text-gray-600 text-sm">← {t('groups.title')}</button>
         <div className="flex items-center gap-3 flex-1">
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
             style={{ backgroundColor: session.group_color || '#0ea5e9' }}>
@@ -138,10 +139,10 @@ export default function GroupSessionDetail() {
         </div>
         <div className="flex gap-2">
           <button onClick={handleMarkAllComplete}
-            className="btn-secondary text-sm">✅ Mark All Complete</button>
+            className="btn-secondary text-sm">{t('groups.markAllComplete')}</button>
           <button onClick={handleSave} disabled={saving}
             className="btn-primary text-sm disabled:opacity-50">
-            {saving ? t('common.saving') : 'Save Session'}
+            {saving ? t('common.saving') : t('groups.saveSession')}
           </button>
         </div>
       </div>
@@ -155,7 +156,7 @@ export default function GroupSessionDetail() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
             <div>
               <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Attendance</h2>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{attendedCount}/{attendance.length} present</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{attendedCount}/{attendance.length} {t('groups.present')}</p>
             </div>
             <div className="flex gap-1">
               <button onClick={markAllPresent}
@@ -195,7 +196,7 @@ export default function GroupSessionDetail() {
                   {/* Status badge for non-binary states */}
                   {(a.status === 'cancelled' || a.status === 'no_show') && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[a.status]?.color}`}>
-                      {STATUS_CONFIG[a.status]?.label}
+                      {t(STATUS_CONFIG[a.status]?.labelKey)}
                     </span>
                   )}
                 </div>
@@ -228,13 +229,13 @@ export default function GroupSessionDetail() {
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
               <input type="text" value={location} onChange={e => setLocation(e.target.value)}
-                className="input text-sm" placeholder="e.g. Main gym floor" />
+                className="input text-sm" placeholder={t('groups.locationPlaceholder')} />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Session Notes</label>
               <textarea value={notes} onChange={e => setNotes(e.target.value)}
-                rows={3} className="input text-sm" placeholder="Workout plan, cues, observations..." />
+                rows={3} className="input text-sm" placeholder={t('groups.sessionNotesPlaceholder')} />
             </div>
 
             <div>
@@ -247,7 +248,7 @@ export default function GroupSessionDetail() {
                         ? STATUS_CONFIG[s]?.color + ' border-current'
                         : 'border-gray-200 text-gray-500 hover:border-gray-300'
                     }`}>
-                    {STATUS_CONFIG[s]?.label}
+                    {t(STATUS_CONFIG[s]?.labelKey)}
                   </button>
                 ))}
               </div>
@@ -279,10 +280,10 @@ export default function GroupSessionDetail() {
       {/* Save button at bottom for convenience */}
       <div className="flex justify-end gap-3 pt-2">
         <button onClick={() => navigate(`/dashboard/groups/${groupId}`)} className="btn-secondary">
-          Back to Group
+          t('groups.backToGroup')
         </button>
         <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-50">
-          {saving ? t('common.saving') : 'Save Session'}
+          {saving ? t('common.saving') : t('groups.saveSession')}
         </button>
       </div>
     </div>

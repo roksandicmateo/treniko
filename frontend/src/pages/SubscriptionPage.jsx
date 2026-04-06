@@ -228,7 +228,7 @@ const SubscriptionPage = () => {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setUpgradeModalOpen(false)} className="flex-1 btn-secondary" disabled={processing}>{t('common.cancel')}</button>
-              <button onClick={confirmUpgrade} className="flex-1 btn-primary" disabled={processing}>{processing ? t('common.loading') : 'Confirm'}</button>
+              <button onClick={confirmUpgrade} className="flex-1 btn-primary" disabled={processing}>{processing ? t('common.loading') : t('common.confirm')}</button>
             </div>
           </div>
         </div>
