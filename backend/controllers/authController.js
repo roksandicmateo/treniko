@@ -157,6 +157,11 @@ const register = async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    // Send welcome email (fire-and-forget)
+    sendWelcomeEmail({ to: email, firstName }).catch(err =>
+      console.error('[Email] Welcome email failed:', err.message)
+    );
+
     res.status(201).json({
       success: true,
       token,
