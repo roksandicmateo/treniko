@@ -33,38 +33,35 @@ export default function TrainingsPage() {
   const [confirmOpen,  setConfirmOpen]  = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const FILTERS = [
-    { key: 'All',       label: t('common.all') },
-    { key: 'Upcoming',  label: t('training.upcoming') },
-    { key: 'Past',      label: t('training.past') },
-    { key: 'Completed', label: t('training.completed') },
-  ];
+  const FILTER_KEYS = ['All', 'Upcoming', 'Past', 'Completed'];
+  const FILTER_LABELS = {
+    All:       () => t('common.all'),
+    Upcoming:  () => t('training.upcoming'),
+    Past:      () => t('training.past'),
+    Completed: () => t('training.completed'),
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, limit: PAGE_SIZE };
-      if (search)     params.search = search;
-
-      // Map UI filter to date params
+      if (search) params.search = search;
       const now = new Date().toISOString();
-      if (filter === 'Upcoming')  params.from = now;
-      else if (filter === 'Past') params.to   = now;
+      if (filter === 'Upcoming') params.from = now;
+      else if (filter === 'Past') params.to = now;
 
       const res = await trainingService.getAll(params);
       const raw = res.data;
-
-      // Backend now returns { data, total, page, limit, pages }
-      // But keep backward compat if it still returns array
       let rows = Array.isArray(raw) ? raw : (raw.data || []);
       const totalCount = Array.isArray(raw) ? rows.length : (raw.total || rows.length);
 
-      // Client-side filters that backend doesn't handle
-      if (filter === 'Completed') rows = rows.filter(tr => tr.is_completed);
-      if (typeFilter)             rows = rows.filter(tr => tr.workout_type === typeFilter);
+      if (filter === 'Completed') rows = rows.filter(row => row.is_completed);
+      if (typeFilter) rows = rows.filter(row => row.workout_type === typeFilter);
 
       setTrainings(rows);
       setTotal(totalCount);
+    } catch (err) {
+      console.error('Failed to load trainings:', err);
     } finally {
       setLoading(false);
     }
@@ -72,16 +69,11 @@ export default function TrainingsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Debounce search input
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearch(searchInput);
-      setPage(1);
-    }, 350);
+    const timer = setTimeout(() => { setSearch(searchInput); setPage(1); }, 350);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Reset page when filter changes
   useEffect(() => { setPage(1); }, [filter, typeFilter]);
 
   function confirmDelete(id, e) {
@@ -93,25 +85,27 @@ export default function TrainingsPage() {
   async function handleDeleteConfirmed() {
     if (!deleteTarget) return;
     await trainingService.delete(deleteTarget);
-    setTrainings(prev => prev.filter(tr => tr.id !== deleteTarget));
-    setTotal(t => t - 1);
+    setTrainings(prev => prev.filter(row => row.id !== deleteTarget));
+    setTotal(prev => prev - 1);
     setConfirmOpen(false);
     setDeleteTarget(null);
   }
 
-  async function toggleCompleted(tr, e) {
+  async function toggleCompleted(training, e) {
     e.stopPropagation();
-    const updated = await trainingService.update(tr.id, { isCompleted: !tr.is_completed });
-    setTrainings(prev => prev.map(x => x.id === tr.id ? updated.data : x));
-    if (tr.session_id) {
+    const updated = await trainingService.update(training.id, { isCompleted: !training.is_completed });
+    setTrainings(prev => prev.map(row => row.id === training.id ? updated.data : row));
+    if (training.session_id) {
       try {
-        await sessionsAPI.update(tr.session_id, { isCompleted: !tr.is_completed });
-      } catch (err) { console.warn('Could not sync:', err); }
+        await sessionsAPI.update(training.session_id, { isCompleted: !training.is_completed });
+      } catch (err) {
+        console.warn('Could not sync session:', err);
+      }
     }
   }
 
-  const types   = [...new Set(trainings.map(tr => tr.workout_type))];
-  const locale  = i18n.language === 'hr' ? 'hr-HR' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
+  const types = [...new Set(trainings.map(row => row.workout_type).filter(Boolean))];
+  const locale = i18n.language === 'hr' ? 'hr-HR' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
@@ -124,34 +118,31 @@ export default function TrainingsPage() {
         <button onClick={() => setModalOpen(true)} className="btn-primary">{t('training.addTraining')}</button>
       </div>
 
-      {/* Search bar */}
+      {/* Search */}
       <div className="relative mb-4">
         <input
-          type="text"
-          value={searchInput}
+          type="text" value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
-          placeholder={`${t('common.search')} ${t('training.title').toLowerCase()}...`}
+          placeholder={`${t('common.search')}...`}
           className="input pl-9"
         />
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
         {searchInput && (
-          <button
-            onClick={() => { setSearchInput(''); setSearch(''); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >×</button>
+          <button onClick={() => { setSearchInput(''); setSearch(''); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">×</button>
         )}
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {FILTERS.map(f => (
-          <button key={f.key} onClick={() => setFilter(f.key)}
+        {FILTER_KEYS.map(key => (
+          <button key={key} onClick={() => setFilter(key)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === f.key
+              filter === key
                 ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}>
-            {f.label}
+            {FILTER_LABELS[key]()}
           </button>
         ))}
         {types.length > 0 && <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 self-center" />}
@@ -189,57 +180,52 @@ export default function TrainingsPage() {
       ) : (
         <>
           <div className="space-y-2">
-            {trainings.map(tr => (
-              <div key={tr.id} onClick={() => navigate(`/dashboard/trainings/${tr.id}`)}
+            {trainings.map(training => (
+              <div key={training.id} onClick={() => navigate(`/dashboard/trainings/${training.id}`)}
                 className="flex items-center gap-3 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors group">
-                <button onClick={e => toggleCompleted(tr, e)}
+                <button onClick={e => toggleCompleted(training, e)}
                   className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-colors ${
-                    tr.is_completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-600 hover:border-green-400'
+                    training.is_completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-600 hover:border-green-400'
                   }`}>
-                  {tr.is_completed && <span className="text-white text-xs flex items-center justify-center w-full h-full">✓</span>}
+                  {training.is_completed && <span className="text-white text-xs flex items-center justify-center w-full h-full">✓</span>}
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`font-medium truncate ${tr.is_completed ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
-                      {tr.title || `${tr.first_name} ${tr.last_name}`}
+                    <p className={`font-medium truncate ${training.is_completed ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
+                      {training.title || `${training.first_name} ${training.last_name}`}
                     </p>
-                    {tr.title && <span className="text-gray-400 dark:text-gray-500 text-xs">{tr.first_name} {tr.last_name}</span>}
+                    {training.title && <span className="text-gray-400 dark:text-gray-500 text-xs">{training.first_name} {training.last_name}</span>}
                   </div>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                    {new Date(tr.start_time).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
-                    {tr.location && ` · ${tr.location}`}
+                    {new Date(training.start_time).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                    {training.location && ` · ${training.location}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium hidden sm:inline-flex ${TYPE_COLORS[tr.workout_type] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
-                    {tr.workout_type}
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium hidden sm:inline-flex ${TYPE_COLORS[training.workout_type] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
+                    {training.workout_type}
                   </span>
-                  <button onClick={e => confirmDelete(tr.id, e)}
+                  <button onClick={e => confirmDelete(training.id, e)}
                     className="text-gray-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">🗑</button>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4 px-1">
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t('common.showing')} {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} {t('common.of')} {total}
               </p>
               <div className="flex items-center gap-1">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed">
-                  ←
-                </button>
-                {[...Array(totalPages)].map((_, i) => {
-                  const pg = i + 1;
+                <button onClick={() => setPage(prev => Math.max(1, prev - 1))} disabled={page === 1}
+                  className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed">←</button>
+                {[...Array(totalPages)].map((_, idx) => {
+                  const pg = idx + 1;
                   if (totalPages <= 7 || Math.abs(pg - page) <= 2 || pg === 1 || pg === totalPages) {
                     return (
                       <button key={pg} onClick={() => setPage(pg)}
-                        className={`w-8 h-8 text-sm rounded-lg font-medium ${
-                          page === pg ? 'bg-blue-600 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                        }`}>
+                        className={`w-8 h-8 text-sm rounded-lg font-medium ${page === pg ? 'bg-blue-600 text-white' : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
                         {pg}
                       </button>
                     );
@@ -247,10 +233,8 @@ export default function TrainingsPage() {
                   if (Math.abs(pg - page) === 3) return <span key={pg} className="text-gray-400 px-1">…</span>;
                   return null;
                 })}
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed">
-                  →
-                </button>
+                <button onClick={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page === totalPages}
+                  className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed">→</button>
               </div>
             </div>
           )}
@@ -258,9 +242,11 @@ export default function TrainingsPage() {
       )}
 
       <AddTrainingModal isOpen={modalOpen} onClose={() => setModalOpen(false)}
-        onSaved={tr => { setModalOpen(false); navigate(`/dashboard/trainings/${tr.id}`); }} />
+        onSaved={training => { setModalOpen(false); navigate(`/dashboard/trainings/${training.id}`); }} />
 
-      <ConfirmModal isOpen={confirmOpen} title={t('common.delete')} message={t('common.confirm')}
+      <ConfirmModal isOpen={confirmOpen}
+        title={t('common.delete')}
+        message={t('training.deleteConfirm')}
         confirmText={t('common.delete')} type="danger"
         onConfirm={handleDeleteConfirmed}
         onClose={() => { setConfirmOpen(false); setDeleteTarget(null); }} />
