@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
+import { sessionsAPI } from '../services/api';
 import AddTrainingModal from '../components/training/AddTrainingModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { TrainingListSkeleton } from '../components/SkeletonLoader';
@@ -104,9 +105,7 @@ export default function TrainingsPage() {
     setTrainings(prev => prev.map(x => x.id === tr.id ? updated.data : x));
     if (tr.session_id) {
       try {
-        await import('../services/api').then(({ sessionsAPI }) =>
-          sessionsAPI.update(tr.session_id, { isCompleted: !tr.is_completed })
-        );
+        await sessionsAPI.update(tr.session_id, { isCompleted: !tr.is_completed });
       } catch (err) { console.warn('Could not sync:', err); }
     }
   }
