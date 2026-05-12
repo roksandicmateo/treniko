@@ -81,7 +81,24 @@ const Clients = () => {
   };
 
   const handleArchive    = (e, client) => { e.stopPropagation(); showConfirm(t('clients.archive'), t('clients.archiveConfirm'), () => handleSetStatus(client, { isArchived: true, isActive: false }, t('clients.archived')), 'warning'); };
-  const handleReactivate = (e, client) => { e.stopPropagation(); handleSetStatus(client, { isArchived: false, isActive: true }, t('clients.active')); };
+  const handleReactivate = async (e, client) => {
+    e.stopPropagation();
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/clients/${client.id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: false, isActive: true })
+      });
+      if (res.status === 403) {
+        const data = await res.json();
+        if (data.upgradeRequired) { setLimitModalOpen(true); loadSubscription(); return; }
+      }
+      if (!res.ok) { showToast(t('common.error'), 'error'); return; }
+      showToast(t('clients.active'), 'success');
+      loadClients(); loadSubscription();
+    } catch { showToast(t('common.error'), 'error'); }
+  };
   const handleDeactivate = (e, client) => { e.stopPropagation(); handleSetStatus(client, { isActive: false }, t('clients.inactive')); };
 
   const handleAdd = () => {

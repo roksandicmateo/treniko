@@ -303,6 +303,44 @@ router.put('/:id/sessions/:sessionId/attendance/:clientId', async (req, res) => 
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+
+// ── GET /api/groups/sessions/for-client/:clientId — FOR_CLIENT_ENDPOINT ──────
+// Sve grupne sesije za određenog klijenta (across all groups)
+router.get('/sessions/for-client/:clientId', async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { clientId } = req.params;
+
+    const { rows } = await pool.query(
+      `SELECT
+         gs.id,
+         gs.session_date::text AS session_date,
+         gs.start_time,
+         gs.end_time,
+         gs.session_type,
+         gs.notes,
+         gsa.status,
+         (gsa.status = 'completed') AS is_completed,
+         g.id   AS group_id,
+         g.name AS group_name,
+         g.color AS group_color,
+         'group' AS session_kind
+       FROM group_session_attendance gsa
+       JOIN group_sessions gs ON gs.id = gsa.group_session_id
+       JOIN groups g          ON g.id  = gs.group_id
+       WHERE gsa.client_id = $1
+         AND gs.tenant_id  = $2
+       ORDER BY gs.session_date DESC, gs.start_time DESC`,
+      [clientId, tenantId]
+    );
+
+    res.json({ success: true, sessions: rows });
+  } catch (e) {
+    console.error('for-client group sessions error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ── GET /api/groups/sessions/calendar — for calendar display ─────────────────
 // Returns group sessions formatted for FullCalendar
 router.get('/sessions/calendar', async (req, res) => {

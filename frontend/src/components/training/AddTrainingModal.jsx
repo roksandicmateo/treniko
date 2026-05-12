@@ -1,18 +1,29 @@
 import { useState, useEffect } from 'react';
 import { trainingService, templateService } from '../../services/trainingService';
 import ExerciseBuilder from './ExerciseBuilder';
+import TimeInput from '../TimeInput';
 import { useTranslation } from 'react-i18next';
 
 const WORKOUT_TYPES = ['Gym', 'Cardio', 'HIIT', 'Bodyweight', 'Custom'];
 
+function toDatePart(isoString) {
+  if (!isoString) return new Date().toISOString().slice(0, 10);
+  return new Date(isoString).toISOString().slice(0, 10);
+}
+function toTimePart(isoString) {
+  if (!isoString) return '09:00';
+  return new Date(isoString).toISOString().slice(11, 16);
+}
+function addHourTime(timeStr) {
+  if (!timeStr) return '10:00';
+  const [h, m] = timeStr.split(':').map(Number);
+  const newH = Math.min(h + 1, 23);
+  return `${String(newH).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+// Legacy compat
 function toLocalInput(isoString) {
   if (!isoString) return '';
   return new Date(isoString).toISOString().slice(0, 16);
-}
-function addHour(isoString) {
-  const d = new Date(isoString || Date.now());
-  d.setHours(d.getHours() + 1);
-  return d.toISOString().slice(0, 16);
 }
 
 export default function AddTrainingModal({
@@ -22,7 +33,8 @@ export default function AddTrainingModal({
   sessionId = null, overrideEndTime = null,
 }) {
   const { t } = useTranslation();
-  const defaultStart = initialStartTime ? toLocalInput(initialStartTime) : new Date().toISOString().slice(0, 16);
+  const defaultDate = initialStartTime ? toDatePart(initialStartTime) : new Date().toISOString().slice(0,10);
+  const defaultTime = initialStartTime ? toTimePart(initialStartTime) : '09:00';
 
   const [clients,  setClients]  = useState(clientsProp || []);
   const [templates, setTemplates] = useState([]);
@@ -33,8 +45,9 @@ export default function AddTrainingModal({
 
   const [form, setForm] = useState({
     clientId: initialClientId || '', title: '', workoutType: 'Gym',
-    startTime: defaultStart,
-    endTime: overrideEndTime ? toLocalInput(overrideEndTime) : addHour(defaultStart),
+    sessionDate: defaultDate,
+    startTime: defaultTime,
+    endTime: overrideEndTime ? toTimePart(overrideEndTime) : addHourTime(defaultTime),
     notes: '', location: '', exercises: [],
   });
 
@@ -51,7 +64,8 @@ export default function AddTrainingModal({
       setForm({
         clientId: editTraining.client_id || '', title: editTraining.title || '',
         workoutType: editTraining.workout_type || 'Gym',
-        startTime: toLocalInput(editTraining.start_time), endTime: toLocalInput(editTraining.end_time),
+        sessionDate: toDatePart(editTraining.start_time),
+        startTime: toTimePart(editTraining.start_time), endTime: toTimePart(editTraining.end_time),
         notes: editTraining.notes || '', location: editTraining.location || '',
         exercises: (editTraining.exercises || []).map(ex => ({
           exerciseId: ex.exercise_id, exerciseName: ex.exercise_name, notes: ex.notes || '',
@@ -64,7 +78,9 @@ export default function AddTrainingModal({
       });
     } else {
       const start = initialStartTime ? toLocalInput(initialStartTime) : new Date().toISOString().slice(0, 16);
-      setForm({ clientId: initialClientId || '', title: '', workoutType: 'Gym', startTime: start, endTime: addHour(start), notes: '', location: '', exercises: [] });
+      const sDate = initialStartTime ? toDatePart(initialStartTime) : new Date().toISOString().slice(0,10);
+      const sTime = initialStartTime ? toTimePart(initialStartTime) : '09:00';
+      setForm({ clientId: initialClientId || '', title: '', workoutType: 'Gym', sessionDate: sDate, startTime: sTime, endTime: addHourTime(sTime), notes: '', location: '', exercises: [] });
     }
     setError(''); setSaveAsTemplate(false); setTemplateName('');
   }, [isOpen, editTraining]); // eslint-disable-line
@@ -88,13 +104,15 @@ export default function AddTrainingModal({
     if (!form.clientId)              return setError(t('sessions.selectClient'));
     if (!form.startTime)             return setError('Start time is required');
     if (!form.endTime)               return setError('End time is required');
-    if (form.endTime <= form.startTime) return setError('End time must be after start time');
+    if (form.endTime <= form.startTime && form.endTime !== '00:00') return setError('End time must be after start time');
     if (form.exercises.length === 0) return setError('Add at least one exercise');
     if (saveAsTemplate && !templateName.trim()) return setError('Enter a template name');
     setSaving(true);
     try {
+      const startISO = `${form.sessionDate}T${form.startTime}:00`;
+      const endISO   = `${form.sessionDate}T${form.endTime}:00`;
       const payload = {
-        ...form, sessionId: sessionId || undefined,
+        ...form, startTime: startISO, endTime: endISO, sessionId: sessionId || undefined,
         exercises: form.exercises.map(ex => ({
           ...ex, sets: ex.sets.map(s => ({
             reps:            s.reps            !== '' ? Number(s.reps)            : null,
@@ -180,16 +198,19 @@ export default function AddTrainingModal({
           </div>
 
           {/* Date/time */}
+          <div>
+            <label className={labelCls}>{t('sessions.date')} <span className="text-red-400">*</span></label>
+            <input type="date" className={inputCls} value={form.sessionDate}
+              onChange={e => setForm(f => ({ ...f, sessionDate: e.target.value }))} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{t('sessions.startTime')} <span className="text-red-400">*</span></label>
-              <input type="datetime-local" className={inputCls} value={form.startTime}
-                onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} />
+              <TimeInput value={form.startTime} onChange={v => setForm(f => ({ ...f, startTime: v }))} required />
             </div>
             <div>
               <label className={labelCls}>{t('sessions.endTime')} <span className="text-red-400">*</span></label>
-              <input type="datetime-local" className={inputCls} value={form.endTime}
-                onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} />
+              <TimeInput value={form.endTime} onChange={v => setForm(f => ({ ...f, endTime: v }))} required />
             </div>
           </div>
 
@@ -225,10 +246,13 @@ export default function AddTrainingModal({
 
         {/* Footer */}
         <div className="px-5 pb-5 pt-3 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
-          <button type="button" onClick={handleSave} disabled={saving}
-            className="w-full btn-primary py-3.5 text-base font-semibold disabled:opacity-50">
-            {saving ? t('common.saving') : editTraining ? `${t('common.save')} ${t('training.title').slice(0, -1)}` : t('training.addTraining')}
-          </button>
+          <div className="flex space-x-3">
+            <button type="button" onClick={onClose} className="flex-1 btn-secondary" disabled={saving}>{t('common.cancel')}</button>
+            <button type="button" onClick={handleSave} disabled={saving}
+              className="flex-1 btn-primary disabled:opacity-50">
+              {saving ? t('common.saving') : editTraining ? t('common.save') : t('training.addTraining')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

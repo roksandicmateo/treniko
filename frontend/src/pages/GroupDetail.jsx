@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { showToast } from '../components/Toast';
 import SessionModal from '../components/SessionModal';
+import TimeInput from '../components/TimeInput';
 import ConfirmModal from '../components/ConfirmModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -16,7 +17,7 @@ const STATUS_CONFIG = {
   no_show:   { label: 'sessions.legend_noshow',    color: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400',        dot: 'bg-red-500' },
 };
 
-const fmt  = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const fmt  = (d) => new Date(((d || '').slice(0, 10)) + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 const fmtT = (t) => t?.slice(0, 5) || '';
 
 // ── Schedule Group Session Modal ──────────────────────────────────────────────
@@ -46,7 +47,7 @@ function ScheduleGroupSessionModal({ group, onClose, onSaved }) {
     finally { setSaving(false); }
   };
 
-  const lbl = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+  const lbl = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -66,11 +67,11 @@ function ScheduleGroupSessionModal({ group, onClose, onSaved }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={lbl}>{t('sessions.startTime')} *</label>
-              <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} className="input" />
+              <TimeInput value={form.startTime} onChange={v => setForm(f => ({ ...f, startTime: v }))} />
             </div>
             <div>
               <label className={lbl}>{t('sessions.endTime')} *</label>
-              <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} className="input" />
+              <TimeInput value={form.endTime} onChange={v => setForm(f => ({ ...f, endTime: v }))} />
             </div>
           </div>
           <div>

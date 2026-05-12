@@ -33,14 +33,14 @@ const login = async (req, res) => {
 
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
-      await recordFailedLogin(email); // ← track failed attempt
+      await recordFailedLogin(email);
       return res.status(401).json({
         error: 'Authentication failed',
         message: 'Invalid email or password'
       });
     }
 
-    await resetFailedLogins(email); // ← clear counter on success
+    await resetFailedLogins(email);
 
     const token = jwt.sign(
       {
@@ -79,7 +79,7 @@ const register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, businessName } = req.body;
 
-    if (!email || !password || !firstName || !lastName || !businessName) {
+    if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({
         error: 'Validation error',
         message: 'All fields are required'
@@ -102,7 +102,7 @@ const register = async (req, res) => {
 
     const tenantResult = await query(
       'INSERT INTO tenants (name) VALUES ($1) RETURNING id',
-      [businessName]
+      [businessName || `${firstName} ${lastName}`]
     );
     const tenantId = tenantResult.rows[0].id;
 

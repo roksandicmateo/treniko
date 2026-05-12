@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSelector from '../components/LanguageSelector';
+import PasswordInput from '../components/PasswordInput';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -53,8 +54,7 @@ const Login = () => {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               {t('auth.password')}
             </label>
-            <input type="password" id="password" name="password" value={formData.password}
-              onChange={handleChange} required className="input" placeholder="••••••••" />
+            <PasswordInput id="password" name="password" value={formData.password} onChange={handleChange} required />
           </div>
 
           <div className="flex justify-end">

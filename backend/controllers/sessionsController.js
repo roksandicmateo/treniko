@@ -81,7 +81,7 @@ const getSessionById = async (req, res) => {
 const createSession = async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { clientId, sessionDate, startTime, endTime, sessionType, notes, force } = req.body;
+    const { clientId, sessionDate, startTime, endTime, sessionType, notes, force, isGroup, groupTitle, attendees } = req.body; // ADHOC_GROUP_CREATE
 
     if (!clientId || !sessionDate || !startTime || !endTime) {
       return res.status(400).json({ error: 'Validation error', message: 'Client ID, date, start time, and end time are required' });

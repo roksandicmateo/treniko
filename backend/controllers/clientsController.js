@@ -187,6 +187,30 @@ const {
   dateOfBirth, goals, injuries, dietNotes, notes, isArchived
 } = req.body;
 
+
+    // REACTIVATION_LIMIT_CHECK — provjerava limit pri aktivaciji klijenta
+    if (isActive === true) {
+      try {
+        const limitResult = await queryWithTenant(
+          `SELECT max_clients, clients_count, clients_limit_reached
+           FROM tenant_subscription_status WHERE tenant_id = $1`,
+          [tenantId], tenantId
+        );
+        if (limitResult.rows.length > 0 && limitResult.rows[0].clients_limit_reached) {
+          return res.status(403).json({
+            error: 'Client limit reached',
+            message: `You've reached your plan limit of ${limitResult.rows[0].max_clients} active clients. Upgrade to add more.`,
+            limit: limitResult.rows[0].max_clients,
+            current: limitResult.rows[0].clients_count,
+            upgradeRequired: true,
+          });
+        }
+      } catch (limitErr) {
+        console.error('Limit check error (non-fatal):', limitErr.message);
+      }
+    }
+    // END REACTIVATION_LIMIT_CHECK
+
     const checkResult = await queryWithTenant(
       'SELECT id FROM clients WHERE id = $1 AND tenant_id = $2',
       [id, tenantId], tenantId

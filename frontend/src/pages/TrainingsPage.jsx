@@ -25,6 +25,7 @@ export default function TrainingsPage() {
   const [total,        setTotal]        = useState(0);
   const [page,         setPage]         = useState(1);
   const [loading,      setLoading]      = useState(true);
+  const [groupSessions, setGroupSessions] = useState([]); // GROUP_SESSIONS_TRAININGS
   const [filter,       setFilter]       = useState('All');
   const [typeFilter,   setTypeFilter]   = useState('');
   const [search,       setSearch]       = useState('');
@@ -44,6 +45,31 @@ export default function TrainingsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Dohvati grupne sesije paralelno
+      const API_URL_LOCAL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const token = localStorage.getItem('token');
+      const _gsNow = new Date();
+      const from = new Date(_gsNow.getFullYear() - 2, 0, 1).toISOString().split('T')[0];
+      const to   = new Date(_gsNow.getFullYear() + 1, 11, 31).toISOString().split('T')[0];
+      fetch(`${API_URL_LOCAL}/groups/sessions/calendar?startDate=${from}&endDate=${to}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(r => r.json()).then(d => {
+        const gs = (d.sessions || []).map(s => ({
+          id:           `group-${s.id}`,
+          title:        `👥 ${s.group_name}`,
+          start_time:   s.start_time,
+          session_date: (s.session_date || '').slice(0, 10),
+          workout_type: s.session_type || 'Group',
+          is_completed: s.status === 'completed',
+          status:       s.status,
+          group_name:   s.group_name,
+          group_id:     s.group_id,
+          session_kind: 'group',
+          first_name:   s.group_name,
+          last_name:    '',
+        }));
+        setGroupSessions(gs);
+      }).catch(() => {});
       const params = { page, limit: PAGE_SIZE };
       if (search) params.search = search;
       const now = new Date().toISOString();
@@ -104,7 +130,21 @@ export default function TrainingsPage() {
     }
   }
 
-  const types = [...new Set(trainings.map(row => row.workout_type).filter(Boolean))];
+  // Merge individualnih i grupnih sesija za prikaz
+  const allItems = [
+    ...trainings,
+    ...groupSessions.filter(gs => {
+      if (filter === 'Completed') return gs.is_completed;
+      if (filter === 'Upcoming')  return !gs.is_completed && gs.session_date >= new Date().toISOString().split('T')[0];
+      if (filter === 'Past')      return gs.session_date <  new Date().toISOString().split('T')[0];
+      return true;
+    }).filter(gs => !search || gs.group_name?.toLowerCase().includes(search.toLowerCase())),
+  ].sort((a, b) => {
+    const aK = `${a.session_date}T${a.start_time}`;
+    const bK = `${b.session_date}T${b.start_time}`;
+    return bK.localeCompare(aK);
+  });
+  const types = [...new Set(trainings.map(row => row.workout_type).filter(Boolean))]; // GROUP_SESSIONS_RENDER
   const locale = i18n.language === 'hr' ? 'hr-HR' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -160,7 +200,7 @@ export default function TrainingsPage() {
 
       {loading ? (
         <TrainingListSkeleton rows={6} />
-      ) : trainings.length === 0 ? (
+      ) : allItems.length === 0 ? (
         <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           {search ? (
             <>
@@ -180,7 +220,7 @@ export default function TrainingsPage() {
       ) : (
         <>
           <div className="space-y-2">
-            {trainings.map(training => (
+            {/* ITEMS_MAP_DONE */}{allItems.map(training => (
               <div key={training.id} onClick={() => navigate(`/dashboard/trainings/${training.id}`)}
                 className="flex items-center gap-3 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors group">
                 <button onClick={e => toggleCompleted(training, e)}

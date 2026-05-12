@@ -1,7 +1,7 @@
 // frontend/src/pages/GroupSessionDetail.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation as useRouterLocation } from 'react-router-dom';
 import { showToast } from '../components/Toast';
 import ExerciseBuilder from '../components/training/ExerciseBuilder';
 
@@ -22,7 +22,8 @@ const STATUS_CONFIG = {
 export default function GroupSessionDetail() {
   const { t } = useTranslation();
   const { groupId, sessionId } = useParams();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const routerLocation = useRouterLocation();
 
   const [session,    setSession]    = useState(null);
   const [loading,    setLoading]    = useState(true);
@@ -32,7 +33,7 @@ export default function GroupSessionDetail() {
   // Form state
   const [workoutType,  setWorkoutType]  = useState('Gym');
   const [sessionType,  setSessionType]  = useState('');
-  const [location,     setLocation]     = useState('');
+  const [sessionLocation, setSessionLocation] = useState('');
   const [notes,        setNotes]        = useState('');
   const [exercises,    setExercises]    = useState([]);
   const [attendance,   setAttendance]   = useState([]); // [{clientId, status, notes}]
@@ -45,13 +46,20 @@ export default function GroupSessionDetail() {
         headers: { Authorization: `Bearer ${token()}` }
       });
       const data = await res.json();
-      if (!res.ok) { navigate(`/dashboard/groups/${groupId}`); return; }
+      if (!res.ok) { (() => {
+    const p = new URLSearchParams(routerLocation.search);
+    if (p.get('from') === 'client' && p.get('clientId')) {
+      navigate(`/dashboard/clients/${p.get('clientId')}`);
+    } else {
+      navigate(`/dashboard/groups/${groupId}`);
+    }
+  })(); return; }
 
       const s = data.session;
       setSession(s);
       setWorkoutType(s.workout_type || 'Gym');
       setSessionType(s.session_type || '');
-      setLocation(s.location || '');
+      setSessionLocation(s.location || '');
       setNotes(s.notes || '');
       setSessionStatus(s.status || 'scheduled');
       setExercises(s.exercises || []);
@@ -123,8 +131,8 @@ export default function GroupSessionDetail() {
 
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
-        <button onClick={() => navigate(`/dashboard/groups/${groupId}`)}
-          className="text-gray-400 hover:text-gray-600 text-sm">← {t('groups.title')}</button>
+        <button onClick={() => { (() => { const p = new URLSearchParams(routerLocation.search); if (p.get('from') === 'client' && p.get('clientId')) { navigate(`/dashboard/clients/${p.get('clientId')}`); } else { navigate(`/dashboard/groups/${groupId}`); } })() }}
+          className="text-gray-400 hover:text-gray-600 text-sm">← {new URLSearchParams(routerLocation.search).get('from') === 'client' ? t('nav.clients') : t('groups.title')}</button>
         <div className="flex items-center gap-3 flex-1">
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
             style={{ backgroundColor: session.group_color || '#0ea5e9' }}>
@@ -228,7 +236,7 @@ export default function GroupSessionDetail() {
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
-              <input type="text" value={location} onChange={e => setLocation(e.target.value)}
+              <input type="text" value={sessionLocation} onChange={e => setSessionLocation(e.target.value)}
                 className="input text-sm" placeholder={t('groups.locationPlaceholder')} />
             </div>
 
@@ -279,8 +287,8 @@ export default function GroupSessionDetail() {
 
       {/* Save button at bottom for convenience */}
       <div className="flex justify-end gap-3 pt-2">
-        <button onClick={() => navigate(`/dashboard/groups/${groupId}`)} className="btn-secondary">
-          {t('groups.backToGroup')}
+        <button onClick={() => { (() => { const p = new URLSearchParams(routerLocation.search); if (p.get('from') === 'client' && p.get('clientId')) { navigate(`/dashboard/clients/${p.get('clientId')}`); } else { navigate(`/dashboard/groups/${groupId}`); } })() }} className="btn-secondary">
+          {new URLSearchParams(routerLocation.search).get('from') === 'client' ? '← ' + t('nav.clients') : t('groups.backToGroup')}
         </button>
         <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-50">
           {saving ? t('common.saving') : t('groups.saveSession')}

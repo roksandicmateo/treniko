@@ -90,17 +90,13 @@ export default function ResetPasswordPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 {t('auth.newPassword')}
               </label>
-              <input type="password" value={password}
-                onChange={e => setPassword(e.target.value)}
-                required className="input" placeholder="••••••••" autoFocus />
+              <PasswordInput value={password} onChange={e => setPassword(e.target.value)} required autoFocus />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 {t('auth.confirmPassword')}
               </label>
-              <input type="password" value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                required className="input" placeholder="••••••••" />
+              <PasswordInput value={confirm} onChange={e => setConfirm(e.target.value)} required />
             </div>
 
             {error && (

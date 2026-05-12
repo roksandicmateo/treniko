@@ -210,13 +210,42 @@ export default function ClientDetail() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [clientRes, trainingsRes] = await Promise.all([
-        fetch(`/api/clients/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      const API_U = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const hdr = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      // GROUP_SESSIONS_MERGED
+      const [clientRes, trainingsRes, groupRes] = await Promise.all([
+        fetch(`/api/clients/${id}`, { headers: hdr })
           .then(r => { if (!r.ok) throw new Error('Client not found'); return r.json(); }),
         trainingService.getAll({ clientId: id }),
+        fetch(`${API_U}/groups/sessions/for-client/${id}`, { headers: hdr })
+          .then(r => r.json()).catch(() => ({ sessions: [] })),
       ]);
       setClient(clientRes.client || clientRes);
-      setTrainings(trainingsRes.data);
+      const raw = trainingsRes.data;
+      const individual = (
+        Array.isArray(raw)             ? raw :
+        Array.isArray(raw?.trainings)  ? raw.trainings :
+        Array.isArray(raw?.sessions)   ? raw.sessions :
+        Array.isArray(raw?.data)       ? raw.data : []
+      ).map(t => ({ ...t, session_kind: 'individual' }));
+      const groupSessions = (groupRes.sessions || []).map(gs => ({
+        id:           gs.id,
+        title:        gs.group_name,
+        start_time:   gs.start_time,
+        session_date: (gs.session_date || '').slice(0, 10),
+        workout_type: gs.session_type || 'Group',
+        is_completed: gs.is_completed,
+        status:       gs.status,
+        group_id:     gs.group_id,
+        group_name:   gs.group_name,
+        session_kind: 'group',
+      }));
+      const merged = [...individual, ...groupSessions].sort((a, b) => {
+        const aK = `${a.session_date || ''}T${a.start_time || ''}`;
+        const bK = `${b.session_date || ''}T${b.start_time || ''}`;
+        return bK.localeCompare(aK);
+      });
+      setTrainings(merged);
     } catch (e) {
       setError(e.message || 'Failed to load client');
     } finally {
@@ -429,16 +458,16 @@ export default function ClientDetail() {
           ) : (
             <div className="space-y-2">
               {trainings.map(tr => (
-                <div key={tr.id} onClick={() => openEdit(tr.id)} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                <div key={tr.id} onClick={() => tr.session_kind === 'group' ? navigate(`/dashboard/groups/${tr.group_id}/sessions/${tr.id}?from=client&clientId=${id}`) : openEdit(tr.id)} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{tr.title || tr.workout_type}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(tr.start_time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                      {new Date(tr.session_kind === 'group' ? (tr.session_date + 'T' + (tr.start_time || '00:00')) : tr.start_time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[tr.workout_type] || 'bg-gray-100 text-gray-600'}`}>{tr.workout_type}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tr.is_completed ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{tr.is_completed ? t('trainings.completed') : t('trainings.scheduled')}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tr.is_completed ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{tr.is_completed ? t('training.completed') : t('sessions.scheduled')}</span>
                   </div>
                 </div>
               ))}

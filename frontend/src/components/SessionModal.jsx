@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sessionsAPI, clientsAPI } from '../services/api';
 import { format } from 'date-fns';
+import TimeInput from './TimeInput';
+import AdhocGroupPanel from './AdhocGroupPanel';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from './training/AddTrainingModal';
 import ConfirmModal from './ConfirmModal';
@@ -154,6 +156,8 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
   const [conflicts,           setConflicts]           = useState([]);
   const [showConflictWarning, setShowConflictWarning] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [adhocAttendees, setAdhocAttendees] = useState([]); // ad-hoc group attendees
+  const [groupTitle, setGroupTitle]         = useState('');
 
   useEffect(() => {
     loadClients();
@@ -227,6 +231,15 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
     setLoading(true);
     setError('');
     try {
+      // Ad-hoc group session
+      if (!session && sessionMode === 'adhoc-group') {
+        if (adhocAttendees.length === 0) { setError('Odaberi barem jednog sudionika'); setLoading(false); return; }
+        const payload = { ...formData, isGroup: true, groupTitle: groupTitle || null, attendees: adhocAttendees };
+        await sessionsAPI.create(payload);
+        setShowConflictWarning(false);
+        onSave();
+        return;
+      }
       // Group session — call group endpoint
       if (!session && sessionMode === 'group') {
         if (!selectedGroupId) { setError('Please select a group'); setLoading(false); return; }
@@ -379,17 +392,26 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
             </div>
           )}
 
+          {/* Ad-hoc group attendance panel */}
+          {session?.isGroup && (
+            <AdhocGroupPanel sessionId={session.id} />
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Individual / Group toggle — only for new sessions */}
+            {/* Individual / Group / Ad-hoc toggle — only for new sessions */}
             {!session && (
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-                <button type="button" onClick={() => { setSessionMode('individual'); setSelectedGroupId(''); setError(''); }}
-                  className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${sessionMode === 'individual' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-                  {`👤 ${t('sessions.individual')}`}
+              <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                <button type="button" onClick={() => { setSessionMode('individual'); setSelectedGroupId(''); setAdhocAttendees([]); setError(''); }}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${sessionMode === 'individual' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+                  👤 {t('sessions.individual')}
+                </button>
+                <button type="button" onClick={() => { setSessionMode('adhoc-group'); setSelectedGroupId(''); setError(''); }}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${sessionMode === 'adhoc-group' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+                  👥 Grupno
                 </button>
                 <button type="button" onClick={() => { setSessionMode('group'); setError(''); }}
-                  className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${sessionMode === 'group' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-                  {`👥 ${t('sessions.group')}`}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${sessionMode === 'group' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+                  🏟 {t('nav.groups')}
                 </button>
               </div>
             )}
@@ -398,7 +420,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
             {(!session && sessionMode === 'individual') || session ? (
               <div>
                 <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.client')} *</label>
-                <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="input" disabled={session !== null}>
+                <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="input">
                   <option value="">{t('sessions.selectClient')}</option>
                   {clients.map(client => (
                     <option key={client.id} value={client.id}>{client.first_name} {client.last_name}</option>
@@ -407,6 +429,38 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                 {session && <p className="text-xs text-gray-500 mt-1">{t('sessions.client')}: {session.clientName}</p>}
               </div>
             ) : null}
+
+            {/* Ad-hoc group: title + multi-select clients */}
+            {!session && sessionMode === 'adhoc-group' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Naziv grupe <span className="text-gray-400 text-xs">(neobavezno)</span></label>
+                  <input type="text" className="input" placeholder="npr. Jutarnja grupa, HIIT ponedjeljak..."
+                    value={groupTitle} onChange={e => setGroupTitle(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sudionici</label>
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl max-h-40 overflow-y-auto">
+                    {clients.length === 0 ? (
+                      <p className="text-sm text-gray-400 p-3">Nema klijenata</p>
+                    ) : clients.map(cl => {
+                      const checked = adhocAttendees.includes(cl.id);
+                      return (
+                        <label key={cl.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 last:border-0">
+                          <input type="checkbox" checked={checked}
+                            onChange={() => setAdhocAttendees(prev => checked ? prev.filter(id => id !== cl.id) : [...prev, cl.id])}
+                            className="rounded" />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{cl.first_name} {cl.last_name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {adhocAttendees.length > 0 && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1.5">{adhocAttendees.length} sudionik{adhocAttendees.length !== 1 ? 'a' : ''} odabrano</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Group: group selector — top 2 + expand */}
             {!session && sessionMode === 'group' && (
@@ -439,11 +493,11 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.startTime')} *</label>
-                <input type="time" id="startTime" name="startTime" value={formData.startTime} onChange={handleChange} required className="input" />
+                <TimeInput id="startTime" value={formData.startTime} onChange={v => handleChange({ target: { name: "startTime", value: v } })} required />
               </div>
               <div>
                 <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.endTime')} *</label>
-                <input type="time" id="endTime" name="endTime" value={formData.endTime} onChange={handleChange} required className="input" />
+                <TimeInput id="endTime" value={formData.endTime} onChange={v => handleChange({ target: { name: "endTime", value: v } })} required />
               </div>
             </div>
 
