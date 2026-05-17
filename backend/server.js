@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config({ path: '/var/www/treniko/backend/.env' });
 
 const authRoutes = require('./routes/auth');
 const clientsRoutes = require('./routes/clients');
@@ -45,6 +45,7 @@ app.use(cors({
   },
   credentials: true,
 }));
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
