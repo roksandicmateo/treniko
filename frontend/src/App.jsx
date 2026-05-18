@@ -1,6 +1,8 @@
 import CookieBanner from './components/CookieBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import VerifyEmail from './pages/VerifyEmail';
+import CheckEmail from './pages/CheckEmail';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -40,6 +42,8 @@ function App() {
             <Route path="/register"         element={<Register />} />
             <Route path="/forgot-password"  element={<ForgotPasswordPage />} />
             <Route path="/reset-password"   element={<ResetPasswordPage />} />
+            <Route path="/verify-email"      element={<VerifyEmail />} />
+            <Route path="/check-email"       element={<CheckEmail />} />
             <Route path="/privacy"          element={<PrivacyPage />} />
             <Route path="/terms"            element={<TermsPage />} />
 

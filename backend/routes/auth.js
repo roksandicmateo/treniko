@@ -31,3 +31,6 @@ router.post('/reset-password', passwordResetController.resetPassword);
 
 
 module.exports = router;
+
+// GET /api/auth/verify-email
+router.get('/verify-email', authController.verifyEmail);

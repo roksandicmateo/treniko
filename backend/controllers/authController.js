@@ -2,7 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/database');
 const { recordFailedLogin, resetFailedLogins } = require('../middleware/security');
-const { sendWelcomeEmail } = require('../services/emailService');
+const { sendWelcomeEmail, sendVerificationEmail } = require('../services/emailService');
+const crypto = require('crypto');
 
 /**
  * User Login
@@ -19,7 +20,7 @@ const login = async (req, res) => {
     }
 
     const result = await query(
-      'SELECT id, tenant_id, email, password_hash, first_name, last_name FROM users WHERE email = $1',
+      'SELECT id, tenant_id, email, password_hash, first_name, last_name, email_verified FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
@@ -61,7 +62,8 @@ const login = async (req, res) => {
         tenantId: user.tenant_id,
         email: user.email,
         firstName: user.first_name,
-        lastName: user.last_name
+        lastName: user.last_name,
+        emailVerified: user.email_verified
       }
     });
   } catch (error) {
@@ -158,9 +160,18 @@ const register = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Send welcome email (fire-and-forget)
-    sendWelcomeEmail({ to: email, firstName }).catch(err =>
-      console.error('[Email] Welcome email failed:', err.message)
+    // Generate email verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await query(
+      'UPDATE users SET verification_token = $1, verification_token_expires = $2 WHERE id = $3',
+      [verificationToken, verificationExpires, user.id]
+    );
+
+    // Send verification email (fire-and-forget)
+    const verificationUrl = `${process.env.APP_URL || 'http://localhost:5173'}/verify-email?token=${verificationToken}`;
+    sendVerificationEmail({ to: email, firstName, verificationUrl }).catch(err =>
+      console.error('[Email] Verification email failed:', err.message)
     );
 
     res.status(201).json({
@@ -171,7 +182,8 @@ const register = async (req, res) => {
         tenantId: user.tenant_id,
         email: user.email,
         firstName: user.first_name,
-        lastName: user.last_name
+        lastName: user.last_name,
+        emailVerified: false
       }
     });
   } catch (error) {
@@ -220,4 +232,39 @@ const validateToken = async (req, res) => {
   }
 };
 
-module.exports = { login, register, validateToken };
+
+// Verify Email
+const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ error: 'Token required' });
+
+    const result = await query(
+      'SELECT id, email_verified, verification_token_expires FROM users WHERE verification_token = $1',
+      [token]
+    );
+
+    if (result.rows.length === 0)
+      return res.status(400).json({ error: 'Invalid or expired verification link' });
+
+    const user = result.rows[0];
+
+    if (user.email_verified)
+      return res.json({ success: true, message: 'Email already verified' });
+
+    if (new Date() > new Date(user.verification_token_expires))
+      return res.status(400).json({ error: 'Verification link has expired' });
+
+    await query(
+      'UPDATE users SET email_verified = true, verification_token = NULL, verification_token_expires = NULL WHERE id = $1',
+      [user.id]
+    );
+
+    return res.json({ success: true, message: 'Email verified successfully' });
+  } catch (err) {
+    console.error('verifyEmail error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
+module.exports = { login, register, validateToken, verifyEmail };

@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config({ path: '/var/www/treniko/backend/.env' });
+require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const clientsRoutes = require('./routes/clients');

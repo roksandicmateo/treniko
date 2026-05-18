@@ -215,6 +215,23 @@ async function sendDeletionScheduledEmail({ to, firstName, deletionDate }) {
   });
 }
 
+
+// ── 8. Email verification ─────────────────────────────────────────────────────
+async function sendVerificationEmail({ to, firstName, verificationUrl }) {
+  return sendEmail({
+    to, subject: 'Verify your Treniko email address',
+    html: baseLayout(`
+      <h2>Verify your email, ${firstName}! ✉️</h2>
+      <p>Thanks for signing up. Please verify your email address to activate your account.</p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${verificationUrl}" class="btn">Verify Email →</a>
+      </div>
+      <div class="highlight">This link expires in <strong>24 hours</strong>.</div>
+      <p style="font-size:13px;color:#6b7280;">If you didn't create a Treniko account, you can safely ignore this email.</p>
+    `),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendPasswordResetEmail,
@@ -223,4 +240,5 @@ module.exports = {
   sendSubscriptionExpiredEmail,
   sendFirstClientEmail,
   sendDeletionScheduledEmail,
+  sendVerificationEmail,
 };
