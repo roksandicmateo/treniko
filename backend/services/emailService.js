@@ -18,6 +18,8 @@ async function sendEmail({ to, subject, html }) {
     to: [{ email: to }],
     subject,
     htmlContent: html,
+    trackClicks: false,
+    trackOpens: false,
   };
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
