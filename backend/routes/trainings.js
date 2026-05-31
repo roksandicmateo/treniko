@@ -44,18 +44,18 @@ async function insertExercises(dbClient, trainingId, exercises) {
   for (let i = 0; i < exercises.length; i++) {
     const ex = exercises[i];
     const { rows: [te] } = await dbClient.query(
-      `INSERT INTO training_exercises (training_id, exercise_id, sort_order, notes)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [trainingId, ex.exerciseId, i, ex.notes || null]
+      `INSERT INTO training_exercises (training_id, exercise_id, exercise_name, sort_order, notes)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [trainingId, ex.exerciseId, ex.exerciseName || ex.name || 'Unknown', i, ex.notes || null]
     );
     if (ex.sets && ex.sets.length > 0) {
       for (let j = 0; j < ex.sets.length; j++) {
         const s = ex.sets[j];
         await dbClient.query(
           `INSERT INTO training_sets
-             (training_exercise_id, sort_order, reps, weight, duration_seconds, distance, rpe, notes)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [te.id, j,
+             (training_exercise_id, set_number, sort_order, reps, weight, duration_seconds, distance, rpe, notes)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [te.id, j + 1, j,
            s.reps            || null,
            s.weight          || null,
            s.durationSeconds || null,
