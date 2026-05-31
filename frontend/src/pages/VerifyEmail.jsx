@@ -12,7 +12,7 @@ const VerifyEmail = () => {
     const token = searchParams.get('token');
     if (!token) { setStatus('error'); return; }
 
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/verify-email?token=${token}`)
+    fetch('/api/auth/verify-email?token=' + token)
       .then(r => r.json())
       .then(data => {
         if (data.success) setStatus('success');

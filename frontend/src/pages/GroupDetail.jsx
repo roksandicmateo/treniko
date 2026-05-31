@@ -43,7 +43,7 @@ function ScheduleGroupSessionModal({ group, onClose, onSaved }) {
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed'); return; }
       onSaved(data);
-    } catch { setError('Failed to schedule'); }
+    } catch (e) { setError('Failed to schedule'); }
     finally { setSaving(false); }
   };
 
@@ -127,7 +127,7 @@ function AddMembersModal({ groupId, existingIds, onClose, onAdded }) {
         })
       ));
       onAdded();
-    } catch { showToast(t('common.error'), 'error'); }
+    } catch (e) { showToast(t('common.error'), 'error'); }
     finally { setSaving(false); }
   };
 
@@ -262,7 +262,7 @@ export default function GroupDetail() {
       const data = await res.json();
       if (!res.ok) { navigate('/dashboard/groups'); return; }
       setGroup(data.group);
-    } catch { navigate('/dashboard/groups'); }
+    } catch (e) { navigate('/dashboard/groups'); }
   }, [id, navigate]);
 
   const loadSessions = useCallback(async () => {
@@ -271,7 +271,7 @@ export default function GroupDetail() {
       const data = await res.json();
       setSessions(data.sessions || []);
       setMonthStats(data.stats || null);
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
   }, [id]);
 
   useEffect(() => { Promise.all([loadGroup(), loadSessions()]).finally(() => setLoading(false)); }, [loadGroup, loadSessions]);
@@ -283,7 +283,7 @@ export default function GroupDetail() {
       const res  = await fetch(`${API_URL}/groups/${id}/members/${clientId}/feed?limit=20`, { headers: { Authorization: `Bearer ${token()}` } });
       const data = await res.json();
       setMemberSessions(data.sessions || []);
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
     finally { setMemberSessionsLoading(false); }
   };
 
@@ -296,7 +296,7 @@ export default function GroupDetail() {
       await fetch(`${API_URL}/groups/${id}/members/${member.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token()}` } });
       setGroup(g => ({ ...g, members: g.members.filter(m => m.id !== member.id) }));
       showToast('Member removed', 'success');
-    } catch { showToast(t('common.error'), 'error'); }
+    } catch (e) { showToast(t('common.error'), 'error'); }
     });
   };
 
@@ -331,7 +331,7 @@ export default function GroupDetail() {
       setAttendanceTarget(null);
       loadSessions();
       showToast('Attendance updated', 'success');
-    } catch { showToast(t('common.error'), 'error'); }
+    } catch (e) { showToast(t('common.error'), 'error'); }
   };
 
   const handleGroupSessionScheduled = (data) => {
