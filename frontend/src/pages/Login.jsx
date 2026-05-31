@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../context/ThemeContext';
 import LanguageSelector from '../components/LanguageSelector';
 import PasswordInput from '../components/PasswordInput';
 
@@ -9,6 +10,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { t } = useTranslation();
+  const { isDark, toggle } = useTheme();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,6 +32,9 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-400 to-primary-700 dark:from-gray-900 dark:to-gray-950 px-4">
+      <button onClick={toggle} className="fixed top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors" aria-label="Toggle theme">
+        {isDark ? '☀️' : '🌙'}
+      </button>
       {/* Language selector top right */}
       <div className="absolute top-4 right-4">
         <LanguageSelector compact />
