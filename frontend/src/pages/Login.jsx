@@ -32,7 +32,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-400 to-primary-700 dark:from-gray-900 dark:to-gray-950 px-4">
-      <button onClick={toggle} className="fixed top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors" aria-label="Toggle theme">
+      <button onClick={toggle} className="fixed top-4 right-36 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors" aria-label="Toggle theme">
         {isDark ? '☀️' : '🌙'}
       </button>
       {/* Language selector top right */}
