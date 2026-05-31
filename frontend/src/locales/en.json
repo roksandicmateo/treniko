@@ -211,7 +211,24 @@
     "legend_cancelled": "Cancelled",
     "deleteSession": "Delete Session",
     "deleteConfirm": "Are you sure you want to delete this session? This cannot be undone.",
-    "allClients": "All clients"
+    "allClients": "All clients",
+    "selectGroup": "Please select a group",
+    "atLeastOneAttendee": "Select at least one participant",
+    "sessionTypes": [
+      "Strength Training",
+      "Cardio",
+      "HIIT",
+      "Yoga",
+      "Pilates",
+      "Boxing",
+      "Consultation",
+      "Other"
+    ],
+    "groupName": "Group name",
+    "optional": "optional",
+    "participants": "Participants",
+    "noClients": "No clients",
+    "participantsSelected": "participant(s) selected"
   },
   "calendar": {
     "title": "Calendar",

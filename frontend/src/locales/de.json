@@ -211,7 +211,24 @@
     "legend_cancelled": "Abgesagt",
     "deleteSession": "Einheit löschen",
     "deleteConfirm": "Sind Sie sicher, dass Sie diese Einheit löschen möchten? Dies kann nicht rückgängig gemacht werden.",
-    "allClients": "Alle Klienten"
+    "allClients": "Alle Klienten",
+    "selectGroup": "Bitte Gruppe auswaehlen",
+    "atLeastOneAttendee": "Mindestens einen Teilnehmer auswaehlen",
+    "sessionTypes": [
+      "Krafttraining",
+      "Kardio",
+      "HIIT",
+      "Yoga",
+      "Pilates",
+      "Boxen",
+      "Beratung",
+      "Sonstiges"
+    ],
+    "groupName": "Gruppenname",
+    "optional": "optional",
+    "participants": "Teilnehmer",
+    "noClients": "Keine Klienten",
+    "participantsSelected": "Teilnehmer ausgewählt"
   },
   "calendar": {
     "title": "Kalender",

@@ -233,7 +233,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
     try {
       // Ad-hoc group session
       if (!session && sessionMode === 'adhoc-group') {
-        if (adhocAttendees.length === 0) { setError('Odaberi barem jednog sudionika'); setLoading(false); return; }
+        if (adhocAttendees.length === 0) { setError(t('sessions.atLeastOneAttendee')); setLoading(false); return; }
         const payload = { ...formData, isGroup: true, groupTitle: groupTitle || null, attendees: adhocAttendees };
         await sessionsAPI.create(payload);
         setShowConflictWarning(false);
@@ -242,7 +242,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
       }
       // Group session — call group endpoint
       if (!session && sessionMode === 'group') {
-        if (!selectedGroupId) { setError('Please select a group'); setLoading(false); return; }
+        if (!selectedGroupId) { setError(t('sessions.selectGroup')); setLoading(false); return; }
         const res = await fetch(`${API_URL}/groups/${selectedGroupId}/sessions`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
@@ -289,7 +289,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
   const sessionStartISO = session ? `${session.sessionDate}T${session.startTime}` : null;
   const sessionEndISO   = session ? `${session.sessionDate}T${session.endTime}`   : null;
 
-  const sessionTypes = ['Strength Training', 'Cardio', 'HIIT', 'Yoga', 'Pilates', 'Boxing', 'Consultation', 'Other'];
+  const sessionTypes = t('sessions.sessionTypes', { returnObjects: true });
 
   return (
     <>
@@ -434,15 +434,15 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
             {!session && sessionMode === 'adhoc-group' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Naziv grupe <span className="text-gray-400 text-xs">(neobavezno)</span></label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.groupName')} <span className="text-gray-400 text-xs">({t('sessions.optional')})</span></label>
                   <input type="text" className="input" placeholder="npr. Jutarnja grupa, HIIT ponedjeljak..."
                     value={groupTitle} onChange={e => setGroupTitle(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sudionici</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.participants')}</label>
                   <div className="border border-gray-200 dark:border-gray-700 rounded-xl max-h-40 overflow-y-auto">
                     {clients.length === 0 ? (
-                      <p className="text-sm text-gray-400 p-3">Nema klijenata</p>
+                      <p className="text-sm text-gray-400 p-3">{t('sessions.noClients')}</p>
                     ) : clients.map(cl => {
                       const checked = adhocAttendees.includes(cl.id);
                       return (
@@ -456,7 +456,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                     })}
                   </div>
                   {adhocAttendees.length > 0 && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1.5">{adhocAttendees.length} sudionik{adhocAttendees.length !== 1 ? 'a' : ''} odabrano</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1.5">{adhocAttendees.length} {t('sessions.participantsSelected')}</p>
                   )}
                 </div>
               </div>

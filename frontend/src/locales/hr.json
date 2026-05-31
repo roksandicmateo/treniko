@@ -211,7 +211,24 @@
     "legend_cancelled": "Otkazano",
     "deleteSession": "Obriši sesiju",
     "deleteConfirm": "Jeste li sigurni da želite obrisati ovu sesiju? Ovo se ne može poništiti.",
-    "allClients": "Svi klijenti"
+    "allClients": "Svi klijenti",
+    "selectGroup": "Odaberi grupu",
+    "atLeastOneAttendee": "Odaberi barem jednog sudionika",
+    "sessionTypes": [
+      "Trening snage",
+      "Kardio",
+      "HIIT",
+      "Yoga",
+      "Pilates",
+      "Boks",
+      "Konzultacija",
+      "Ostalo"
+    ],
+    "groupName": "Naziv grupe",
+    "optional": "neobavezno",
+    "participants": "Sudionici",
+    "noClients": "Nema klijenata",
+    "participantsSelected": "sudionik(a) odabrano"
   },
   "calendar": {
     "title": "Kalendar",
