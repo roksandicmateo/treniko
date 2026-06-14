@@ -406,7 +406,9 @@
     "customMetricName": "Custom metric name",
     "enterMetricName": "Enter metric name...",
     "valueRequired": "Value is required",
-    "dateRequired": "Date is required"
+    "dateRequired": "Date is required",
+    "useCommon": "Use common",
+    "unitPlaceholder": "Unit (kg, cm...)"
   },
   "groups": {
     "title": "Groups",

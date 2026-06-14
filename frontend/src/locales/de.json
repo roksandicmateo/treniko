@@ -406,7 +406,9 @@
     "customMetricName": "Name der benutzerdefinierten Grösse",
     "enterMetricName": "Metrikname eingeben...",
     "valueRequired": "Wert ist erforderlich",
-    "dateRequired": "Datum ist erforderlich"
+    "dateRequired": "Datum ist erforderlich",
+    "useCommon": "Allgemeine verwenden",
+    "unitPlaceholder": "Einheit (kg, cm...)"
   },
   "groups": {
     "title": "Gruppen",

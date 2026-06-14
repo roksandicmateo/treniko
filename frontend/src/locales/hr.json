@@ -406,7 +406,9 @@
     "customMetricName": "Naziv prilagođene mjere",
     "enterMetricName": "Unesite naziv mjere...",
     "valueRequired": "Vrijednost je obavezna",
-    "dateRequired": "Datum je obavezan"
+    "dateRequired": "Datum je obavezan",
+    "useCommon": "Koristi uobičajene",
+    "unitPlaceholder": "Jedinica (kg, cm...)"
   },
   "groups": {
     "title": "Grupe",
