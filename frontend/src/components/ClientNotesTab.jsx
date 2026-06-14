@@ -102,7 +102,7 @@ const ClientNotesTab = ({ client, onUpdated }) => {
               </div>
             )}
 
-            {NOTE_FIELDS.map(({ key, label, icon }) => {
+            {NOTE_FIELDS.map(({ key, labelKey, icon }) => {
               const value = key === 'dietNotes' ? client.diet_notes : client[key];
               if (!value) return null;
               return (

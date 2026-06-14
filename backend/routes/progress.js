@@ -174,4 +174,112 @@ router.get('/overview', async (req, res) => {
   }
 });
 
+
+// ── GET /api/progress/:clientId/strength ─────────────────────────────────────
+router.get('/:clientId/strength', async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { clientId } = req.params;
+    const { months = 6 } = req.query;
+
+    const since = new Date();
+    since.setMonth(since.getMonth() - parseInt(months));
+    const sinceStr = since.toISOString().split('T')[0];
+
+    const { rows } = await pool.query(`
+      SELECT
+        COALESCE(e.name, te.exercise_name, 'Unknown') AS exercise_name,
+        DATE(t.start_time)::text AS session_date,
+        MAX(ts.weight)::float AS max_weight,
+        MAX(ts.reps) AS max_reps
+      FROM trainings t
+      JOIN training_exercises te ON te.training_id = t.id
+      LEFT JOIN exercises e ON e.id = te.exercise_id
+      JOIN training_sets ts ON ts.training_exercise_id = te.id
+      WHERE t.client_id=$1 AND t.tenant_id=$2
+        AND t.is_completed=true
+        AND DATE(t.start_time) >= $3
+        AND ts.weight IS NOT NULL
+      GROUP BY COALESCE(e.name, te.exercise_name, 'Unknown'), DATE(t.start_time)
+      ORDER BY exercise_name, session_date
+    `, [clientId, tenantId, sinceStr]);
+
+    const grouped = {};
+    rows.forEach(row => {
+      if (!grouped[row.exercise_name]) grouped[row.exercise_name] = [];
+      grouped[row.exercise_name].push(row);
+    });
+    res.json(grouped);
+  } catch (e) {
+    console.error('Strength error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── GET /api/progress/:clientId ─────────────────────────────────────────────
+router.get('/:clientId', async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { clientId } = req.params;
+    const { metric } = req.query;
+
+    let query = `SELECT * FROM progress_entries WHERE client_id=$1 AND tenant_id=$2`;
+    const params = [clientId, tenantId];
+    if (metric) { query += ` AND metric_name=$3`; params.push(metric); }
+    query += ` ORDER BY date DESC`;
+
+    const { rows } = await pool.query(query, params);
+    const grouped = {};
+    rows.forEach(row => {
+      if (!grouped[row.metric_name]) grouped[row.metric_name] = [];
+      grouped[row.metric_name].push(row);
+    });
+    res.json(grouped);
+  } catch (e) {
+    console.error('Progress get error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── POST /api/progress/:clientId ─────────────────────────────────────────────
+router.post('/:clientId', async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { clientId } = req.params;
+    const { metric_name, metricName, value, unit, date, notes } = req.body;
+    const finalMetricName = metric_name || metricName;
+
+    if (!finalMetricName || value === undefined) {
+      return res.status(400).json({ error: 'metric_name and value required' });
+    }
+
+    const { rows: [entry] } = await pool.query(
+      `INSERT INTO progress_entries (tenant_id, client_id, metric_name, value, unit, date, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [tenantId, clientId, finalMetricName, value, unit || 'kg', date || new Date().toISOString().split('T')[0], notes || null]
+    );
+    res.status(201).json({ success: true, entry });
+  } catch (e) {
+    console.error('Progress post error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── DELETE /api/progress/:clientId/:entryId ───────────────────────────────────
+router.delete('/:clientId/:entryId', async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { clientId, entryId } = req.params;
+
+    await pool.query(
+      `DELETE FROM progress_entries WHERE id=$1 AND client_id=$2 AND tenant_id=$3`,
+      [entryId, clientId, tenantId]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Progress delete error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

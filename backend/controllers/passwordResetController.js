@@ -12,7 +12,7 @@ const forgotPassword = async (req, res) => {
     if (!email) return res.json({ success: true });
 
     const result = await query(
-      'SELECT id, first_name, email FROM users WHERE email = $1',
+      'SELECT id, tenant_id, first_name, email FROM users WHERE email = $1',
       [email.toLowerCase().trim()]
     );
 
@@ -32,8 +32,8 @@ const forgotPassword = async (req, res) => {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     await query(
-      'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
-      [user.id, tokenHash, expiresAt]
+      'INSERT INTO password_reset_tokens (user_id, tenant_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)',
+      [user.id, user.tenant_id, tokenHash, expiresAt]
     );
 
     const resetUrl = `${process.env.APP_URL || 'http://localhost:5173'}/reset-password?token=${rawToken}`;

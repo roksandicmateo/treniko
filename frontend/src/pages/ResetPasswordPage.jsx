@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSelector from '../components/LanguageSelector';
+import PasswordInput from '../components/PasswordInput';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
