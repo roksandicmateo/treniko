@@ -66,7 +66,7 @@ app.get('/health', (req, res) => {
 });
 
 // ── Security / rate limiting / subscription middleware ────────────────────────
-const { checkReadOnlyMode, checkClientLimit, checkSessionLimit } = require('./middleware/subscription');
+const { checkReadOnlyMode, checkClientLimit, checkSessionLimit, checkFeatureAccess } = require('./middleware/subscription');
 
 app.use('/api', apiRateLimiter);
 app.use('/api/auth/login', authRateLimiter);
@@ -100,7 +100,7 @@ app.use('/api/packages', packagesRoutes);
 app.use('/api/sessions', authenticateToken, requireDpa, sessionsRoutes);
 
 // ── Training logs ─────────────────────────────────────────────────────────────
-app.use('/api/training-logs', trainingLogsRoutes);
+app.use('/api/training-logs', checkFeatureAccess('training_logs'), trainingLogsRoutes);
 
 // ── Subscriptions ─────────────────────────────────────────────────────────────
 app.use('/api/subscriptions', subscriptionRoutes);
@@ -119,7 +119,7 @@ app.use('/api/trainings', uploadsRouter);
 app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
 // ── Export & deletion ─────────────────────────────────────────────────────────
-app.use('/api/export', exportRoutes);
+app.use('/api/export', checkFeatureAccess('export'), exportRoutes);
 app.use('/api', deletionRoutes);
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
