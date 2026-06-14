@@ -395,7 +395,18 @@
     "latest": "Zadnje",
     "logMoreSessions": "Unesite ovu vježbu u više sesija za prikaz grafikona trenda.",
     "strengthFormula": "Statistika snage koristi samo radne serije (zagrijavanje isključeno) · 1RM po Epley formuli",
-    "maxKg": "Maks. kg"
+    "maxKg": "Maks. kg",
+    "addProgressEntry": "Dodaj unos napretka",
+    "metric": "Mjera",
+    "customMetric": "Prilagođena mjera",
+    "unit": "Jedinica",
+    "date": "Datum",
+    "notesOptional": "Bilješke (neobavezno)",
+    "saveEntry": "Spremi unos",
+    "customMetricName": "Naziv prilagođene mjere",
+    "enterMetricName": "Unesite naziv mjere...",
+    "valueRequired": "Vrijednost je obavezna",
+    "dateRequired": "Datum je obavezan"
   },
   "groups": {
     "title": "Grupe",

@@ -395,7 +395,18 @@
     "latest": "Aktuell",
     "logMoreSessions": "Protokollieren Sie diese Übung in mehr Einheiten, um ein Trenddiagramm zu sehen.",
     "strengthFormula": "Kraftstatistiken nur aus Arbeitssätzen (ohne Aufwärmen) · 1RM via Epley-Formel",
-    "maxKg": "Max. kg"
+    "maxKg": "Max. kg",
+    "addProgressEntry": "Fortschrittseintrag hinzufügen",
+    "metric": "Messgrösse",
+    "customMetric": "Benutzerdefinierte Grösse",
+    "unit": "Einheit",
+    "date": "Datum",
+    "notesOptional": "Notizen (optional)",
+    "saveEntry": "Eintrag speichern",
+    "customMetricName": "Name der benutzerdefinierten Grösse",
+    "enterMetricName": "Metrikname eingeben...",
+    "valueRequired": "Wert ist erforderlich",
+    "dateRequired": "Datum ist erforderlich"
   },
   "groups": {
     "title": "Gruppen",

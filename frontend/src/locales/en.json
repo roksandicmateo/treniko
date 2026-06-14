@@ -395,7 +395,18 @@
     "latest": "Latest",
     "logMoreSessions": "Log this exercise in more sessions to see a trend chart.",
     "strengthFormula": "Strength stats use working sets only (warm-ups excluded) · 1RM via Epley formula",
-    "maxKg": "Max kg"
+    "maxKg": "Max kg",
+    "addProgressEntry": "Add Progress Entry",
+    "metric": "Metric",
+    "customMetric": "Custom metric",
+    "unit": "Unit",
+    "date": "Date",
+    "notesOptional": "Notes (optional)",
+    "saveEntry": "Save Entry",
+    "customMetricName": "Custom metric name",
+    "enterMetricName": "Enter metric name...",
+    "valueRequired": "Value is required",
+    "dateRequired": "Date is required"
   },
   "groups": {
     "title": "Groups",

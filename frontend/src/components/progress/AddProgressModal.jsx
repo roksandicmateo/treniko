@@ -35,8 +35,8 @@ export default function AddProgressModal({
   }
 
   async function handleSave() {
-    if (!form.value) return setError('Value is required');
-    if (!form.date)  return setError('Date is required');
+    if (!form.value) return setError(t('progress.valueRequired'));
+    if (!form.date)  return setError(t('progress.dateRequired'));
     setSaving(true); setError('');
     try {
       const { data } = await progressService.addEntry(clientId, form);
@@ -53,7 +53,7 @@ export default function AddProgressModal({
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-gray-900">Add Progress Entry</h3>
+          <h3 className="text-lg font-bold text-gray-900">{t('progress.addProgressEntry')}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>
 
@@ -151,7 +151,7 @@ export default function AddProgressModal({
         {/* Notes */}
         <input
           className="w-full border border-gray-300 rounded-xl p-3 text-sm"
-          placeholder="Notes (optional)"
+          placeholder={t('progress.notesOptional')}
           value={form.notes}
           onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
         />
@@ -170,7 +170,7 @@ export default function AddProgressModal({
             disabled={saving}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 rounded-xl text-sm font-semibold"
           >
-            {saving ? t('common.saving') : 'Save Entry'}
+            {saving ? t('common.saving') : t('progress.saveEntry')}
           </button>
         </div>
       </div>
