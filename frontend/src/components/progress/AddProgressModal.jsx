@@ -66,12 +66,12 @@ export default function AddProgressModal({
         {/* Metric selector */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">Metric</label>
+            <label className="text-sm font-medium text-gray-700">{t('progress.metric')}</label>
             <button
               onClick={() => setCustom((c) => !c)}
               className="text-blue-600 text-xs hover:underline"
             >
-              {custom ? 'Use common' : 'Custom metric'}
+              {custom ? t('progress.useCommon') : t('progress.customMetric')}
             </button>
           </div>
 
@@ -79,13 +79,13 @@ export default function AddProgressModal({
             <div className="grid grid-cols-2 gap-2">
               <input
                 className="border border-gray-300 rounded-xl p-2.5 text-sm"
-                placeholder="Metric name"
+                placeholder={t('progress.customMetricName')}
                 value={form.metricName}
                 onChange={(e) => setForm((f) => ({ ...f, metricName: e.target.value }))}
               />
               <input
                 className="border border-gray-300 rounded-xl p-2.5 text-sm"
-                placeholder="Unit (kg, cm…)"
+                placeholder={t('progress.unitPlaceholder')}
                 value={form.unit}
                 onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
               />
@@ -114,7 +114,7 @@ export default function AddProgressModal({
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Value <span className="text-red-400">*</span>
+              {t('progress.value')} <span className="text-red-400">*</span>
             </label>
             <input
               type="number"
@@ -126,7 +126,7 @@ export default function AddProgressModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Unit</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('progress.unit')}</label>
             <input
               className="w-full border border-gray-300 rounded-xl p-3 text-sm"
               value={form.unit}
@@ -138,7 +138,7 @@ export default function AddProgressModal({
         {/* Date */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Date <span className="text-red-400">*</span>
+            {t('progress.date')} <span className="text-red-400">*</span>
           </label>
           <input
             type="date"
