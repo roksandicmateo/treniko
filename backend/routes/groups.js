@@ -1,5 +1,6 @@
 // backend/routes/groups.js
 const express = require('express');
+const { sendDbClientError } = require('../utils/dbErrors');
 const router  = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
@@ -28,7 +29,7 @@ router.get('/', async (req, res) => {
       [tenantId]
     );
     res.json({ success: true, groups: rows });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── GET /api/groups/:id ──────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ router.get('/:id', async (req, res) => {
       [group.id]
     );
     res.json({ success: true, group: { ...group, members } });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── POST /api/groups ─────────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ router.post('/', async (req, res) => {
       [tenantId, name.trim(), description || null, color || '#0ea5e9']
     );
     res.status(201).json({ success: true, group });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── PUT /api/groups/:id ──────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ router.put('/:id', async (req, res) => {
     );
     if (!group) return res.status(404).json({ error: 'Group not found' });
     res.json({ success: true, group });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── DELETE /api/groups/:id ───────────────────────────────────────────────────
@@ -96,7 +97,7 @@ router.delete('/:id', async (req, res) => {
     );
     if (rowCount === 0) return res.status(404).json({ error: 'Group not found' });
     res.json({ success: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── POST /api/groups/:id/members ─────────────────────────────────────────────
@@ -115,7 +116,7 @@ router.post('/:id/members', async (req, res) => {
       [req.params.id, clientId]
     );
     res.status(201).json({ success: true, member });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── DELETE /api/groups/:id/members/:clientId ─────────────────────────────────
@@ -126,7 +127,7 @@ router.delete('/:id/members/:clientId', async (req, res) => {
     if (!group) return res.status(404).json({ error: 'Group not found' });
     await pool.query('DELETE FROM group_members WHERE group_id=$1 AND client_id=$2', [req.params.id, req.params.clientId]);
     res.json({ success: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── GET /api/groups/:id/members/:clientId/feed ───────────────────────────────
@@ -165,7 +166,7 @@ router.get('/:id/members/:clientId/feed', async (req, res) => {
       .slice(0, limit);
 
     res.json({ success: true, sessions: all });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── POST /api/groups/:id/sessions — create ONE group session ──────────────────
@@ -224,6 +225,7 @@ router.post('/:id/sessions', async (req, res) => {
     });
   } catch (e) {
     if (client) await client.query('ROLLBACK').catch(() => {});
+    if (sendDbClientError(res, e)) return;
     console.error('Create group session error:', e);
     if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {
@@ -288,7 +290,7 @@ router.get('/:id/sessions', async (req, res) => {
     );
 
     res.json({ success: true, sessions: sessionsWithMembers, stats });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── PUT /api/groups/:id/sessions/:sessionId/attendance/:clientId ─────────────
@@ -339,7 +341,7 @@ router.put('/:id/sessions/:sessionId/attendance/:clientId', async (req, res) => 
     // for the existence of another tenant's records.
     if (!attendance) return res.status(404).json({ error: 'Attendance record not found' });
     res.json({ success: true, attendance });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 
@@ -375,6 +377,7 @@ router.get('/sessions/for-client/:clientId', async (req, res) => {
 
     res.json({ success: true, sessions: rows });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error('for-client group sessions error:', e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -402,7 +405,7 @@ router.get('/sessions/calendar', async (req, res) => {
 
     const { rows } = await pool.query(q, params);
     res.json({ success: true, sessions: rows });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 
@@ -431,7 +434,7 @@ router.get('/:id/sessions/:sessionId', async (req, res) => {
     );
 
     res.json({ success: true, session: { ...session, attendance } });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── PUT /api/groups/:id/sessions/:sessionId — save log + attendance ───────────
@@ -485,6 +488,7 @@ router.put('/:id/sessions/:sessionId', async (req, res) => {
     res.json({ success: true, session });
   } catch (e) {
     if (client) await client.query('ROLLBACK').catch(() => {});
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {

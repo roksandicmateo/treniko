@@ -60,9 +60,11 @@ npm run dev
 http://localhost:5173
 ```
 
-**Login with:**
-- Email: `demo@treniko.com`
-- Password: `password123`
+**Register an account** on the sign-up screen.
+
+> The seeded `demo@treniko.com` account is deliberately disabled (migration
+> `028_neutralize_demo_seed.sql`) — a shared login with a documented password is
+> not something to ship, and it was reachable through password reset.
 
 ---
 

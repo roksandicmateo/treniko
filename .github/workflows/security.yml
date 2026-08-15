@@ -1,0 +1,213 @@
+name: Security
+
+# Security gates for TRENIKO (added in Security Hardening Phase 3).
+#
+# Every check here corresponds to a defect this project actually shipped at some
+# point, so each gate is a regression net rather than a generic best practice:
+#
+#   backend   — the security test suite, including cross-tenant, authentication,
+#               fuzz and rate-limit attacks. Phase 2B found a request that
+#               terminated the Node process; the fuzz suite fails the build if
+#               that class returns.
+#   fresh-db  — builds the database from zero through the documented workflow.
+#               Phase 2A found that the documented setup produced a database the
+#               application could not run against, and that four columns existed
+#               in development that no migration created. Neither can recur
+#               unnoticed while this job runs on every push.
+#   frontend  — production build plus an audit of production dependencies only.
+#   secrets   — Gitleaks over the full history.
+#   sast      — Semgrep, failing only on high-confidence findings.
+#
+# No job depends on a developer's local environment or on repository secrets:
+# the database is a disposable service container, and the scanners run from
+# public images against public rulesets.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: nothing here writes to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────
+  # Backend: fresh database from zero, then the full security suite.
+  # ────────────────────────────────────────────────────────────────────────
+  backend:
+    name: Backend tests and fresh database
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Disposable, CI-only credentials for a container that is destroyed
+          # with the job. Production credentials are never used here.
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: treniko_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: treniko_ci
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # node-cron 4.x requires Node >= 20; backend/package.json declares it.
+          # Pinned to the minimum supported version so the build fails here
+          # rather than on a server running the oldest version we claim to
+          # support.
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Generate a throwaway JWT secret for this run
+        # Generated per run rather than written into the workflow, so there is
+        # no credential-shaped literal in the repository and no reused value.
+        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: Install exactly the locked dependency tree
+        working-directory: backend
+        run: npm ci
+
+      - name: Apply migrations to an empty database
+        working-directory: backend
+        run: npm run db:migrate
+
+      - name: Assert no migration is left pending
+        working-directory: backend
+        run: |
+          npm run db:status | tee status.txt
+          grep -qE '[0-9]+ applied, 0 pending' status.txt
+
+      - name: Assert re-running migrations is a no-op
+        working-directory: backend
+        run: |
+          npm run db:migrate | tee second.txt
+          grep -q 'up to date' second.txt
+
+      - name: Security and regression test suite
+        working-directory: backend
+        run: npm test
+
+      - name: Audit all dependencies
+        working-directory: backend
+        run: npm audit --audit-level=high
+
+      - name: Audit production dependencies
+        working-directory: backend
+        run: npm audit --omit=dev --audit-level=high
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Frontend: the build must succeed and production dependencies must be clean.
+  # ────────────────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend build and dependency audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install exactly the locked dependency tree
+        working-directory: frontend
+        run: npm ci
+
+      - name: Production build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Audit production dependencies
+        working-directory: frontend
+        # Blocking. These are the dependencies that reach a user's browser.
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Audit all dependencies (informational)
+        working-directory: frontend
+        # Non-blocking on purpose: the known Vite dev-server advisory needs a
+        # major upgrade and is deliberately deferred (it is not in the shipped
+        # bundle — the blocking gate above covers what is). Kept visible so the
+        # deferral stays a decision rather than a habit.
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Secret scanning over the full history.
+  # ────────────────────────────────────────────────────────────────────────
+  secrets:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: a secret committed and later deleted is still in the
+          # repository and still needs rotating.
+          fetch-depth: 0
+
+      - name: Gitleaks
+        # Run from the official image rather than the action, so the job needs
+        # no token or licence key and cannot be affected by one being absent.
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:latest \
+            git /repo --no-banner --redact --verbose --exit-code 1
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Static analysis.
+  # ────────────────────────────────────────────────────────────────────────
+  sast:
+    name: Static analysis (Semgrep)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Semgrep
+        # A focused ruleset, not everything available: a scan nobody reads
+        # because it cries wolf is worse than no scan. Only ERROR-severity
+        # findings fail the build; WARNING findings are reported and triaged by
+        # a person (see SECURITY_AUDIT_PHASE3.md for the current triage).
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/src" \
+            -w /src \
+            semgrep/semgrep:latest \
+            semgrep scan \
+              --config p/javascript \
+              --config p/nodejs \
+              --config p/react \
+              --config p/security-audit \
+              --config p/owasp-top-ten \
+              --exclude node_modules \
+              --exclude dist \
+              --severity ERROR \
+              --error \
+              --metrics off \
+              backend frontend/src

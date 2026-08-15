@@ -1,4 +1,5 @@
 const express = require('express');
+const { sendDbClientError } = require('../utils/dbErrors');
 const router  = express.Router();
 const multer  = require('multer');
 const path    = require('path');
@@ -71,6 +72,7 @@ const requireOwnedTraining = async (req, res, next) => {
 
     next();
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error('requireOwnedTraining error:', e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -80,9 +82,17 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     // Both segments are already validated: tenantId comes from the verified
     // JWT and trainingId passed requireOwnedTraining's UUID + ownership check.
-    const dir = path.join(
+    const dir = path.resolve(
       UPLOADS_ROOT, req.user.tenantId, 'trainings', req.params.trainingId
     );
+    // Containment is asserted here rather than inferred from those checks, so
+    // the property "no upload is ever written outside the uploads root" holds
+    // structurally — it does not depend on a caller upstream still validating
+    // its inputs. Static analysis flags path.join on request-derived values for
+    // exactly this reason; this makes the guarantee local and checkable.
+    if (dir !== UPLOADS_ROOT && !dir.startsWith(UPLOADS_ROOT + path.sep)) {
+      return cb(new Error('Invalid upload destination'));
+    }
     fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -92,10 +102,29 @@ const storage = multer.diskStorage({
   },
 });
 
+// A client-supplied filename is metadata, not a path — this application never
+// stores under it — but it is still persisted in `original_name` and echoed
+// back, so it is validated rather than trusted. A NUL byte in particular used
+// to reach PostgreSQL and be reported as a 500 (`invalid byte sequence for
+// encoding UTF8: 0x00`); path separators and traversal segments are refused for
+// the same reason, since nothing legitimate produces them.
+const FORBIDDEN_FILENAME_CHAR_CODES = [0, 47, 92]; // NUL, forward slash, backslash
+
+const isAcceptableOriginalName = (name) =>
+  typeof name === 'string'
+  && name.length > 0
+  && name.length <= 255
+  && ![...name].some((c) => FORBIDDEN_FILENAME_CHAR_CODES.includes(c.charCodeAt(0)))
+  && name !== '.'
+  && name !== '..';
+
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
+    if (!isAcceptableOriginalName(file.originalname)) {
+      return cb(new Error('Invalid file name'));
+    }
     if (ALLOWED_IMAGE_EXTENSIONS.includes(path.extname(file.originalname).toLowerCase())) {
       cb(null, true);
     } else {
@@ -168,6 +197,7 @@ router.post('/:trainingId/images', requireOwnedTraining, upload.array('images', 
     }
     res.status(201).json(inserted);
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -183,6 +213,7 @@ router.get('/:trainingId/images', requireOwnedTraining, async (req, res) => {
     );
     res.json(rows.map((row) => toImageResponse(row, req.params.trainingId)));
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -237,6 +268,7 @@ router.delete('/:trainingId/images/:imageId', requireOwnedTraining, async (req, 
     );
     res.json({ success: true });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -263,6 +295,19 @@ router.use((err, req, res, next) => {
 
   if (err.message === 'Images only') {
     return res.status(400).json({ error: 'Only image files are accepted' });
+  }
+
+  if (err.message === 'Invalid file name' || err.message === 'Invalid upload destination') {
+    return res.status(400).json({ error: 'Invalid file name' });
+  }
+
+  // busboy rejects a corrupt multipart body before multer sees any file — a NUL
+  // byte in a filename, for instance, breaks the part header itself. That is a
+  // malformed request, so it is answered as one; it previously fell through to
+  // the global handler and was reported as an internal server error.
+  if (/malformed part|unexpected end of form|boundary not found|missing boundary|malformed multipart/i
+    .test(err.message || '')) {
+    return res.status(400).json({ error: 'Malformed upload request' });
   }
 
   next(err);

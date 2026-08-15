@@ -1,6 +1,12 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json is deliberately NOT ignored (Security Hardening Phase 3).
+# Without a committed lockfile every install re-resolves the whole dependency
+# tree from semver ranges, so no two installs are guaranteed to be the same
+# tree, a compromised new release of any transitive package is picked up
+# silently, and audit results cannot be reproduced. `npm ci` — which CI uses
+# precisely because it installs exactly what was reviewed — cannot run at all
+# without it.
 yarn.lock
 
 # Build output

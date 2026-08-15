@@ -34,6 +34,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Client } = require('pg');
+const { buildSslOptions, TLS_HELP } = require('../config/dbSsl');
 
 const SCHEMA_FILE = path.join(__dirname, '..', 'schema.sql');
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'migrations');
@@ -113,18 +114,24 @@ const checksum = (text) =>
 // ── connection ───────────────────────────────────────────────────────────────
 const connect = async () => {
   const database = process.env.DB_NAME || 'treniko_db';
-  const isProduction = process.env.NODE_ENV === 'production';
   const client = new Client({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT, 10) || 5432,
     database,
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || undefined,
-    ...(isProduction && process.env.DB_SSL !== 'false'
-      ? { ssl: { rejectUnauthorized: false } }
-      : {}),
+    // Same verified-TLS policy as the runtime pool (see config/dbSsl.js). The
+    // migration runner carries the same credentials over the same network, so
+    // it must not be the weaker of the two.
+    ...buildSslOptions(),
   });
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (e) {
+    e.message = `${e.message}
+  ${TLS_HELP}`;
+    throw e;
+  }
   // Database name only — never credentials.
   console.log(`database: ${database}`);
   return client;

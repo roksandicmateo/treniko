@@ -1,4 +1,5 @@
 const express = require('express');
+const { sendDbClientError } = require('../utils/dbErrors');
 const router  = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
@@ -24,6 +25,7 @@ router.get('/', async (req, res) => {
     const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -42,6 +44,7 @@ router.post('/', async (req, res) => {
     );
     res.status(201).json(rows[0]);
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -60,6 +63,7 @@ router.put('/:id', async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -76,6 +80,7 @@ router.delete('/:id', async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     if (e.code === '23503') return res.status(400).json({ error: 'Exercise is used in trainings and cannot be deleted' });
     res.status(500).json({ error: 'Server error' });
   }

@@ -5,8 +5,31 @@ const rateLimit = require('express-rate-limit');
 const { pool } = require('../config/database');
 
 // ── Helmet — secure HTTP headers ─────────────────────────────────────────────
+//
+// CSP was disabled outright on the grounds that this is a JSON API and the SPA
+// is hosted separately. The first half of that is the reason to HAVE a policy,
+// not to omit one: this service returns JSON and image bytes and never HTML, so
+// it can commit to the strictest possible policy without any risk of breaking a
+// page — nothing it serves is supposed to load a script, a frame or a font.
+//
+// The policy that matters for the application's own pages still belongs to
+// whatever serves the frontend bundle; this one only covers responses from the
+// API, and closes the gap where a stored file or an error page could be framed
+// or used as a script source.
 const helmetMiddleware = helmet({
-  contentSecurityPolicy: false, // Disabled — frontend is served separately
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      'default-src': ["'none'"],
+      'frame-ancestors': ["'none'"],
+      'base-uri': ["'none'"],
+      'form-action': ["'none'"],
+      'img-src': ["'self'"], // the authenticated training-image endpoint
+    },
+  },
+  // A pure API is never meant to be framed, so refuse outright rather than
+  // allowing same-origin framing.
+  frameguard: { action: 'deny' },
   crossOriginEmbedderPolicy: false,
 });
 
@@ -26,16 +49,28 @@ const authRateLimiter = rateLimit({
 });
 
 // General API limiter — broad protection
+//
+// `skipSuccessfulRequests` was true, which meant this limiter only ever counted
+// requests that FAILED. Active testing confirmed the consequence: 210
+// successful reads of an expensive endpoint in one burst were all served, with
+// the limiter never engaging. Anyone with a valid token could pull data or
+// drive expensive statistics queries without limit, and the only traffic being
+// restrained was traffic the application had already rejected.
+//
+// This is the same defect that made the password-reset endpoint unlimited
+// (TR-MED-1): a limiter whose counting rule excludes the requests that matter.
+// Every request now counts, and the allowance is raised so ordinary bursty use
+// — a dashboard view firing several requests at once — stays comfortable.
 const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 200,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     error: 'Too many requests. Please slow down.',
     code: 'rate_limit_exceeded'
   },
-  skipSuccessfulRequests: true,
+  skipSuccessfulRequests: false,
 });
 
 // ── Password-reset limiters (Phase 2B / TR-MED-1) ────────────────────────────
@@ -99,6 +134,33 @@ const exportRateLimiter = rateLimit({
   message: {
     error: 'Export limit reached. You can export up to 10 times per hour.',
     code: 'export_rate_limit_exceeded'
+  },
+});
+
+// ── Upload limiter (Phase 3) ─────────────────────────────────────────────────
+//
+// Uploads were covered only by the general /api limiter (200/min), but they are
+// not general requests: each one may carry 10 files of 10MB, so that allowance
+// is ~200GB/hour of writes to the server's disk from a single authenticated
+// account. Storage is not quota'd per tenant, so filling the volume is a
+// denial of service against every tenant at once.
+//
+// Keyed by user rather than by IP: these routes are authenticated, so the
+// account is the meaningful identity, and it cannot be changed by spoofing a
+// header. The IP is used only as a fallback if the key is somehow missing.
+const uploadRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) => (req.user?.userId ? `user:${req.user.userId}` : `ip:${req.ip}`),
+  // Only the write path is limited; listing and fetching images are ordinary
+  // reads already covered by the general limiter.
+  skip: (req) => req.method !== 'POST',
+  message: {
+    error: 'Upload limit reached. Please try again later.',
+    code: 'upload_rate_limit_exceeded',
   },
 });
 
@@ -190,6 +252,7 @@ module.exports = {
   exportRateLimiter,
   passwordResetIpRateLimiter,
   passwordResetEmailRateLimiter,
+  uploadRateLimiter,
   checkAccountLockout,
   recordFailedLogin,
   resetFailedLogins,

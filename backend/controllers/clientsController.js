@@ -1,4 +1,5 @@
 const { queryWithTenant } = require('../config/database');
+const { sendDbClientError } = require('../utils/dbErrors');
 const { parseBoundedInt } = require('../utils/validation');
 
 /**
@@ -47,6 +48,7 @@ const getAllClients = async (req, res) => {
     res.json({ success: true, clients: result.rows });
 
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Get clients error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while fetching clients' });
   }
@@ -103,6 +105,7 @@ const getClientById = async (req, res) => {
     });
 
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Get client error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while fetching client' });
   }
@@ -147,6 +150,7 @@ const getClientSessions = async (req, res) => {
     res.json({ success: true, sessions: result.rows });
 
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Get client sessions error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while fetching sessions' });
   }
@@ -175,6 +179,7 @@ const { firstName, lastName, email, phone, isActive, dateOfBirth, goals, injurie
     res.status(201).json({ success: true, client: result.rows[0] });
 
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Create client error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while creating client' });
   }
@@ -260,6 +265,7 @@ const {
     res.json({ success: true, client: result.rows[0] });
 
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Update client error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while updating client' });
   }
@@ -290,6 +296,7 @@ const deleteClient = async (req, res) => {
     res.json({ success: true, message: 'Client deleted successfully' });
 
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Delete client error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while deleting client' });
   }
@@ -317,6 +324,7 @@ const deactivateClient = async (req, res) => {
     res.json({ success: true, client: result.rows[0] });
 
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Deactivate client error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while deactivating client' });
   }

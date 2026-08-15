@@ -1,4 +1,5 @@
 const express = require('express');
+const { sendDbClientError } = require('../utils/dbErrors');
 const router = express.Router();
 const sessionsController = require('../controllers/sessionsController');
 const { pool } = require('../config/database');
@@ -69,7 +70,7 @@ router.get('/:id/attendees', authenticateToken, async (req, res) => {
       [req.params.id, tenantId]
     );
     res.json({ success: true, attendees: rows });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // POST /api/sessions/:id/attendees — add client to ad-hoc group session
@@ -105,7 +106,7 @@ router.post('/:id/attendees', authenticateToken, async (req, res) => {
       [req.params.id, clientId, tenantId]
     );
     res.json({ success: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // PUT /api/sessions/:id/attendees/:clientId — update attendance status
@@ -120,7 +121,7 @@ router.put('/:id/attendees/:clientId', authenticateToken, async (req, res) => {
       [status, req.params.id, req.params.clientId, tenantId]
     );
     res.json({ success: true, attendee: rows[0] });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // DELETE /api/sessions/:id/attendees/:clientId
@@ -132,7 +133,7 @@ router.delete('/:id/attendees/:clientId', authenticateToken, async (req, res) =>
       [req.params.id, req.params.clientId, tenantId]
     );
     res.json({ success: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 module.exports = router;

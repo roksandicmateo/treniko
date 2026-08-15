@@ -133,11 +133,18 @@ You've already installed:
 
 ---
 
-## 🔐 Demo Account
+## 🔐 Accounts
 
-Use these credentials to test:
-- **Email:** demo@treniko.com
-- **Password:** password123
+**Register a real account** from the sign-up screen — that is the supported way
+to get started.
+
+`schema.sql` seeds a `demo@treniko.com` account, and older copies of this README
+published a password for it. That account is **deliberately disabled**: migration
+`028_neutralize_demo_seed.sql` replaces its password hash with a random value
+nobody holds, on both new and existing databases. A shared login with a
+documented password on the application's own domain is not something to ship —
+it is reachable through the password-reset flow by anyone who can receive mail
+at that address.
 
 ---
 
@@ -312,3 +319,52 @@ If you encounter any issues:
 ---
 
 Built with ❤️ for trainers by Claude
+
+---
+
+## 🚢 Production Deployment
+
+**Requirements**
+
+- **Node.js 20 or newer.** Declared in `backend/package.json`; `node-cron@4`
+  requires it. Deploying onto Node 18 will fail at install or at runtime.
+- **A reverse proxy in front of the API.** The application runs with
+  `trust proxy: 1`, so it reads the client address from the last
+  `X-Forwarded-For` entry. That is safe when a proxy sets the header itself and
+  unsafe when the API is exposed directly — a caller could then choose their own
+  address and get a fresh rate-limit budget per request. Account lockout, the
+  per-address password-reset limit and the per-user upload limit do not depend
+  on the header, but the IP-keyed limits do.
+- **Database TLS.** In production the connection verifies the server's
+  certificate. Supply your provider's CA with `DB_SSL_CA_FILE` (or `DB_SSL_CA`).
+  If the provider uses a private CA and you cannot supply it, set
+  `DB_SSL_REJECT_UNAUTHORIZED=false` — this keeps the connection encrypted but
+  stops authenticating the server, so anyone able to intercept it can read
+  everything and capture the credentials. Prefer the CA.
+
+**Deployment order — migrations before code, every time**
+
+```bash
+# 1. Back up the database first. Migrations are additive, but a backup is the
+#    only thing that makes any of the following reversible.
+pg_dump -Fc treniko_db > treniko_$(date +%F).dump
+
+# 2. Install exactly the reviewed dependency tree (never `npm install` here).
+cd backend  && npm ci
+cd ../frontend && npm ci && npm run build
+
+# 3. Apply migrations BEFORE starting the new code. Several controls fail
+#    closed without their columns: authenticateToken returns 503 without
+#    users.password_changed_at, and login fails without the 025 columns.
+cd ../backend && npm run db:migrate
+
+# 4. Confirm nothing is pending. Do not proceed if this is not 0.
+npm run db:status        # expect: "N applied, 0 pending"
+
+# 5. Only now restart the application.
+pm2 restart treniko-api
+```
+
+Running new code against an un-migrated database is the one ordering that breaks
+things: the application is written to fail closed rather than silently drop a
+security control, so it will refuse requests rather than serve them unprotected.

@@ -1,6 +1,7 @@
 // backend/controllers/packagesController.js  (NEW FILE)
 
 const { pool } = require('../config/database');
+const { sendDbClientError } = require('../utils/dbErrors');
 
 // ── Helper: expire packages before any read ───────────────────────────────────
 const runExpiry = async () => {
@@ -28,6 +29,7 @@ const getPackages = async (req, res) => {
     );
     return res.json({ success: true, packages: result.rows });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('getPackages error:', error);
     return res.status(500).json({ error: 'Failed to fetch packages.' });
   }
@@ -47,6 +49,7 @@ const getPackage = async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Package not found.' });
     return res.json({ success: true, package: result.rows[0] });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('getPackage error:', error);
     return res.status(500).json({ error: 'Failed to fetch package.' });
   }
@@ -86,6 +89,7 @@ const createPackage = async (req, res) => {
     );
     return res.status(201).json({ success: true, package: result.rows[0] });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('createPackage error:', error);
     return res.status(500).json({ error: 'Failed to create package.' });
   }
@@ -126,6 +130,7 @@ const updatePackage = async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Package not found.' });
     return res.json({ success: true, package: result.rows[0] });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('updatePackage error:', error);
     return res.status(500).json({ error: 'Failed to update package.' });
   }
@@ -158,6 +163,7 @@ const deletePackage = async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Package not found.' });
     return res.json({ success: true });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('deletePackage error:', error);
     return res.status(500).json({ error: 'Failed to delete package.' });
   }
@@ -194,6 +200,7 @@ const getClientPackages = async (req, res) => {
     );
     return res.json({ success: true, packages: result.rows });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('getClientPackages error:', error);
     return res.status(500).json({ error: 'Failed to fetch client packages.' });
   }
@@ -228,6 +235,7 @@ const getActiveClientPackage = async (req, res) => {
       package: result.rows[0] || null
     });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('getActiveClientPackage error:', error);
     return res.status(500).json({ error: 'Failed to fetch active package.' });
   }
@@ -294,6 +302,7 @@ const assignPackage = async (req, res) => {
 
     return res.status(201).json({ success: true, package: result.rows[0] });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('assignPackage error:', error);
     return res.status(500).json({ error: 'Failed to assign package.' });
   }
@@ -321,6 +330,7 @@ const updateClientPackage = async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Client package not found.' });
     return res.json({ success: true, package: result.rows[0] });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('updateClientPackage error:', error);
     return res.status(500).json({ error: 'Failed to update client package.' });
   }
@@ -389,6 +399,7 @@ const useSession = async (req, res) => {
 
     return res.json({ success: true, package: updatedCp });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('useSession error:', error);
     return res.status(500).json({ error: 'Failed to record session usage.' });
   }

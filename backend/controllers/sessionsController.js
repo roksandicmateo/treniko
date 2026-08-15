@@ -1,4 +1,5 @@
 const { queryWithTenant } = require('../config/database');
+const { sendDbClientError } = require('../utils/dbErrors');
 
 const SESSION_SELECT = `
   ts.id, ts.client_id,
@@ -57,6 +58,7 @@ const getSessions = async (req, res) => {
     const result = await queryWithTenant(queryText, params, tenantId);
     res.json({ success: true, sessions: result.rows });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Get sessions error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while fetching sessions' });
   }
@@ -73,6 +75,7 @@ const getSessionById = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Not found', message: 'Session not found' });
     res.json({ success: true, session: result.rows[0] });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Get session error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while fetching session' });
   }
@@ -118,6 +121,7 @@ const createSession = async (req, res) => {
     const clientInfo = await queryWithTenant('SELECT first_name, last_name FROM clients WHERE id = $1', [clientId], tenantId);
     res.status(201).json({ success: true, session: { ...session, client_first_name: clientInfo.rows[0].first_name, client_last_name: clientInfo.rows[0].last_name } });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Create session error:', error);
     if (error.constraint === 'check_time_order') return res.status(400).json({ error: 'Validation error', message: 'End time must be after start time' });
     res.status(500).json({ error: 'Server error', message: 'An error occurred while creating session' });
@@ -198,6 +202,7 @@ const updateSession = async (req, res) => {
     const clientInfo = await queryWithTenant('SELECT first_name, last_name FROM clients WHERE id = $1', [session.client_id], tenantId);
     res.json({ success: true, session: { ...session, client_first_name: clientInfo.rows[0].first_name, client_last_name: clientInfo.rows[0].last_name } });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Update session error:', error);
     if (error.constraint === 'check_time_order') return res.status(400).json({ error: 'Validation error', message: 'End time must be after start time' });
     res.status(500).json({ error: 'Server error', message: 'An error occurred while updating session' });
@@ -213,6 +218,7 @@ const deleteSession = async (req, res) => {
     await queryWithTenant('DELETE FROM training_sessions WHERE id = $1 AND tenant_id = $2', [id, tenantId], tenantId);
     res.json({ success: true, message: 'Session deleted successfully' });
   } catch (error) {
+    if (sendDbClientError(res, error)) return;
     console.error('Delete session error:', error);
     res.status(500).json({ error: 'Server error', message: 'An error occurred while deleting session' });
   }

@@ -1,4 +1,5 @@
 const express = require('express');
+const { sendDbClientError } = require('../utils/dbErrors');
 const router  = express.Router();
 const { pool, getClient } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
@@ -88,6 +89,7 @@ router.get('/by-session/:sessionId', async (req, res) => {
     );
     res.json(rows[0] || null);
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -128,6 +130,7 @@ router.get('/', async (req, res) => {
     const { rows } = await pool.query(q, p);
     res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -140,6 +143,7 @@ router.get('/:id', async (req, res) => {
     if (!t) return res.status(404).json({ error: 'Not found' });
     res.json(t);
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -194,6 +198,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(full);
   } catch (e) {
     if (dbClient) await dbClient.query('ROLLBACK').catch(() => {});
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {
@@ -250,6 +255,7 @@ router.put('/:id', async (req, res) => {
     res.json(full);
   } catch (e) {
     if (dbClient) await dbClient.query('ROLLBACK').catch(() => {});
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {
@@ -268,6 +274,7 @@ router.delete('/:id', async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }

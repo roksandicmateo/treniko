@@ -1,5 +1,6 @@
 // backend/routes/progress.js
 const express = require('express');
+const { sendDbClientError } = require('../utils/dbErrors');
 const router  = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
@@ -122,6 +123,7 @@ router.get('/client/:clientId', async (req, res) => {
 
     res.json({ success: true, client, stats, strengthData, frequencyData, personalRecords, exercises });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error('Progress error:', e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -177,6 +179,7 @@ router.get('/overview', async (req, res) => {
 
     res.json({ success: true, dailySessions, topClients, overview });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error('Overview error:', e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -219,6 +222,7 @@ router.get('/:clientId/strength', async (req, res) => {
     });
     res.json(grouped);
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error('Strength error:', e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -244,6 +248,7 @@ router.get('/:clientId', async (req, res) => {
     });
     res.json(grouped);
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error('Progress get error:', e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -280,6 +285,7 @@ router.post('/:clientId', async (req, res) => {
     );
     res.status(201).json({ success: true, entry });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error('Progress post error:', e);
     res.status(500).json({ error: 'Server error' });
   }
@@ -297,6 +303,7 @@ router.delete('/:clientId/:entryId', async (req, res) => {
     );
     res.json({ success: true });
   } catch (e) {
+    if (sendDbClientError(res, e)) return;
     console.error('Progress delete error:', e);
     res.status(500).json({ error: 'Server error' });
   }

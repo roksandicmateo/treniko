@@ -1,9 +1,8 @@
 const { Pool } = require('pg');
 require('dotenv').config();
+const { buildSslOptions } = require('./dbSsl');
 
 // PostgreSQL connection pool
-const isProduction = process.env.NODE_ENV === 'production';
-
 const isSocketPath = (process.env.DB_HOST || '').startsWith('/');
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -14,10 +13,10 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
-  // Use SSL in production (required by managed DB services like DigitalOcean, Railway)
-  ...(isProduction && process.env.DB_SSL !== 'false' ? {
-    ssl: { rejectUnauthorized: false }
-  } : {}),
+  // TLS in production, with the server's certificate actually verified.
+  // See config/dbSsl.js — this used to be `rejectUnauthorized: false`, which
+  // encrypted the connection without authenticating the server.
+  ...buildSslOptions(),
 });
 
 // Test database connection

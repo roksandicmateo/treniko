@@ -19,7 +19,7 @@ const { requireDpa } = require('./middleware/requireDpa');
 const { auditLogMiddleware, auditFailedLogin } = require('./middleware/auditLog');
 const {
   helmetMiddleware, authRateLimiter, apiRateLimiter, exportRateLimiter, checkAccountLockout,
-  passwordResetIpRateLimiter, passwordResetEmailRateLimiter,
+  passwordResetIpRateLimiter, passwordResetEmailRateLimiter, uploadRateLimiter,
 } = require('./middleware/security');
 const { authenticateToken } = require('./middleware/auth');
 const trainingsRouter = require('./routes/trainings');
@@ -167,7 +167,9 @@ app.use('/api/progress', authenticateToken, progressRoutes);
 app.use('/api/exercises', exercisesRouter);
 app.use('/api/trainings', trainingsRouter);
 app.use('/api/templates', templatesRouter);
-app.use('/api/trainings', uploadsRouter);
+// The upload limiter is mounted on the router, after the authentication gate
+// above, so it can key on the authenticated user rather than a spoofable header.
+app.use('/api/trainings', uploadRateLimiter, uploadsRouter);
 // NOTE: the previous `app.use('/uploads', express.static(...))` mount was
 // removed. It served every tenant's uploaded client photos to any caller who
 // had a URL, with no authentication and no ownership check. Files are now

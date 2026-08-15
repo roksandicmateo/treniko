@@ -2,6 +2,7 @@
 'use strict';
 
 const { pool } = require('../config/database');
+const { sendDbClientError } = require('../utils/dbErrors');
 const { isUuid } = require('../utils/validation');
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ const getClientPayments = async (req, res) => {
       summary:  summary.rows[0],
     });
   } catch (err) {
+    if (sendDbClientError(res, err)) return;
     console.error('getClientPayments error:', err);
     return res.status(500).json({ error: 'Failed to fetch payments.' });
   }
@@ -130,6 +132,7 @@ const createPayment = async (req, res) => {
 
     return res.status(201).json({ success: true, payment: result.rows[0] });
   } catch (err) {
+    if (sendDbClientError(res, err)) return;
     console.error('createPayment error:', err);
     return res.status(500).json({ error: 'Failed to log payment.' });
   }
@@ -203,6 +206,7 @@ const updatePayment = async (req, res) => {
     }
     return res.json({ success: true, payment: result.rows[0] });
   } catch (err) {
+    if (sendDbClientError(res, err)) return;
     console.error('updatePayment error:', err);
     return res.status(500).json({ error: 'Failed to update payment.' });
   }
@@ -225,6 +229,7 @@ const deletePayment = async (req, res) => {
     }
     return res.json({ success: true });
   } catch (err) {
+    if (sendDbClientError(res, err)) return;
     console.error('deletePayment error:', err);
     return res.status(500).json({ error: 'Failed to delete payment.' });
   }
@@ -310,6 +315,7 @@ const getBillingSummary = async (req, res) => {
       pending:      pending.rows,
     });
   } catch (err) {
+    if (sendDbClientError(res, err)) return;
     console.error('getBillingSummary error:', err);
     return res.status(500).json({ error: 'Failed to fetch billing summary.' });
   }
