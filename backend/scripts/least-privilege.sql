@@ -58,9 +58,45 @@
 --   ALTER ROLE treniko_migrator NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 --   ALTER ROLE treniko_app      NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 --
--- If the schema was originally created by `postgres`, hand it over once:
+-- If the schema was originally created by `postgres`, hand the TRENIKO objects
+-- over once, as postgres. Ownership is what lets the migration role ALTER and
+-- DROP them; the grants below are not enough on their own.
 --
---   REASSIGN OWNED BY postgres TO treniko_migrator;   -- run as postgres
+--   DO $$
+--   DECLARE r record;
+--   BEGIN
+--     FOR r IN
+--       SELECT c.oid::regclass AS obj,
+--              CASE c.relkind WHEN 'S' THEN 'SEQUENCE'
+--                             WHEN 'v' THEN 'VIEW'
+--                             WHEN 'm' THEN 'MATERIALIZED VIEW'
+--                             ELSE 'TABLE' END AS kind
+--         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+--        WHERE n.nspname = 'public' AND c.relkind IN ('r','p','S','v','m')
+--          AND NOT EXISTS (SELECT 1 FROM pg_depend d
+--                           WHERE d.objid = c.oid AND d.deptype = 'e')
+--     LOOP
+--       EXECUTE format('ALTER %s %s OWNER TO treniko_migrator', r.kind, r.obj);
+--     END LOOP;
+--     FOR r IN
+--       SELECT p.oid::regprocedure AS obj
+--         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--        WHERE n.nspname = 'public'
+--          AND NOT EXISTS (SELECT 1 FROM pg_depend d
+--                           WHERE d.objid = p.oid AND d.deptype = 'e')
+--     LOOP
+--       EXECUTE format('ALTER FUNCTION %s OWNER TO treniko_migrator', r.obj);
+--     END LOOP;
+--   END $$;
+--
+-- Deliberately NOT `REASSIGN OWNED BY postgres TO treniko_migrator`. That would
+-- also hand over things which must not move: the installed extensions and their
+-- member functions (which belong to the extension mechanism, not to TRENIKO),
+-- and the database itself — and owning a database carries the right to drop it.
+-- The `deptype = 'e'` exclusions above are what skip extension members.
+--
+-- The migration role does NOT need to own the database or the schema; the
+-- GRANT USAGE, CREATE ON SCHEMA public below is enough for it to add objects.
 --
 -- ============================================================================
 -- RUNNING THIS SCRIPT
@@ -162,6 +198,18 @@ BEGIN
 
   -- The revoke above also removed the migration role's implicit CONNECT.
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), migrator_role);
+
+  -- ── What the MIGRATION role needs ────────────────────────────────────────
+  -- Creating objects in the schema. This is not implied by anything above:
+  -- from PostgreSQL 15 the public schema is owned by pg_database_owner and no
+  -- longer grants CREATE to PUBLIC, so a migration role that does not happen to
+  -- own the database has no way to add a table. Granting it explicitly is what
+  -- makes the two-role model work on a database owned by somebody else --
+  -- which is the normal case when an existing deployment adopts these roles.
+  --
+  -- Deliberately a GRANT rather than handing over the schema or the database:
+  -- ownership of either would also carry the right to drop it.
+  EXECUTE format('GRANT USAGE, CREATE ON SCHEMA public TO %I', migrator_role);
 END;
 $grants$;
 
@@ -173,9 +221,11 @@ $grants$;
 -- live restricted connection, so this cannot drift silently.
 DO $verify$
 DECLARE
-  app_role  text := current_setting('treniko.app_role');
-  r         record;
-  offending text;
+  app_role      text := current_setting('treniko.app_role');
+  migrator_role text := current_setting('treniko.migrator_role');
+  r             record;
+  m             record;
+  offending     text;
 BEGIN
   SELECT * INTO r FROM pg_roles WHERE rolname = app_role;
 
@@ -199,5 +249,20 @@ BEGIN
   END IF;
 
   RAISE NOTICE 'least-privilege: % verified - not a superuser, no BYPASSRLS, owns no tables', app_role;
+
+  -- The migration role is privileged relative to the runtime role, but it is
+  -- NOT meant to be privileged relative to the server. A deployment that leaves
+  -- `postgres` as its migration role still works, and still bypasses every
+  -- policy the moment anyone runs a query through it -- so say so rather than
+  -- let it pass silently.
+  SELECT * INTO m FROM pg_roles WHERE rolname = migrator_role;
+
+  IF m.rolsuper THEN
+    RAISE WARNING 'migration role % is a SUPERUSER. Migrations work, but this role bypasses every row-level security policy. Create a dedicated non-superuser migration role and reassign ownership to it - see the header of this file.', migrator_role;
+  ELSIF m.rolbypassrls THEN
+    RAISE WARNING 'migration role % carries BYPASSRLS.', migrator_role;
+  ELSE
+    RAISE NOTICE 'least-privilege: % verified - not a superuser, no BYPASSRLS', migrator_role;
+  END IF;
 END;
 $verify$;
