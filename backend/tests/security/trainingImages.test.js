@@ -15,7 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, pool } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, pool, queryAs } = require('../helpers/fixtures');
 
 jest.setTimeout(30000);
 
@@ -93,7 +93,7 @@ describe('upload stores correct metadata', () => {
     expect(found).toBeDefined();
     expect(found.url).toBe(`/api/trainings/${A.trainingId}/images/${found.file_path}`);
 
-    const { rows } = await pool.query(
+    const { rows } = await queryAs(A,
       'SELECT file_path, original_name FROM training_images WHERE id = $1',
       [found.id]
     );
@@ -161,7 +161,7 @@ describe('retrieval is authenticated and tenant-scoped', () => {
 
     expect(res.status).toBe(404);
 
-    const { rows } = await pool.query(
+    const { rows } = await queryAs(A,
       'SELECT id FROM training_images WHERE original_name = $1', ['intruder.png']
     );
     expect(rows).toHaveLength(0);
@@ -196,7 +196,7 @@ describe('deletion', () => {
     expect(del.status).toBe(200);
     expect(fs.existsSync(onDisk)).toBe(false);
 
-    const { rows } = await pool.query('SELECT id FROM training_images WHERE id = $1', [img.id]);
+    const { rows } = await queryAs(A, 'SELECT id FROM training_images WHERE id = $1', [img.id]);
     expect(rows).toHaveLength(0);
   });
 
@@ -210,7 +210,7 @@ describe('deletion', () => {
 
     expect(del.status).toBe(404);
 
-    const { rows } = await pool.query('SELECT id FROM training_images WHERE id = $1', [img.id]);
+    const { rows } = await queryAs(A, 'SELECT id FROM training_images WHERE id = $1', [img.id]);
     expect(rows).toHaveLength(1);
   });
 });

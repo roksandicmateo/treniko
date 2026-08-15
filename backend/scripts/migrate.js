@@ -11,6 +11,10 @@
  *   npm run db:status      show what is applied and what is pending
  *   npm run db:baseline    adopt an existing database into migration tracking
  *
+ *   npm run db:migrate -- --through 028   stop after migration 028 (used to
+ *                          reproduce a previous release's schema before testing
+ *                          an upgrade; it can only stop earlier, never skip)
+ *
  * ── How the sequence is defined ──────────────────────────────────────────────
  * `schema.sql` is the BASELINE: it creates the original four tables and is not
  * idempotent (plain CREATE TABLE, plus seed rows), so it runs exactly once on an
@@ -183,10 +187,23 @@ const looksLikeExistingDb = async (client) => {
 
 // ── commands ─────────────────────────────────────────────────────────────────
 
-const migrate = async (client) => {
+/**
+ * Apply pending migrations.
+ *
+ * @param {import('pg').Client} client
+ * @param {object} [options]
+ * @param {number} [options.through] stop after the migration with this numeric
+ *   prefix. It can only make the run stop EARLIER — never skip a file, never
+ *   reorder one — so a database built with it is always a genuine prefix of the
+ *   full sequence. That is what makes it usable to reproduce a previous
+ *   production state (e.g. `--through 028`) before testing an upgrade.
+ */
+const migrate = async (client, { through } = {}) => {
   await ensureLedger(client);
   const applied = await appliedMap(client);
-  const plan = buildPlan();
+  const plan = buildPlan().filter(
+    (step) => through === undefined || step.name === BASELINE_NAME || numericPrefix(step.name) <= through
+  );
 
   // Guard: an existing database with an empty ledger must be baselined first,
   // otherwise we would try to re-run schema.sql (which is not idempotent) and
@@ -361,17 +378,28 @@ const baseline = async (client, { apply }) => {
   const command = argv.find((a) => !a.startsWith('-')) || 'migrate';
   const apply = argv.includes('--apply');
 
+  const throughArg = argv.indexOf('--through');
+  let through;
+  if (throughArg !== -1) {
+    through = parseInt(argv[throughArg + 1], 10);
+    if (!Number.isInteger(through)) {
+      console.error('usage: migrate.js migrate --through <migration-number>');
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   let client;
   try {
     client = await connect();
     await acquireLock(client);
 
-    if (command === 'migrate') await migrate(client);
+    if (command === 'migrate') await migrate(client, { through });
     else if (command === 'status') await status(client);
     else if (command === 'baseline') await baseline(client, { apply });
     else {
       console.error(`unknown command: ${command}`);
-      console.error('usage: migrate.js [migrate|status|baseline [--apply]]');
+      console.error('usage: migrate.js [migrate [--through N]|status|baseline [--apply]]');
       process.exitCode = 1;
     }
   } catch (e) {

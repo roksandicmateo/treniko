@@ -14,7 +14,7 @@
 
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, pool } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, pool, queryAs } = require('../helpers/fixtures');
 
 jest.setTimeout(30000);
 
@@ -73,7 +73,7 @@ describe('TR-HIGH-1: enforcement middleware runs with an authenticated user', ()
     });
     expect([401, 403]).toContain(res.status);
 
-    const leaked = await pool.query(
+    const leaked = await queryAs(T,
       "SELECT id FROM clients WHERE first_name = 'NoAuth' AND last_name = 'Bypass'"
     );
     expect(leaked.rows).toHaveLength(0);
@@ -98,7 +98,7 @@ describe('TR-HIGH-1: enforcement middleware runs with an authenticated user', ()
       expect(res.status).toBe(403);
       expect(res.body.error).toBe('Subscription expired');
 
-      const created = await pool.query(
+      const created = await queryAs(T,
         "SELECT id FROM clients WHERE first_name = 'ReadOnly' AND last_name = 'Blocked'"
       );
       expect(created.rows).toHaveLength(0);
@@ -124,7 +124,7 @@ describe('TR-HIGH-1: enforcement middleware runs with an authenticated user', ()
     });
     expect(res.status).toBe(201);
 
-    await pool.query('DELETE FROM clients WHERE id = $1', [res.body.client.id]);
+    await queryAs(T, 'DELETE FROM clients WHERE id = $1', [res.body.client.id]);
   });
 
   test('checkFeatureAccess blocks a free-plan tenant from the export feature', async () => {
@@ -163,13 +163,13 @@ describe('TR-HIGH-1: enforcement middleware runs with an authenticated user', ()
       expect(overflow.status).toBe(403);
       expect(overflow.body.upgradeRequired).toBe(true);
 
-      const leaked = await pool.query(
+      const leaked = await queryAs(T,
         "SELECT id FROM clients WHERE first_name = 'Over' AND last_name = 'Limit'"
       );
       expect(leaked.rows).toHaveLength(0);
     } finally {
       for (const id of created) {
-        await pool.query('DELETE FROM clients WHERE id = $1', [id]);
+        await queryAs(T, 'DELETE FROM clients WHERE id = $1', [id]);
       }
     }
   });

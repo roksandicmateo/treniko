@@ -1,0 +1,72 @@
+-- Migration 030 — the one index migration 029's policies actually need
+-- Security Hardening Phase 4, Step 12
+--
+-- ============================================================================
+-- WHY ONLY ONE
+-- ============================================================================
+-- Adding row-level security changes query plans, so every policy path was run
+-- under EXPLAIN ANALYZE as the restricted runtime role against seeded data
+-- before anything was added here. Almost all of them cost nothing measurable:
+--
+--   DIRECT TENANT TABLES (clients, training_sessions, packages, payments,
+--   progress_entries, …) — the policy is written as
+--       tenant_id = (SELECT app_current_tenant_id())
+--   and the scalar subquery is evaluated once per statement as an InitPlan.
+--   The planner turns the whole policy into a One-Time Filter and the query's
+--   own `WHERE tenant_id = $1` still drives the same index scan it did before.
+--   Measured added cost: none. These tables already have tenant_id indexes.
+--
+--   INDIRECT TABLES (group_members, training_exercises, exercise_entries, …) —
+--   the parent check becomes a hashed SubPlan, also evaluated once per
+--   statement rather than once per row, and the parent tables all have a
+--   tenant_id index for it to use.
+--
+-- One path did not follow that pattern, and this migration is that path.
+--
+-- ============================================================================
+-- WHAT WAS MEASURED
+-- ============================================================================
+-- `training_templates` carried only its primary key: no index on tenant_id.
+-- It is the parent for the policies on BOTH template_exercises and
+-- template_sets, so every statement touching either of those tables ran
+--
+--     Seq Scan on training_templates  (filter: tenant_id = …)
+--
+-- across every tenant's templates in order to decide what the caller may see.
+-- With 20,000 template rows across four tenants:
+--
+--     SELECT * FROM template_exercises WHERE template_id = $1
+--       without this index :  3.027 ms   (Seq Scan, 5000 rows examined)
+--       with this index    :  1.256 ms   (Bitmap Index Scan)
+--
+-- That cost did not exist before migration 029 and grows with the total number
+-- of templates in the installation rather than with the caller's own — which is
+-- the shape of problem that looks fine in development and does not stay fine.
+--
+-- Nothing else was added. In particular training_images and
+-- package_session_usage also lack a tenant_id index, and are deliberately left
+-- alone: both are direct tenant tables whose policy collapses to a One-Time
+-- Filter, neither is a policy parent, and no measurement showed a cost. An
+-- index added on suspicion is a write-path cost paid forever for a read-path
+-- problem nobody has demonstrated.
+--
+-- ============================================================================
+-- SAFETY
+-- ============================================================================
+-- Additive and idempotent. IF NOT EXISTS makes re-running a no-op.
+--
+-- Deliberately NOT `CONCURRENTLY`: the migration runner wraps each file in a
+-- transaction and CREATE INDEX CONCURRENTLY cannot run inside one. This takes a
+-- SHARE lock on training_templates for the duration of the build, which blocks
+-- writes to that one table only. On a table of this size that is milliseconds.
+-- For an installation large enough for that to matter, build it out of band
+-- instead and then run this migration, which will find it already present:
+--
+--     CREATE INDEX CONCURRENTLY idx_training_templates_tenant
+--       ON public.training_templates (tenant_id);
+
+CREATE INDEX IF NOT EXISTS idx_training_templates_tenant
+  ON public.training_templates (tenant_id);
+
+COMMENT ON INDEX idx_training_templates_tenant IS
+  'Supports the RLS policies on template_exercises and template_sets, which resolve ownership through training_templates.tenant_id. See migration 030.';

@@ -20,7 +20,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, signToken, pool } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, signToken, pool, queryAs } = require('../helpers/fixtures');
 const { createSession, createPackageWithPayment } = require('../helpers/phase2bFixtures');
 
 jest.setTimeout(120000);
@@ -168,7 +168,7 @@ describe('ATTACK: nested-object ownership', () => {
     ).send({ amount: 1 });
 
     expect(res.status).toBe(404);
-    const row = await pool.query('SELECT amount FROM client_payments WHERE id = $1',
+    const row = await queryAs(B, 'SELECT amount FROM client_payments WHERE id = $1',
       [paymentsB.paymentId]);
     expect(Number(row.rows[0].amount)).toBe(50);
   });
@@ -186,7 +186,7 @@ describe('ATTACK: nested-object ownership', () => {
     ).send({ status: 'cancelled' });
     expect([400, 404]).toContain(res.status);
 
-    const row = await pool.query('SELECT status FROM client_packages WHERE id = $1',
+    const row = await queryAs(B, 'SELECT status FROM client_packages WHERE id = $1',
       [paymentsB.clientPackageId]);
     expect(row.rows[0].status).toBe('active');
   });
@@ -255,11 +255,11 @@ describe('ATTACK: mass assignment of privileged properties', () => {
       .send({ firstName: 'Mass', lastName: 'Assign', ...HOSTILE_PROPERTIES });
     expect(res.status).toBe(201);
 
-    const row = await pool.query('SELECT tenant_id FROM clients WHERE id = $1',
+    const row = await queryAs(A, 'SELECT tenant_id FROM clients WHERE id = $1',
       [res.body.client.id]);
     expect(row.rows[0].tenant_id).toBe(A.tenantId);
 
-    await pool.query('DELETE FROM clients WHERE id = $1', [res.body.client.id]);
+    await queryAs(A, 'DELETE FROM clients WHERE id = $1', [res.body.client.id]);
   });
 
   test('the subscription cannot be upgraded by naming a plan in an unrelated request', async () => {
@@ -273,7 +273,7 @@ describe('ATTACK: mass assignment of privileged properties', () => {
     await asA(request(app).post('/api/clients'))
       .send({ firstName: 'X', lastName: 'Y', plan: 'enterprise' })
       .then(async (res) => {
-        if (res.body?.client?.id) await pool.query('DELETE FROM clients WHERE id = $1', [res.body.client.id]);
+        if (res.body?.client?.id) await queryAs(A, 'DELETE FROM clients WHERE id = $1', [res.body.client.id]);
       });
 
     const after = await pool.query(
@@ -290,7 +290,7 @@ describe('ATTACK: mass assignment of privileged properties', () => {
     ).send({ amount: 60, tenant_id: B.tenantId, client_id: B.clientId, created_at: '1999-01-01' });
 
     expect(res.status).toBe(200);
-    const row = await pool.query(
+    const row = await queryAs(A,
       'SELECT tenant_id, client_id FROM client_payments WHERE id = $1', [paymentsA.paymentId]
     );
     expect(row.rows[0].tenant_id).toBe(A.tenantId);
@@ -298,14 +298,14 @@ describe('ATTACK: mass assignment of privileged properties', () => {
   });
 
   test('sessions_used on a client package cannot be set directly', async () => {
-    const before = await pool.query(
+    const before = await queryAs(A,
       'SELECT sessions_used FROM client_packages WHERE id = $1', [paymentsA.clientPackageId]
     );
 
     await asA(request(app).put(`/api/clients/${A.clientId}/packages/${paymentsA.clientPackageId}`))
       .send({ sessions_used: 0, sessionsUsed: 0, total_sessions: 9999 });
 
-    const after = await pool.query(
+    const after = await queryAs(A,
       'SELECT sessions_used, total_sessions FROM client_packages WHERE id = $1',
       [paymentsA.clientPackageId]
     );
@@ -346,13 +346,13 @@ describe('ATTACK: hostile field values', () => {
     if (res.status === 201) {
       // The clients table must still exist and the value must round-trip as
       // literal text — proof it was parameterised, not interpreted.
-      const row = await pool.query('SELECT first_name FROM clients WHERE id = $1',
+      const row = await queryAs(A, 'SELECT first_name FROM clients WHERE id = $1',
         [res.body.client.id]);
       expect(typeof row.rows[0].first_name).toBe('string');
-      await pool.query('DELETE FROM clients WHERE id = $1', [res.body.client.id]);
+      await queryAs(A, 'DELETE FROM clients WHERE id = $1', [res.body.client.id]);
     }
 
-    const stillThere = await pool.query('SELECT COUNT(*)::int AS c FROM clients WHERE tenant_id = $1',
+    const stillThere = await queryAs(A, 'SELECT COUNT(*)::int AS c FROM clients WHERE tenant_id = $1',
       [A.tenantId]);
     expect(stillThere.rows[0].c).toBeGreaterThanOrEqual(1);
   });
@@ -368,7 +368,7 @@ describe('ATTACK: hostile field values', () => {
     });
     expect(res.status).toBeLessThan(500);
     if (res.status === 201) {
-      await pool.query('DELETE FROM training_sessions WHERE id = $1', [res.body.session.id]);
+      await queryAs(A, 'DELETE FROM training_sessions WHERE id = $1', [res.body.session.id]);
     }
   });
 
@@ -389,7 +389,7 @@ describe('ATTACK: hostile field values', () => {
       .send({ firstName: 'Deep', lastName: 'Nest', notes: nested });
     expect(res.status).toBeLessThan(500);
     if (res.status === 201) {
-      await pool.query('DELETE FROM clients WHERE id = $1', [res.body.client.id]);
+      await queryAs(A, 'DELETE FROM clients WHERE id = $1', [res.body.client.id]);
     }
   });
 });
@@ -420,7 +420,7 @@ describe('ATTACK: upload naming and content tricks', () => {
     const res = await upload().attach('images', content, filename);
     expect(res.status).toBe(400);
 
-    const rows = await pool.query(
+    const rows = await queryAs(A,
       'SELECT id FROM training_images WHERE training_id = $1', [A.trainingId]
     );
     expect(rows.rows).toHaveLength(0);

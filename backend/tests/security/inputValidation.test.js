@@ -16,7 +16,7 @@
 
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, pool } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, pool, queryAs } = require('../helpers/fixtures');
 const { toCSV } = require('../../controllers/exportController');
 const {
   sanitizeCsvValue, parseBoundedInt, isEmail, validatePassword, escapeHtml,
@@ -74,7 +74,7 @@ describe('TR-MED-2: CSV formula injection', () => {
 
   test('a real client record with a hostile free-text field exports safely', async () => {
     const attack = '=cmd|\' /C calc\'!A0';
-    const { rows: [client] } = await pool.query(
+    const { rows: [client] } = await queryAs(A,
       `INSERT INTO clients (tenant_id, first_name, last_name, goals)
        VALUES ($1, 'Formula', 'Injection', $2) RETURNING *`,
       [A.tenantId, attack]
@@ -83,7 +83,7 @@ describe('TR-MED-2: CSV formula injection', () => {
     const csv = toCSV([client], Object.keys(client));
     expect(csv).toContain(`"'${attack}"`);
 
-    await pool.query('DELETE FROM clients WHERE id = $1', [client.id]);
+    await queryAs(A, 'DELETE FROM clients WHERE id = $1', [client.id]);
   });
 });
 
@@ -209,7 +209,7 @@ describe('API4: request bodies are size-capped', () => {
 
     expect(res.status).toBe(413);
 
-    const rows = await pool.query(
+    const rows = await queryAs(A,
       "SELECT id FROM clients WHERE tenant_id = $1 AND first_name = 'x'",
       [A.tenantId]
     );
@@ -220,7 +220,7 @@ describe('API4: request bodies are size-capped', () => {
     const res = await asA(request(app).post('/api/clients'))
       .send({ firstName: 'Normal', lastName: 'Size', notes: 'A'.repeat(1000) });
     expect(res.status).toBe(201);
-    await pool.query('DELETE FROM clients WHERE id = $1', [res.body.client.id]);
+    await queryAs(A, 'DELETE FROM clients WHERE id = $1', [res.body.client.id]);
   });
 });
 

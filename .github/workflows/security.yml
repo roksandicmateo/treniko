@@ -9,6 +9,13 @@ name: Security
 #               fuzz and rate-limit attacks. Phase 2B found a request that
 #               terminated the Node process; the fuzz suite fails the build if
 #               that class returns.
+#   rls       — the whole suite again, this time connected as a non-owner,
+#               NOBYPASSRLS role so PostgreSQL actually applies the row-level
+#               security policies (Phase 4). The default run connects as the
+#               table owner, for whom policies are skipped, so without this the
+#               boundary would be untested in the only configuration that
+#               matters. It also verifies the migration chain from both a fresh
+#               build and a 028-era upgrade.
 #   fresh-db  — builds the database from zero through the documented workflow.
 #               Phase 2A found that the documented setup produced a database the
 #               application could not run against, and that four columns existed
@@ -109,6 +116,28 @@ jobs:
       - name: Security and regression test suite
         working-directory: backend
         run: npm test
+
+      # ── Row-level security gates (Phase 4) ──────────────────────────────
+      # The suite above runs as the database OWNER, for whom PostgreSQL skips
+      # every policy. It therefore cannot tell whether the application works
+      # with row-level security actually in force — which is the state
+      # production runs in. The two steps below are what prove that.
+
+      - name: Verify the migration chain (fresh build and 028 upgrade)
+        working-directory: backend
+        # Builds two disposable databases: one from zero, one reproducing the
+        # previous release and then upgraded. Both must converge on the same
+        # RLS configuration, and re-running migrations must be a no-op.
+        run: npm run db:verify
+
+      - name: Full suite under the restricted runtime role
+        working-directory: backend
+        # Provisions a disposable database with the two-role architecture from
+        # scripts/least-privilege.sql, then runs every test connected as a
+        # non-owner NOBYPASSRLS role. This is the gate that fails if a
+        # controller, a job or a fixture depends on being able to bypass the
+        # tenant boundary.
+        run: npm run test:restricted
 
       - name: Audit all dependencies
         working-directory: backend

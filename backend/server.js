@@ -22,6 +22,7 @@ const {
   passwordResetIpRateLimiter, passwordResetEmailRateLimiter, uploadRateLimiter,
 } = require('./middleware/security');
 const { authenticateToken } = require('./middleware/auth');
+const { runWithTenantContext } = require('./config/tenantContext');
 const trainingsRouter = require('./routes/trainings');
 const templatesRouter = require('./routes/templates');
 const uploadsRouter   = require('./routes/uploads');
@@ -126,6 +127,20 @@ app.use('/api/auth/login', auditFailedLogin);
 app.use('/api', (req, res, next) =>
   isPublicApiPath(req) ? next() : authenticateToken(req, res, next)
 );
+
+// ── Database tenant context (Phase 4) ─────────────────────────────────────────
+// Establishes the tenant context that PostgreSQL's row-level security policies
+// read, for the remainder of this request. It runs immediately after
+// authentication and takes its values ONLY from req.user — the verified JWT.
+// A tenant id in a body, query string or route parameter has no path to this
+// call, which is what makes the database boundary independent of the request.
+app.use('/api', (req, res, next) => {
+  if (!req.user) return next();
+  return runWithTenantContext(
+    { tenantId: req.user.tenantId, userId: req.user.userId },
+    next
+  );
+});
 
 app.use('/api', skipPublicPaths(checkReadOnlyMode));
 app.use('/api', skipPublicPaths(checkClientLimit));
@@ -250,6 +265,12 @@ app.listen(PORT, () => {
 ╚════════════════════════════════════════╝
   `);
   console.log('✅ Server is ready to accept requests\n');
+
+  // Report whether the row-level security policies added by migration 029 are
+  // actually being applied to the role we connected as. They are skipped for a
+  // table's owner and for BYPASSRLS roles, and nothing in the application's
+  // behaviour would reveal that — see config/rlsStatus.js.
+  require('./config/rlsStatus').reportRlsStatus();
 });
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────────

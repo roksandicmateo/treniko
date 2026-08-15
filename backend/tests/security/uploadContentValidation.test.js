@@ -17,7 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, pool } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, pool, queryAs } = require('../helpers/fixtures');
 const { sniffImageKind, verifyStoredImage } = require('../../utils/fileType');
 
 jest.setTimeout(30000);
@@ -47,7 +47,7 @@ const storedFiles = () => {
 };
 
 const imageRows = async () => {
-  const { rows } = await pool.query(
+  const { rows } = await queryAs(A,
     'SELECT id, file_path FROM training_images WHERE training_id = $1',
     [A.trainingId]
   );

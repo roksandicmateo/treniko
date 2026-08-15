@@ -7,32 +7,36 @@
  * suites depend on is not modified. Everything here builds on a tenant already
  * created by `createTenant`, and is removed by that tenant's `destroyTenant`
  * (all rows are tenant-scoped or cascade from a tenant-scoped parent).
+ *
+ * Every helper that writes an RLS-protected table does so inside `asTenant`,
+ * for the reasons set out in helpers/asTenant.js: the fixtures are subject to
+ * the same policies as production writes rather than exempt from them.
  */
 
-const { pool, TEST_MARKER } = require('./fixtures');
+const { pool, TEST_MARKER, asTenant } = require('./fixtures');
 
 /** A catalogue exercise owned by one tenant. */
-const createExercise = async (tenantId, name = 'Bench Press') => {
+const createExercise = async (tenantId, name = 'Bench Press') => asTenant({ tenantId }, async () => {
   const { rows: [ex] } = await pool.query(
     `INSERT INTO exercises (tenant_id, name, category, default_unit)
      VALUES ($1, $2, 'Strength', 'kg') RETURNING id, name`,
     [tenantId, `${TEST_MARKER} ${name}`]
   );
   return ex;
-};
+});
 
 /** An individual (non-group) training session. */
-const createSession = async (tenantId, clientId) => {
+const createSession = async (tenantId, clientId) => asTenant({ tenantId }, async () => {
   const { rows: [s] } = await pool.query(
     `INSERT INTO training_sessions (tenant_id, client_id, session_date, start_time, end_time)
      VALUES ($1, $2, CURRENT_DATE, '12:00', '13:00') RETURNING id`,
     [tenantId, clientId]
   );
   return s;
-};
+});
 
 /** A package, an assignment of it to a client, and a payment against it. */
-const createPackageWithPayment = async (tenantId, clientId) => {
+const createPackageWithPayment = async (tenantId, clientId) => asTenant({ tenantId }, async () => {
   const { rows: [pkg] } = await pool.query(
     `INSERT INTO packages (tenant_id, name, package_type, total_sessions, price)
      VALUES ($1, $2, 'sessions', 10, 100) RETURNING id`,
@@ -51,9 +55,16 @@ const createPackageWithPayment = async (tenantId, clientId) => {
     [tenantId, clientId, clientPackage.id]
   );
   return { packageId: pkg.id, clientPackageId: clientPackage.id, paymentId: payment.id };
-};
+});
 
-/** Put a tenant on a named plan (e.g. 'pro') so feature gates open. */
+/**
+ * Put a tenant on a named plan (e.g. 'pro') so feature gates open.
+ *
+ * No tenant context needed: subscription_plans and tenant_subscriptions are
+ * both outside the enforced set (migration 029, section D), because
+ * registration writes them before a tenant context can exist and the daily
+ * subscription checker reads them across all tenants.
+ */
 const setPlan = async (tenantId, planName) => {
   const { rows: [plan] } = await pool.query(
     'SELECT id FROM subscription_plans WHERE name = $1',

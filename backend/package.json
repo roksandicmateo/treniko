@@ -11,7 +11,10 @@
     "db:baseline": "node scripts/migrate.js baseline",
     "init-db": "node scripts/migrate.js",
     "test": "jest --runInBand --forceExit",
-    "test:security": "jest tests/security --runInBand --forceExit"
+    "test:security": "jest tests/security --runInBand --forceExit",
+    "test:restricted": "node scripts/test-restricted.js",
+    "db:provision-test": "node scripts/provision-restricted-db.js",
+    "db:verify": "node scripts/verify-migrations.js"
   },
   "jest": {
     "testEnvironment": "node",

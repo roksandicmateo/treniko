@@ -17,6 +17,7 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../../config/database');
+const { asTenant, queryAs } = require('./asTenant');
 
 // Marker so any row that somehow survives cleanup is obviously test data.
 const TEST_MARKER = 'sec2a-test';
@@ -65,39 +66,48 @@ const createTenant = async (label) => {
     [tenantId]
   );
 
-  const { rows: [client] } = await pool.query(
-    `INSERT INTO clients (tenant_id, first_name, last_name, email)
-     VALUES ($1, $2, $3, $4) RETURNING id`,
-    [tenantId, 'Client', label.toUpperCase(), `${unique}-client@example.test`]
-  );
+  // Everything above lives in tables that are deliberately outside row-level
+  // security (see migration 029): registration legitimately runs before any
+  // tenant exists. Everything below is protected, so it is seeded through the
+  // same tenant context an authenticated request would establish.
+  const { client, group, groupSession, attendance, training } =
+    await asTenant({ tenantId, userId }, async () => {
+      const { rows: [c] } = await pool.query(
+        `INSERT INTO clients (tenant_id, first_name, last_name, email)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [tenantId, 'Client', label.toUpperCase(), `${unique}-client@example.test`]
+      );
 
-  const { rows: [group] } = await pool.query(
-    'INSERT INTO groups (tenant_id, name) VALUES ($1, $2) RETURNING id',
-    [tenantId, `${TEST_MARKER} group ${label}`]
-  );
+      const { rows: [g] } = await pool.query(
+        'INSERT INTO groups (tenant_id, name) VALUES ($1, $2) RETURNING id',
+        [tenantId, `${TEST_MARKER} group ${label}`]
+      );
 
-  await pool.query(
-    'INSERT INTO group_members (group_id, client_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-    [group.id, client.id]
-  );
+      await pool.query(
+        'INSERT INTO group_members (group_id, client_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [g.id, c.id]
+      );
 
-  const { rows: [groupSession] } = await pool.query(
-    `INSERT INTO group_sessions (tenant_id, group_id, session_date, start_time, end_time)
-     VALUES ($1, $2, CURRENT_DATE, '10:00', '11:00') RETURNING id`,
-    [tenantId, group.id]
-  );
+      const { rows: [gs] } = await pool.query(
+        `INSERT INTO group_sessions (tenant_id, group_id, session_date, start_time, end_time)
+         VALUES ($1, $2, CURRENT_DATE, '10:00', '11:00') RETURNING id`,
+        [tenantId, g.id]
+      );
 
-  const { rows: [attendance] } = await pool.query(
-    `INSERT INTO group_session_attendance (group_session_id, client_id, status)
-     VALUES ($1, $2, 'scheduled') RETURNING id, status`,
-    [groupSession.id, client.id]
-  );
+      const { rows: [att] } = await pool.query(
+        `INSERT INTO group_session_attendance (group_session_id, client_id, status)
+         VALUES ($1, $2, 'scheduled') RETURNING id, status`,
+        [gs.id, c.id]
+      );
 
-  const { rows: [training] } = await pool.query(
-    `INSERT INTO trainings (tenant_id, client_id, title, start_time, end_time)
-     VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '1 hour') RETURNING id`,
-    [tenantId, client.id, `${TEST_MARKER} training ${label}`]
-  );
+      const { rows: [tr] } = await pool.query(
+        `INSERT INTO trainings (tenant_id, client_id, title, start_time, end_time)
+         VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '1 hour') RETURNING id`,
+        [tenantId, c.id, `${TEST_MARKER} training ${label}`]
+      );
+
+      return { client: c, group: g, groupSession: gs, attendance: att, training: tr };
+    });
 
   return {
     tenantId,
@@ -143,11 +153,16 @@ const destroyTenant = async (tenantId) => {
   // cascade the trigger fires against an already-deleted tenant and trips the
   // subscription_usage foreign key, so clear them while the tenant still
   // exists, then drop the usage row itself.
-  await pool.query('DELETE FROM training_sessions WHERE tenant_id = $1', [tenantId]);
-  await pool.query('DELETE FROM clients WHERE tenant_id = $1', [tenantId]);
+  // training_sessions and clients are RLS-protected, so the cleanup needs the
+  // same tenant context the seeding used; without it the deletes would match
+  // nothing and the tenant cascade would then trip the usage foreign key.
+  await asTenant({ tenantId }, async () => {
+    await pool.query('DELETE FROM training_sessions WHERE tenant_id = $1', [tenantId]);
+    await pool.query('DELETE FROM clients WHERE tenant_id = $1', [tenantId]);
+  });
   await pool.query('DELETE FROM subscription_usage WHERE tenant_id = $1', [tenantId]);
 
   await pool.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
 };
 
-module.exports = { createTenant, destroyTenant, signToken, pool, TEST_MARKER };
+module.exports = { createTenant, destroyTenant, signToken, asTenant, queryAs, pool, TEST_MARKER };

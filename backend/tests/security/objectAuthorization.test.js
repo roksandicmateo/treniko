@@ -19,7 +19,7 @@
 
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, pool } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, pool, queryAs } = require('../helpers/fixtures');
 const {
   createExercise, createSession, createPackageWithPayment,
 } = require('../helpers/phase2bFixtures');
@@ -67,13 +67,13 @@ describe('TR-MED-4: exercise references must belong to the caller', () => {
     expect(res.status).toBe(400);
 
     // Nothing may be written — not the template, not the reference.
-    const templates = await pool.query(
+    const templates = await queryAs(A,
       'SELECT id FROM training_templates WHERE tenant_id = $1',
       [A.tenantId]
     );
     expect(templates.rows).toHaveLength(0);
 
-    const refs = await pool.query(
+    const refs = await queryAs(A,
       'SELECT id FROM template_exercises WHERE exercise_id = $1',
       [exerciseB.id]
     );
@@ -91,7 +91,7 @@ describe('TR-MED-4: exercise references must belong to the caller', () => {
     expect(res.status).toBe(400);
     expect(JSON.stringify(res.body)).not.toContain('Secret Lift');
 
-    const refs = await pool.query(
+    const refs = await queryAs(A,
       'SELECT id FROM training_exercises WHERE exercise_id = $1',
       [exerciseB.id]
     );
@@ -104,7 +104,7 @@ describe('TR-MED-4: exercise references must belong to the caller', () => {
     });
 
     expect(res.status).toBe(400);
-    const refs = await pool.query(
+    const refs = await queryAs(A,
       'SELECT id FROM training_exercises WHERE exercise_id = $1',
       [exerciseB.id]
     );
@@ -155,7 +155,7 @@ describe('TR-MED-5: payments cannot be re-linked to a foreign package', () => {
     expect(res.status).toBe(404);
 
     // Neither the link nor the amount may have moved.
-    const row = await pool.query(
+    const row = await queryAs(A,
       'SELECT amount, client_package_id FROM client_payments WHERE id = $1',
       [paymentsA.paymentId]
     );
@@ -176,7 +176,7 @@ describe('TR-MED-5: payments cannot be re-linked to a foreign package', () => {
     ).send({ amount: 80, clientPackageId: paymentsA.clientPackageId });
 
     expect(res.status).toBe(200);
-    const row = await pool.query(
+    const row = await queryAs(A,
       'SELECT amount FROM client_payments WHERE id = $1',
       [paymentsA.paymentId]
     );
@@ -191,7 +191,7 @@ describe('TR-MED-6: ad-hoc session attendees', () => {
       .send({ clientId: A.clientId });
 
     expect(res.status).toBe(404);
-    const rows = await pool.query(
+    const rows = await queryAs(B,
       'SELECT id FROM session_attendees WHERE session_id = $1',
       [sessionB.id]
     );
@@ -207,7 +207,7 @@ describe('TR-MED-6: ad-hoc session attendees', () => {
     // The original defect: the row was written with A's tenant_id but B's
     // client_id, and the listing endpoint then joined `clients` without a
     // tenant filter — returning B's client's name to A.
-    const rows = await pool.query(
+    const rows = await queryAs(A,
       'SELECT id FROM session_attendees WHERE session_id = $1 AND client_id = $2',
       [sessionA.id, B.clientId]
     );
@@ -221,7 +221,7 @@ describe('TR-MED-6: ad-hoc session attendees', () => {
   test('the listing endpoint refuses to surface a foreign client even from a poisoned row', async () => {
     // Simulate the exact row the old insert would have produced, bypassing the
     // API, and prove the read path alone now refuses to leak the name.
-    await pool.query(
+    await queryAs(A,
       `INSERT INTO session_attendees (session_id, client_id, tenant_id)
        VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
       [sessionA.id, B.clientId, A.tenantId]
@@ -231,7 +231,7 @@ describe('TR-MED-6: ad-hoc session attendees', () => {
     expect(list.status).toBe(200);
     expect(JSON.stringify(list.body)).not.toContain('Client B');
 
-    await pool.query(
+    await queryAs(A,
       'DELETE FROM session_attendees WHERE session_id = $1 AND client_id = $2',
       [sessionA.id, B.clientId]
     );
@@ -269,7 +269,7 @@ describe('TR-MED-7: progress entries require a client you own', () => {
       .send({ metric_name: 'weight', value: 99 });
 
     expect(res.status).toBe(404);
-    const rows = await pool.query(
+    const rows = await queryAs(B,
       'SELECT id FROM progress_entries WHERE client_id = $1',
       [B.clientId]
     );
@@ -300,7 +300,7 @@ describe('API3: unexpected body properties cannot rewrite ownership or state', (
     expect(res.status).toBe(201);
 
     const created = res.body.client;
-    const row = await pool.query('SELECT tenant_id FROM clients WHERE id = $1', [created.id]);
+    const row = await queryAs(A, 'SELECT tenant_id FROM clients WHERE id = $1', [created.id]);
     // The row must belong to the caller's tenant, from the JWT — not to the
     // tenant named in the body, and not at the id the body asked for.
     expect(row.rows[0].tenant_id).toBe(A.tenantId);
@@ -308,7 +308,7 @@ describe('API3: unexpected body properties cannot rewrite ownership or state', (
   });
 
   test('PUT /api/clients/:id ignores tenant_id, id and created_at in the body', async () => {
-    const before = await pool.query(
+    const before = await queryAs(A,
       'SELECT tenant_id, created_at FROM clients WHERE id = $1', [A.clientId]
     );
 
@@ -320,7 +320,7 @@ describe('API3: unexpected body properties cannot rewrite ownership or state', (
     });
     expect(res.status).toBe(200);
 
-    const after = await pool.query(
+    const after = await queryAs(A,
       'SELECT id, tenant_id, first_name, created_at FROM clients WHERE id = $1', [A.clientId]
     );
     expect(after.rows[0].tenant_id).toBe(before.rows[0].tenant_id);
@@ -364,7 +364,7 @@ describe('API3: unexpected body properties cannot rewrite ownership or state', (
     });
     expect(res.status).toBe(200);
 
-    const row = await pool.query(
+    const row = await queryAs(A,
       'SELECT tenant_id FROM training_sessions WHERE id = $1', [sessionA.id]
     );
     expect(row.rows[0].tenant_id).toBe(A.tenantId);

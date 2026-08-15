@@ -13,7 +13,7 @@
 
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, pool } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, pool, queryAs } = require('../helpers/fixtures');
 
 jest.setTimeout(30000);
 
@@ -38,7 +38,7 @@ const asA = (req) => req.set('Authorization', `Bearer ${A.token}`);
 
 describe('TR-CRIT-2: group-session attendance cross-tenant write', () => {
   test("Trainer A cannot flip attendance on Trainer B's group session", async () => {
-    const before = await pool.query(
+    const before = await queryAs(B,
       'SELECT status FROM group_session_attendance WHERE id = $1',
       [B.attendanceId]
     );
@@ -55,7 +55,7 @@ describe('TR-CRIT-2: group-session attendance cross-tenant write', () => {
     expect(res.status).toBe(404);
 
     // The victim's record must be byte-for-byte unchanged.
-    const after = await pool.query(
+    const after = await queryAs(B,
       'SELECT status FROM group_session_attendance WHERE id = $1',
       [B.attendanceId]
     );
@@ -71,7 +71,7 @@ describe('TR-CRIT-2: group-session attendance cross-tenant write', () => {
 
     expect(res.status).toBe(404);
 
-    const after = await pool.query(
+    const after = await queryAs(B,
       'SELECT status FROM group_session_attendance WHERE id = $1',
       [B.attendanceId]
     );
@@ -117,7 +117,7 @@ describe('TR-CRIT-2: group-session attendance cross-tenant write', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
 
-    const after = await pool.query(
+    const after = await queryAs(A,
       'SELECT status FROM group_session_attendance WHERE id = $1',
       [A.attendanceId]
     );
@@ -146,7 +146,7 @@ describe('cross-tenant access on other tenant-owned resources', () => {
       .send({ firstName: 'Pwned' });
     expect(res.status).toBe(404);
 
-    const after = await pool.query('SELECT first_name FROM clients WHERE id = $1', [B.clientId]);
+    const after = await queryAs(B, 'SELECT first_name FROM clients WHERE id = $1', [B.clientId]);
     expect(after.rows[0].first_name).toBe('Client');
   });
 
@@ -154,7 +154,7 @@ describe('cross-tenant access on other tenant-owned resources', () => {
     const res = await asA(request(app).delete(`/api/clients/${B.clientId}`));
     expect(res.status).toBe(404);
 
-    const still = await pool.query('SELECT id FROM clients WHERE id = $1', [B.clientId]);
+    const still = await queryAs(B, 'SELECT id FROM clients WHERE id = $1', [B.clientId]);
     expect(still.rows).toHaveLength(1);
   });
 
@@ -167,7 +167,7 @@ describe('cross-tenant access on other tenant-owned resources', () => {
     const res = await asA(request(app).delete(`/api/groups/${B.groupId}`));
     expect(res.status).toBe(404);
 
-    const still = await pool.query('SELECT id FROM groups WHERE id = $1', [B.groupId]);
+    const still = await queryAs(B, 'SELECT id FROM groups WHERE id = $1', [B.groupId]);
     expect(still.rows).toHaveLength(1);
   });
 
@@ -180,7 +180,7 @@ describe('cross-tenant access on other tenant-owned resources', () => {
     const res = await asA(request(app).delete(`/api/trainings/${B.trainingId}`));
     expect(res.status).toBe(404);
 
-    const still = await pool.query('SELECT id FROM trainings WHERE id = $1', [B.trainingId]);
+    const still = await queryAs(B, 'SELECT id FROM trainings WHERE id = $1', [B.trainingId]);
     expect(still.rows).toHaveLength(1);
   });
 

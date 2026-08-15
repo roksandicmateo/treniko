@@ -15,7 +15,7 @@
 
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, signToken, pool } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, signToken, pool, queryAs } = require('../helpers/fixtures');
 const { setPlan } = require('../helpers/phase2bFixtures');
 
 jest.setTimeout(30000);
@@ -185,13 +185,13 @@ describe('API6: sensitive business flows resist automation and abuse', () => {
     expect(overLimit.status).toBe(403);
     expect(overLimit.body.upgradeRequired).toBe(true);
 
-    const { rows } = await pool.query(
+    const { rows } = await queryAs(A,
       'SELECT COUNT(*)::int AS c FROM clients WHERE tenant_id = $1', [A.tenantId]
     );
     expect(rows[0].c).toBe(5);
 
     for (const id of created) {
-      await pool.query('DELETE FROM clients WHERE id = $1', [id]);
+      await queryAs(A, 'DELETE FROM clients WHERE id = $1', [id]);
     }
   });
 });

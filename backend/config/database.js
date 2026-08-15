@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 const { buildSslOptions } = require('./dbSsl');
+const { getTenantContext, contextSql } = require('./tenantContext');
 
 // PostgreSQL connection pool
 const isSocketPath = (process.env.DB_HOST || '').startsWith('/');
@@ -70,9 +71,14 @@ const queryWithTenant = async (text, params, tenantId) => {
 
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    // is_local = true: scoped to this transaction, released on COMMIT/ROLLBACK.
-    await client.query("SELECT set_config('app.current_tenant_id', $1, true)", [tenantId]);
+    // BEGIN and the context are sent together, as one round trip. The user id
+    // comes from the ambient request context when there is one, so
+    // trainer-scoped policies work on this path too.
+    const ambient = getTenantContext();
+    await client.query(`BEGIN; ${contextSql({
+      tenantId,
+      userId: ambient && ambient.tenantId === tenantId ? ambient.userId : null,
+    })}`);
     const result = await client.query(text, params);
     await client.query('COMMIT');
     return result;
@@ -84,6 +90,58 @@ const queryWithTenant = async (text, params, tenantId) => {
   }
 };
 
+// ── Automatic tenant context for row-level security (Phase 4) ────────────────
+//
+// Roughly 190 query sites across 20 files call `pool.query` directly and know
+// nothing about tenants. Row-level security needs every one of them to carry a
+// tenant context, and rewriting them all would be a large, risky change with a
+// silent failure mode: a site that was missed would simply return no rows.
+//
+// So the context is applied at the one place every query already passes
+// through. `pool.query` is wrapped: when a request-scoped context exists, the
+// query runs inside its own transaction that first sets the context with
+// SET LOCAL semantics; when there is none — background jobs, the
+// pre-authentication endpoints — it runs exactly as before.
+//
+// Two properties matter and both come from PostgreSQL rather than from our
+// bookkeeping:
+//   - the setting is discarded at COMMIT/ROLLBACK, so it cannot leak to the
+//     next borrower of a pooled connection, with no cleanup step to forget;
+//   - a query that fails rolls back its own transaction and nothing else.
+//
+// The cost is two extra round trips per query (BEGIN+set_config, then COMMIT).
+// BEGIN and set_config are sent together as one statement to keep it to two.
+const rawPoolQuery = pool.query.bind(pool);
+
+const queryWithAmbientContext = async (context, text, values) => {
+  const client = await pool.connect();
+  try {
+    await client.query(`BEGIN; ${contextSql(context)}`);
+    const result = await client.query(text, values);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+pool.query = (text, values, callback) => {
+  const context = getTenantContext();
+
+  // Callback style and cursor/stream submittables are passed straight through:
+  // nothing in this codebase uses them, and quietly changing their semantics
+  // would be worse than leaving them without a context.
+  if (typeof callback === 'function' || typeof text !== 'string') {
+    return rawPoolQuery(text, values, callback);
+  }
+  if (!context) return rawPoolQuery(text, values);
+
+  return queryWithAmbientContext(context, text, values);
+};
+
 /**
  * Execute a regular query without tenant isolation
  * Used for authentication and tenant-agnostic operations
@@ -93,10 +151,31 @@ const query = (text, params) => {
 };
 
 /**
- * Begin a transaction
+ * Check out a client for an explicit multi-statement transaction.
+ *
+ * The returned client applies the request's tenant context immediately after
+ * the caller's own BEGIN, so a transaction gets the same protection as a single
+ * query without any call site having to know about it. Callers already write
+ * `client.query('BEGIN')`; that is the only interception point, and it is
+ * matched exactly rather than by pattern so an unrelated statement cannot
+ * trigger it.
  */
 const getClient = async () => {
   const client = await pool.connect();
+  const context = getTenantContext();
+  if (!context) return client;
+
+  const originalQuery = client.query.bind(client);
+  client.query = async (text, values, callback) => {
+    if (typeof callback === 'function' || typeof text !== 'string') {
+      return originalQuery(text, values, callback);
+    }
+    if (text.trim().toUpperCase() === 'BEGIN') {
+      // One round trip: open the transaction and establish the context in it.
+      return originalQuery(`BEGIN; ${contextSql(context)}`);
+    }
+    return originalQuery(text, values);
+  };
   return client;
 };
 
