@@ -29,6 +29,9 @@
  *  - the run aborts on the first failure; later migrations are not attempted
  *  - a session-level advisory lock serialises concurrent deploys
  *  - credentials come only from the environment; nothing secret is logged
+ *  - DDL runs as the MIGRATION role (DB_MIGRATION_USER), which is separate from
+ *    the restricted runtime role the application connects as once row-level
+ *    security is enforced; it falls back to DB_USER when unset
  *  - never drops, truncates or resets anything
  */
 
@@ -116,14 +119,42 @@ const checksum = (text) =>
   crypto.createHash('sha256').update(text.replace(/\r\n/g, '\n')).digest('hex');
 
 // ── connection ───────────────────────────────────────────────────────────────
+/**
+ * Credentials for the migration run.
+ *
+ * ── Why this is separate from DB_USER ────────────────────────────────────────
+ * Once row-level security is actually enforced (Phase 4), the application must
+ * connect as a restricted role that cannot perform DDL and does not own the
+ * tables — that is precisely what makes the policies apply to it. But this
+ * runner needs the opposite: ownership and DDL rights.
+ *
+ * If both read DB_USER, activating RLS forces a bad choice: either migrations
+ * break, or the runtime role is given DDL rights back and the boundary is lost.
+ * So the runner prefers DB_MIGRATION_USER / DB_MIGRATION_PASSWORD when they are
+ * set, and falls back to DB_USER / DB_PASSWORD when they are not.
+ *
+ * The fallback matters as much as the override: a single-role setup (local
+ * development before activation, and CI, which connects as `postgres`) keeps
+ * working with no configuration change at all.
+ *
+ * Credentials come only from the environment; nothing is read from a file in
+ * the repository and nothing secret is logged.
+ */
+const migrationCredentials = () => ({
+  user: process.env.DB_MIGRATION_USER || process.env.DB_USER || 'postgres',
+  password: process.env.DB_MIGRATION_PASSWORD
+    || (process.env.DB_MIGRATION_USER ? undefined : process.env.DB_PASSWORD),
+});
+
 const connect = async () => {
   const database = process.env.DB_NAME || 'treniko_db';
+  const { user, password } = migrationCredentials();
   const client = new Client({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT, 10) || 5432,
     database,
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || undefined,
+    user,
+    password,
     // Same verified-TLS policy as the runtime pool (see config/dbSsl.js). The
     // migration runner carries the same credentials over the same network, so
     // it must not be the weaker of the two.
@@ -136,8 +167,10 @@ const connect = async () => {
   ${TLS_HELP}`;
     throw e;
   }
-  // Database name only — never credentials.
-  console.log(`database: ${database}`);
+  // Database and role name only — never credentials. The role is worth showing:
+  // after RLS activation, running migrations as the restricted runtime role is
+  // a configuration mistake, and this is where it becomes visible.
+  console.log(`database: ${database}  (role: ${user})`);
   return client;
 };
 

@@ -135,6 +135,14 @@ const runMigrations = (database, password, through) => {
     DB_NAME: database,
     DB_USER: MIGRATOR_ROLE,
     DB_PASSWORD: password,
+    // Set explicitly, not left to the DB_USER fallback. The migration runner
+    // prefers DB_MIGRATION_USER, so an ambient value inherited from the
+    // developer's .env would win over DB_USER above and the disposable
+    // database's tables would be created by the WRONG role -- leaving the
+    // intended migrator unable to grant on them, which is exactly the failure
+    // this line prevents.
+    DB_MIGRATION_USER: MIGRATOR_ROLE,
+    DB_MIGRATION_PASSWORD: password,
     DB_SSL: 'false',
     NODE_ENV: 'test',
   };

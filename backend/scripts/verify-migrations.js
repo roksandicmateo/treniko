@@ -83,6 +83,11 @@ const status = (handle) => {
         DB_NAME: handle.database,
         DB_USER: MIGRATOR_ROLE,
         DB_PASSWORD: handle.migratorPassword,
+        // Explicit for the same reason as in provision-restricted-db.js: the
+        // runner prefers DB_MIGRATION_USER, and an inherited one would point
+        // this status check at a different database role entirely.
+        DB_MIGRATION_USER: MIGRATOR_ROLE,
+        DB_MIGRATION_PASSWORD: handle.migratorPassword,
         DB_SSL: 'false',
         NODE_ENV: 'test',
       },

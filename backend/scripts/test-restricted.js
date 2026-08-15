@@ -69,6 +69,12 @@ const run = async () => {
         DB_NAME: handle.database,
         DB_USER: handle.appUser,
         DB_PASSWORD: handle.appPassword,
+        // Point the migration identity at the disposable database's own
+        // migrator. Without this, an inherited DB_MIGRATION_USER from the
+        // developer's .env would send any migration run during the suite to a
+        // privileged role on a different database.
+        DB_MIGRATION_USER: handle.migratorUser,
+        DB_MIGRATION_PASSWORD: handle.migratorPassword,
         DB_SSL: 'false',
         NODE_ENV: 'test',
         // Surfaced to the RLS suites so they can open their own connections as

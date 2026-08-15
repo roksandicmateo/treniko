@@ -194,7 +194,17 @@ router.post('/', async (req, res) => {
     );
     await insertExercises(dbClient, training.id, exercises);
     await dbClient.query('COMMIT');
-    const full = await loadFull(training.id, tenantId, dbClient);
+    // Read back through the pool, not through `dbClient`.
+    //
+    // The tenant context this client carries is established by the wrapper in
+    // config/database.js when the caller issues BEGIN, with SET LOCAL semantics
+    // — so PostgreSQL discards it at the COMMIT above. A read issued on this
+    // client afterwards therefore runs with NO tenant context, and once
+    // row-level security is enforced every policy denies it: loadFull returned
+    // null and the endpoint answered 201 with an empty body.
+    // `pool.query` is wrapped to establish the context per query, so it is the
+    // correct way to read outside an explicit transaction.
+    const full = await loadFull(training.id, tenantId, pool);
     res.status(201).json(full);
   } catch (e) {
     if (dbClient) await dbClient.query('ROLLBACK').catch(() => {});
@@ -251,7 +261,9 @@ router.put('/:id', async (req, res) => {
       await insertExercises(dbClient, req.params.id, exercises);
     }
     await dbClient.query('COMMIT');
-    const full = await loadFull(req.params.id, tenantId, dbClient);
+    // Same reason as the create path above: the transaction-scoped tenant
+    // context is gone once COMMIT has run, so this read goes through the pool.
+    const full = await loadFull(req.params.id, tenantId, pool);
     res.json(full);
   } catch (e) {
     if (dbClient) await dbClient.query('ROLLBACK').catch(() => {});
