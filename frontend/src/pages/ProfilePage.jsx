@@ -80,6 +80,10 @@ const ProfilePage = () => {
       });
       const data = await res.json();
       if (data.success) {
+        // Changing the password revokes every token issued beforehand,
+        // including the one in storage. The API returns a replacement so the
+        // session survives; persist it or the next request would 401.
+        if (data.token) localStorage.setItem('token', data.token);
         showToast(t('common.save'), 'success');
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       } else { setPasswordError(data.error || t('common.error')); }

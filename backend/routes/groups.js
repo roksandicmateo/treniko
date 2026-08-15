@@ -3,6 +3,10 @@ const express = require('express');
 const router  = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { isUuid } = require('../utils/validation');
+
+// Mirrors the check_attendance_status constraint in migration 017.
+const ATTENDANCE_STATUSES = ['scheduled', 'completed', 'cancelled', 'no_show'];
 
 router.use(authenticateToken);
 
@@ -284,20 +288,46 @@ router.put('/:id/sessions/:sessionId/attendance/:clientId', async (req, res) => 
   try {
     const { tenantId } = req.user;
     const { status } = req.body;
+    const { id: groupId, sessionId, clientId } = req.params;
+
+    if (!isUuid(groupId) || !isUuid(sessionId) || !isUuid(clientId)) {
+      return res.status(404).json({ error: 'Attendance record not found' });
+    }
+    if (!ATTENDANCE_STATUSES.includes(status)) {
+      return res.status(400).json({
+        error: `status must be one of: ${ATTENDANCE_STATUSES.join(', ')}`,
+      });
+    }
 
     // Verify group belongs to tenant
     const { rows: [group] } = await pool.query(
       'SELECT id FROM groups WHERE id=$1 AND tenant_id=$2',
-      [req.params.id, tenantId]
+      [groupId, tenantId]
     );
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
+    // Tenant ownership is enforced on the row actually being mutated, not just
+    // on the group named in the URL. `group_session_attendance` has no
+    // tenant_id column of its own, so ownership is enforced by joining to
+    // group_sessions: the attendance row must belong to a session that both
+    // lives in this tenant AND belongs to the group from the URL. Without this
+    // join a trainer could pass their own :id together with another tenant's
+    // :sessionId/:clientId and overwrite that tenant's attendance record.
     const { rows: [attendance] } = await pool.query(
-      `UPDATE group_session_attendance SET status=$1
-       WHERE group_session_id=$2 AND client_id=$3
-       RETURNING *`,
-      [status, req.params.sessionId, req.params.clientId]
+      `UPDATE group_session_attendance gsa
+          SET status = $1
+         FROM group_sessions gs
+        WHERE gs.id = gsa.group_session_id
+          AND gsa.group_session_id = $2
+          AND gsa.client_id = $3
+          AND gs.group_id = $4
+          AND gs.tenant_id = $5
+      RETURNING gsa.*`,
+      [status, sessionId, clientId, groupId, tenantId]
     );
+    // A row owned by another tenant is indistinguishable from one that does not
+    // exist: both return this same 404, so the response cannot be used to probe
+    // for the existence of another tenant's records.
     if (!attendance) return res.status(404).json({ error: 'Attendance record not found' });
     res.json({ success: true, attendance });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }

@@ -31,9 +31,14 @@ const forgotPassword = async (req, res) => {
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
+    // password_reset_tokens has no tenant_id column (see migration
+    // 021_password_reset.sql); user_id already determines the tenant. Inserting
+    // one raised 42703, and because this handler deliberately swallows every
+    // error to avoid email enumeration, password reset failed *silently* — the
+    // caller got {success:true} and no email was ever sent.
     await query(
-      'INSERT INTO password_reset_tokens (user_id, tenant_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)',
-      [user.id, user.tenant_id, tokenHash, expiresAt]
+      'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
+      [user.id, tokenHash, expiresAt]
     );
 
     const resetUrl = `${process.env.APP_URL || 'http://localhost:5173'}/reset-password?token=${rawToken}`;
@@ -86,7 +91,12 @@ const resetPassword = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
-    await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, row.user_id]);
+    // password_changed_at revokes every JWT issued before this moment, so a
+    // stolen token cannot outlive the reset that was performed to stop it.
+    await query(
+      'UPDATE users SET password_hash = $1, password_changed_at = NOW() WHERE id = $2',
+      [passwordHash, row.user_id]
+    );
     await query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1', [row.id]);
 
     return res.json({ success: true, message: 'Password updated successfully' });

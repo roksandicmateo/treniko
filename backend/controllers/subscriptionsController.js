@@ -356,9 +356,33 @@ const changePlan = async (req, res) => {
 
     // Determine change type
     const priceOrder = { free: 0, pro: 1, enterprise: 2 };
-    const changeType = priceOrder[plan.name] > priceOrder[current.current_plan_name] 
-      ? 'upgrade' 
+    const changeType = priceOrder[plan.name] > priceOrder[current.current_plan_name]
+      ? 'upgrade'
       : 'downgrade';
+
+    // Self-service upgrades to a paid plan are refused unless explicitly
+    // enabled. This endpoint applies the new plan and extends the billing
+    // period immediately, and there is no payment provider anywhere in this
+    // codebase — so any authenticated trainer could previously promote
+    // themselves to Enterprise for free just by calling it directly, bypassing
+    // whatever checkout flow the UI shows.
+    //
+    // Downgrades and cancellations stay available (they never grant paid
+    // entitlements). Until a verified payment/checkout confirmation is wired
+    // in, an operator can re-enable self-service upgrades by setting
+    // ALLOW_SELF_SERVICE_PLAN_UPGRADE=true if billing is handled out of band.
+    const selfServiceUpgradeAllowed =
+      process.env.ALLOW_SELF_SERVICE_PLAN_UPGRADE === 'true';
+    const isPaidPlan = (plan.price_monthly > 0 || plan.price_yearly > 0);
+
+    if (changeType === 'upgrade' && isPaidPlan && !selfServiceUpgradeAllowed) {
+      return res.status(402).json({
+        error: 'Payment required',
+        message: 'Upgrading to a paid plan requires a completed payment. Please contact support to complete your upgrade.',
+        planName: plan.display_name,
+        paymentRequired: true,
+      });
+    }
 
     // Calculate new period
     const periodDays = billingPeriod === 'yearly' ? 365 : 30;

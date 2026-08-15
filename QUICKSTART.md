@@ -29,7 +29,7 @@ nano .env
 **Then run:**
 ```bash
 npm install
-npm run init-db
+npm run db:migrate
 npm run dev
 ```
 

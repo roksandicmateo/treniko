@@ -68,11 +68,15 @@ You've already installed:
    ```
    This will take 2-3 minutes. You'll see lots of packages being downloaded.
 
-5. **Initialize the database:**
+5. **Create the database schema:**
    ```bash
-   npm run init-db
+   npm run db:migrate
    ```
-   You should see "✅ Database initialization complete!"
+   This applies the baseline schema and every migration, in order, and records
+   each one in the `schema_migrations` table. It is safe to run again at any
+   time — already-applied migrations are skipped.
+
+   You should see `done — N migration(s) applied`.
 
 6. **Start the backend server:**
    ```bash
@@ -172,9 +176,32 @@ npm run dev
 # Start production server
 npm start
 
-# Reinitialize database (⚠️ WARNING: This deletes all data!)
-npm run init-db
+# Create or upgrade the database schema (safe to re-run; never deletes data)
+npm run db:migrate
+
+# Show which migrations are applied and which are pending
+npm run db:status
+
+# Adopt an EXISTING database that predates migration tracking.
+# Runs as a dry run first; only records a migration as applied after verifying
+# its objects actually exist. Add -- --apply to write.
+npm run db:baseline
+npm run db:baseline -- --apply
 ```
+
+> **Database setup, in one place.** `npm run db:migrate` is the only command
+> needed to create a fresh database or upgrade an existing one. It applies
+> `schema.sql` (the baseline) followed by every file in `backend/migrations/`
+> in numeric order, inside one transaction each, recording progress in the
+> `schema_migrations` table.
+>
+> `npm run init-db` is kept as an alias for `db:migrate`. The old
+> `scripts/initDatabase.js` is deprecated and refuses to run: it applied
+> `schema.sql` only, producing a database with 4 of the application's 35 tables.
+>
+> If a database already has application tables but no migration history,
+> `db:migrate` will stop and tell you to run `db:baseline` first, rather than
+> attempting to re-apply the baseline over live data.
 
 ### Frontend Commands
 ```bash
@@ -206,7 +233,7 @@ brew services start postgresql@16
 ```bash
 createdb treniko_db
 cd backend
-npm run init-db
+npm run db:migrate
 ```
 
 ### Frontend won't start

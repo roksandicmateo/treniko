@@ -68,6 +68,24 @@ app.get('/health', (req, res) => {
 // ── Security / rate limiting / subscription middleware ────────────────────────
 const { checkReadOnlyMode, checkClientLimit, checkSessionLimit, checkFeatureAccess } = require('./middleware/subscription');
 
+// Paths under /api that must stay reachable without a token. Everything else
+// below the authentication gate requires a valid JWT. Values are paths as seen
+// *inside* the '/api' mount (Express strips the mount prefix from req.path).
+const PUBLIC_API_PATHS = new Set([
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/verify-email',
+]);
+const isPublicApiPath = (req) => PUBLIC_API_PATHS.has(req.path);
+
+// Wrap a middleware so it is skipped for the public auth endpoints. Used for
+// the subscription checks, which are meaningless (and must not 401) on the
+// routes a user calls before they have a token.
+const skipPublicPaths = (middleware) => (req, res, next) =>
+  isPublicApiPath(req) ? next() : middleware(req, res, next);
+
 app.use('/api', apiRateLimiter);
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/login', checkAccountLockout);
@@ -75,9 +93,22 @@ app.use('/api/auth/register', authRateLimiter);
 app.use('/api/export', exportRateLimiter);
 app.use('/api', auditLogMiddleware);
 app.use('/api/auth/login', auditFailedLogin);
-app.use('/api', checkReadOnlyMode);
-app.use('/api', checkClientLimit);
-app.use('/api', checkSessionLimit);
+
+// ── Authentication gate ───────────────────────────────────────────────────────
+// MUST stay above the subscription checks below. Those middlewares read
+// req.user, and previously ran before any authenticateToken (which was applied
+// per-router, further down), so req.user was always undefined and every plan
+// limit, read-only lock and feature gate silently passed. Authenticating here
+// means req.user is populated by the time they execute.
+// Individual routers still apply authenticateToken themselves; that is
+// harmless (re-verifying the same token) and keeps them safe in isolation.
+app.use('/api', (req, res, next) =>
+  isPublicApiPath(req) ? next() : authenticateToken(req, res, next)
+);
+
+app.use('/api', skipPublicPaths(checkReadOnlyMode));
+app.use('/api', skipPublicPaths(checkClientLimit));
+app.use('/api', skipPublicPaths(checkSessionLimit));
 
 // ── Auth & profile ────────────────────────────────────────────────────────────
 app.use('/api/auth', dpaRoutes);
@@ -116,7 +147,12 @@ app.use('/api/exercises', exercisesRouter);
 app.use('/api/trainings', trainingsRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api/trainings', uploadsRouter);
-app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
+// NOTE: the previous `app.use('/uploads', express.static(...))` mount was
+// removed. It served every tenant's uploaded client photos to any caller who
+// had a URL, with no authentication and no ownership check. Files are now
+// served only via GET /api/trainings/:trainingId/images/:filename in
+// routes/uploads.js, which requires a valid JWT, verifies the caller owns the
+// parent training, and resolves the tenant directory from the token.
 
 // ── Export & deletion ─────────────────────────────────────────────────────────
 app.use('/api/export', checkFeatureAccess('export'), exportRoutes);
@@ -143,6 +179,13 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start server ──────────────────────────────────────────────────────────────
+// Only bind the port and schedule background jobs when this file is executed
+// directly (`node server.js` / `npm start`). Importing the app — as the
+// security test suite does — must not open a listener or kick off the deletion
+// job, which runs immediately on load and permanently removes records.
+const isMain = require.main === module;
+
+if (isMain) {
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
@@ -165,4 +208,6 @@ process.on('SIGTERM', () => {
 });
 
 require('./cron');
+} // end if (isMain)
+
 module.exports = app;

@@ -2,6 +2,7 @@
 
 const { pool } = require('../config/database');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 /**
  * GET /api/profile
@@ -139,12 +140,31 @@ const changePassword = async (req, res) => {
     }
 
     const newHash = await bcrypt.hash(newPassword, 10);
-    await pool.query(
-      `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
+    // password_changed_at revokes every JWT issued before this moment (see
+    // middleware/auth.js), which includes the caller's own current token.
+    const { rows: [updated] } = await pool.query(
+      `UPDATE users SET password_hash = $1, password_changed_at = NOW(), updated_at = NOW()
+        WHERE id = $2
+    RETURNING password_changed_at`,
       [newHash, userId]
     );
 
-    return res.status(200).json({ success: true, message: 'Password changed successfully.' });
+    // Because the caller's existing token was just revoked, hand back a fresh
+    // one so a routine password change does not log the user out mid-session.
+    // iat is pinned to the same rounded-up second the revocation check uses, so
+    // the replacement is guaranteed to land on the valid side of the cutoff.
+    const issuedAt = Math.ceil(new Date(updated.password_changed_at).getTime() / 1000);
+    const token = jwt.sign(
+      { userId, tenantId: req.user.tenantId, email: req.user.email, iat: issuedAt },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password changed successfully.',
+      token,
+    });
   } catch (error) {
     console.error('changePassword error:', error);
     return res.status(500).json({ error: 'Failed to change password.' });

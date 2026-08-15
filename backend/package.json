@@ -6,7 +6,18 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "init-db": "node scripts/initDatabase.js"
+    "db:migrate": "node scripts/migrate.js",
+    "db:status": "node scripts/migrate.js status",
+    "db:baseline": "node scripts/migrate.js baseline",
+    "init-db": "node scripts/migrate.js",
+    "test": "jest --runInBand --forceExit",
+    "test:security": "jest tests/security --runInBand --forceExit"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
   },
   "keywords": [
     "training",
@@ -28,11 +39,12 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
-    "nodemailer": "^8.0.4",
     "pg": "^8.11.3"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "jest": "^30.4.2",
+    "nodemon": "^3.0.2",
+    "supertest": "^7.2.2"
   },
   "nodemonConfig": {
     "ignore": [

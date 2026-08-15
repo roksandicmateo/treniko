@@ -1,12 +1,34 @@
 const { queryWithTenant } = require('../config/database');
 
 /**
+ * Fail closed when the request is not authenticated.
+ *
+ * These middlewares used to `return next()` whenever req.user was missing.
+ * Combined with being mounted on '/api' ahead of any authenticateToken, that
+ * meant req.user was ALWAYS undefined and every check below was a no-op. The
+ * mount order is fixed in server.js; this guard makes the failure mode explicit
+ * so the same bug cannot silently reappear — an unauthenticated request that
+ * reaches a plan-enforced route is now rejected instead of waved through.
+ *
+ * Public auth endpoints never reach here (see skipPublicPaths in server.js).
+ *
+ * @returns {boolean} true if the request was rejected and handling must stop.
+ */
+const rejectIfUnauthenticated = (req, res) => {
+  if (req.user) return false;
+  res.status(401).json({
+    error: 'Authentication required',
+    message: 'No authenticated user for subscription enforcement',
+  });
+  return true;
+};
+
+/**
  * Middleware to check if tenant is in read-only mode
  */
 const checkReadOnlyMode = async (req, res, next) => {
   try {
-    // Skip if user is not authenticated yet (e.g. /api/auth/validate)
-    if (!req.user) return next();
+    if (rejectIfUnauthenticated(req, res)) return;
 
     const { tenantId } = req.user;
 
@@ -16,9 +38,13 @@ const checkReadOnlyMode = async (req, res, next) => {
     // Skip for subscription-related endpoints
     if (req.path.startsWith('/subscriptions')) return next();
 
+    // The view exposes the column as `subscription_status`. Selecting `status`
+    // raised "column does not exist" on every request, which the catch below
+    // swallowed into next() — so read-only mode never actually blocked
+    // anything, even once the middleware ordering was corrected.
     const result = await queryWithTenant(
-      `SELECT is_read_only, status, current_period_end, plan_display_name
-       FROM tenant_subscription_status 
+      `SELECT is_read_only, subscription_status, current_period_end, plan_display_name
+       FROM tenant_subscription_status
        WHERE tenant_id = $1`,
       [tenantId],
       tenantId
@@ -38,7 +64,7 @@ const checkReadOnlyMode = async (req, res, next) => {
         error: 'Subscription expired',
         message: 'Your subscription has expired. You are in read-only mode. Please renew your subscription to continue.',
         subscriptionStatus: {
-          status: sub.status,
+          status: sub.subscription_status,
           expiredAt: sub.current_period_end,
           planName: sub.plan_display_name
         }
@@ -61,8 +87,7 @@ const checkClientLimit = async (req, res, next) => {
     // Only check on client creation
     if (req.method !== 'POST' || !req.path.includes('/clients')) return next();
 
-    // Skip if user is not authenticated yet
-    if (!req.user) return next();
+    if (rejectIfUnauthenticated(req, res)) return;
 
     const { tenantId } = req.user;
 
@@ -109,8 +134,7 @@ const checkSessionLimit = async (req, res, next) => {
     // Only check on session creation
     if (req.method !== 'POST' || !req.path.includes('/sessions')) return next();
 
-    // Skip if user is not authenticated yet
-    if (!req.user) return next();
+    if (rejectIfUnauthenticated(req, res)) return;
 
     const { tenantId } = req.user;
 
@@ -155,8 +179,7 @@ const checkSessionLimit = async (req, res, next) => {
 const checkFeatureAccess = (feature) => {
   return async (req, res, next) => {
     try {
-      // Skip if user is not authenticated yet
-      if (!req.user) return next();
+      if (rejectIfUnauthenticated(req, res)) return;
 
       const { tenantId } = req.user;
 

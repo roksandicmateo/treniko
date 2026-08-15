@@ -1,65 +1,37 @@
-const { Pool } = require('pg');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+#!/usr/bin/env node
+'use strict';
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'treniko_db',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
-});
+/**
+ * DEPRECATED — replaced by scripts/migrate.js.
+ *
+ * This script used to be the documented way to set up the database, but it only
+ * ever executed `schema.sql`, which creates 4 of the application's 35 tables and
+ * applies none of the migration chain. Every database created with it was
+ * missing most of the schema, so the server failed as soon as it touched
+ * groups, trainings, packages, payments, subscriptions or the GDPR tables.
+ *
+ * It also printed a seed account's password to the console.
+ *
+ * It now refuses to run rather than silently producing a broken database.
+ * `npm run init-db` is wired to the migration runner instead.
+ */
 
-async function initDatabase() {
-  const client = await pool.connect();
-  
-  try {
-    console.log('🔄 Initializing database...\n');
+console.error(`
+scripts/initDatabase.js is deprecated and no longer runs.
 
-    // Read schema file
-    const schemaPath = path.join(__dirname, '..', 'schema.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
+It applied schema.sql only, which produces an incomplete database
+(4 of 35 tables) with none of the migrations applied.
 
-    // Execute schema
-    console.log('📝 Creating tables and indexes...');
-    await client.query(schema);
-    console.log('✅ Database schema created successfully\n');
+Use the migration runner instead:
 
-    // Verify tables
-    const tables = await client.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      ORDER BY table_name
-    `);
+  npm run db:migrate      create/upgrade the database (safe to re-run)
+  npm run db:status       show applied vs pending migrations
+  npm run db:baseline     adopt an existing untracked database
 
-    console.log('📊 Created tables:');
-    tables.rows.forEach(row => {
-      console.log(`   - ${row.table_name}`);
-    });
+For a brand-new database:
 
-    console.log('\n✅ Database initialization complete!\n');
-    console.log('🎉 Demo account created:');
-    console.log('   Email: demo@treniko.com');
-    console.log('   Password: password123\n');
+  createdb treniko_db
+  npm run db:migrate
+`);
 
-  } catch (error) {
-    console.error('❌ Database initialization failed:', error.message);
-    throw error;
-  } finally {
-    client.release();
-    await pool.end();
-  }
-}
-
-// Run initialization
-initDatabase()
-  .then(() => {
-    console.log('👍 All done! You can now start the server.');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Fatal error:', error);
-    process.exit(1);
-  });
+process.exit(1);
