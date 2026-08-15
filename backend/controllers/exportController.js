@@ -3,15 +3,33 @@
 const { pool } = require('../config/database');
 const archiver = require('archiver');
 const { Parser } = require('json2csv');
+const { sanitizeCsvValue } = require('../utils/validation');
 
 /**
  * Helper — convert array of objects to CSV string
+ *
+ * Every value is passed through sanitizeCsvValue first (TR-MED-2). Client
+ * records carry free-text fields — goals, injuries, diet notes, names — that
+ * the trainer's own clients supply, and a value beginning with =, +, -, @, tab
+ * or CR is interpreted as a formula by Excel, LibreOffice and Google Sheets.
+ * The victim here is the trainer: they export their own data and open it, and
+ * the formula runs in their spreadsheet with their access.
+ *
+ * Field *names* are not sanitised — they are column names chosen by this
+ * application, never user input.
  */
 const toCSV = (data, fields) => {
   if (!data.length) return '';
   try {
+    const safeData = data.map((row) => {
+      const out = {};
+      for (const [key, value] of Object.entries(row)) {
+        out[key] = sanitizeCsvValue(value);
+      }
+      return out;
+    });
     const parser = new Parser({ fields });
-    return parser.parse(data);
+    return parser.parse(safeData);
   } catch {
     return '';
   }
@@ -214,4 +232,7 @@ This export was generated in compliance with GDPR Article 20 (Right to Data Port
   }
 };
 
-module.exports = { exportAllData, exportClientData };
+// toCSV is exported for the security tests, which assert that spreadsheet
+// formula injection is neutralised in the generated CSV (TR-MED-2). It is not
+// mounted on any route.
+module.exports = { exportAllData, exportClientData, toCSV };

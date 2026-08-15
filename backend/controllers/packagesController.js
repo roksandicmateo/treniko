@@ -175,9 +175,12 @@ const getClientPackages = async (req, res) => {
   const tenantId = req.user.tenantId;
   const { clientId } = req.params;
 
-  await runExpiry();
-
   try {
+    // Inside the try: runExpiry() touches the database, and a rejection from an
+    // async handler is not caught by Express — the request would go unanswered
+    // and the process would terminate.
+    await runExpiry();
+
     const result = await pool.query(
       `SELECT cp.*,
               p.name AS package_template_name
@@ -204,9 +207,12 @@ const getActiveClientPackage = async (req, res) => {
   const tenantId = req.user.tenantId;
   const { clientId } = req.params;
 
-  await runExpiry();
-
   try {
+    // Inside the try: runExpiry() touches the database, and a rejection from an
+    // async handler is not caught by Express — the request would go unanswered
+    // and the process would terminate.
+    await runExpiry();
+
     const result = await pool.query(
       `SELECT cp.*,
               p.name AS package_template_name

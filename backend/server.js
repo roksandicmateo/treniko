@@ -17,7 +17,10 @@ const deletionRoutes = require('./routes/deletion');
 const consentRoutes = require('./routes/consent');
 const { requireDpa } = require('./middleware/requireDpa');
 const { auditLogMiddleware, auditFailedLogin } = require('./middleware/auditLog');
-const { helmetMiddleware, authRateLimiter, apiRateLimiter, exportRateLimiter, checkAccountLockout } = require('./middleware/security');
+const {
+  helmetMiddleware, authRateLimiter, apiRateLimiter, exportRateLimiter, checkAccountLockout,
+  passwordResetIpRateLimiter, passwordResetEmailRateLimiter,
+} = require('./middleware/security');
 const { authenticateToken } = require('./middleware/auth');
 const trainingsRouter = require('./routes/trainings');
 const templatesRouter = require('./routes/templates');
@@ -41,13 +44,25 @@ app.use(cors({
     ];
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin || allowed.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin ${origin} not allowed`));
+
+    // The rejected origin is attacker-controlled input. It used to be
+    // interpolated into the error message, which the global handler then echoed
+    // back in the response body — a reflection of caller input, and a 500 for
+    // what is a routine policy decision. Log it, answer 403, echo nothing.
+    console.warn(`[CORS] rejected origin: ${origin}`);
+    const err = new Error('Origin not allowed');
+    err.status = 403;
+    err.expose = true;
+    callback(err);
   },
   credentials: true,
 }));
 app.set('trust proxy', 1);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body-size caps. These match Express's own defaults; they are stated
+// explicitly so the limit is a deliberate, reviewable decision rather than an
+// implicit one, and so raising it later has to be argued for.
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // ── Request logging (development only) ───────────────────────────────────────
 if (process.env.NODE_ENV === 'development') {
@@ -90,6 +105,12 @@ app.use('/api', apiRateLimiter);
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/login', checkAccountLockout);
 app.use('/api/auth/register', authRateLimiter);
+// Password reset: unauthenticated, and every call sends an email. Limited per
+// IP and per target address (TR-MED-1). Mounted here so the limiters run before
+// the router — express.json() above has already parsed the body the per-email
+// key is derived from.
+app.use('/api/auth/forgot-password', passwordResetIpRateLimiter, passwordResetEmailRateLimiter);
+app.use('/api/auth/reset-password', passwordResetIpRateLimiter);
 app.use('/api/export', exportRateLimiter);
 app.use('/api', auditLogMiddleware);
 app.use('/api/auth/login', auditFailedLogin);
@@ -171,10 +192,25 @@ app.use((req, res) => {
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
+  // Always log the full error server-side.
   console.error('Error:', err);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+
+  if (res.headersSent) return next(err);
+
+  // Previously the raw `err.message` was returned to the caller in every
+  // environment. Anything that reached this handler — a driver error, a
+  // filesystem path, a third-party API's response body — was disclosed
+  // verbatim. Client errors (4xx) that the application raised deliberately are
+  // still described, because that text is written for the caller; everything
+  // else gets a generic message and detail is kept in the logs.
+  const clientSafe = status < 500 && err.expose !== false && typeof err.message === 'string';
+
+  res.status(status).json({
+    error: clientSafe ? err.message : 'Internal Server Error',
+    ...(isDevelopment && { message: err.message, stack: err.stack }),
   });
 });
 
@@ -186,6 +222,21 @@ app.use((err, req, res, next) => {
 const isMain = require.main === module;
 
 if (isMain) {
+// ── Last-resort crash guard ───────────────────────────────────────────────────
+// Express 4 does not catch rejections thrown by an async route handler, and
+// Node terminates the process on an unhandled rejection. That turns any single
+// unguarded `await` into a remote kill switch: one request with a malformed id
+// used to stop the API outright (verified — the process exited with code 1).
+//
+// Every known path is fixed at the source; every await in a handler now sits
+// inside its own try/catch. This is the net beneath that work, not a substitute
+// for it: an unknown path must degrade to one stuck request and a loud log
+// entry, never to an outage. The request is deliberately left unanswered rather
+// than guessed at, because at this point the handler's state is unknown.
+process.on('unhandledRejection', (reason) => {
+  console.error('UNHANDLED REJECTION — request left unanswered, process kept alive:', reason);
+});
+
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗

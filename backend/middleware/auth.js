@@ -54,8 +54,14 @@ const authenticateToken = (req, res, next) => {
     });
   }
 
-  // Verify token
-  jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
+  // Verify token.
+  //
+  // The accepted algorithm is pinned (TR-LOW-1). Without it, jsonwebtoken
+  // accepts whatever `alg` the token's own header claims — the token is
+  // attacker-supplied, so that is the attacker's choice to make. It is not
+  // exploitable today because the secret is only ever used symmetrically, but
+  // pinning costs nothing and removes the dependency on that staying true.
+  jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] }, async (err, user) => {
     if (err) {
       return res.status(403).json({
         error: 'Invalid token',

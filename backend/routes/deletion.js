@@ -10,9 +10,14 @@ const {
   cancelClientDeletion
 } = require('../controllers/deletionController');
 const { authenticateToken } = require('../middleware/auth');
+const { attachUuidParamGuards } = require('../utils/routeGuards');
 const { requireDpa } = require('../middleware/requireDpa');
 
 router.use(authenticateToken, requireDpa);
+
+// A malformed UUID in the path answers 404 instead of reaching PostgreSQL
+// and surfacing as a 500 (see utils/routeGuards.js).
+attachUuidParamGuards(router);
 
 // Account deletion
 router.post('/account/request-deletion', requestAccountDeletion);

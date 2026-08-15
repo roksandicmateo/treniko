@@ -3,6 +3,7 @@ const bcrypt   = require('bcryptjs');
 const crypto   = require('crypto');
 const { query } = require('../config/database');
 const { sendPasswordResetEmail } = require('../services/emailService');
+const { validatePassword, normalizeEmail } = require('../utils/validation');
 
 // POST /api/auth/forgot-password
 const forgotPassword = async (req, res) => {
@@ -13,7 +14,7 @@ const forgotPassword = async (req, res) => {
 
     const result = await query(
       'SELECT id, tenant_id, first_name, email FROM users WHERE email = $1',
-      [email.toLowerCase().trim()]
+      [normalizeEmail(email)]
     );
 
     if (result.rows.length === 0) return res.json({ success: true });
@@ -43,11 +44,19 @@ const forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.APP_URL || 'http://localhost:5173'}/reset-password?token=${rawToken}`;
 
-    await sendPasswordResetEmail({
+    // Dispatched without awaiting (TR-MED-10). The response body is already
+    // identical for known and unknown addresses, but awaiting an outbound HTTP
+    // call to Brevo made a *known* address measurably slower to answer than an
+    // unknown one, which is enough to enumerate registered users. Detaching the
+    // send makes both paths return on the same short path. This mirrors what
+    // authController already does for the verification email.
+    sendPasswordResetEmail({
       to:        user.email,
       firstName: user.first_name,
       resetUrl,
-    });
+    }).catch((err) =>
+      console.error('[Email] Password reset email failed:', err.message)
+    );
 
     return res.json({ success: true });
   } catch (err) {
@@ -63,8 +72,9 @@ const resetPassword = async (req, res) => {
     if (!token || !newPassword) {
       return res.status(400).json({ error: 'Token and new password are required' });
     }
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const passwordCheck = validatePassword(newPassword);
+    if (!passwordCheck.ok) {
+      return res.status(400).json({ error: passwordCheck.reason });
     }
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');

@@ -1,12 +1,31 @@
 // backend/services/emailService.js
 // Uses Brevo HTTP API (port 443) — works on all VPS/cloud providers
 
+// User-supplied values (names, and a client name that a trainer types in) are
+// interpolated into these HTML templates. Unescaped, that is an HTML-injection
+// primitive in whatever mail client renders the message — currently low impact
+// because each message goes to the person whose own input it carries, but
+// sendFirstClientEmail already carries one user's text to another user, so the
+// property must not be left resting on that coincidence (TR-LOW-12).
+// Subject lines are plain text and are deliberately left unescaped.
+const { escapeHtml, isEmail } = require('../utils/validation');
+
 const appUrl = () => process.env.APP_URL || 'https://treniko.com';
 
 async function sendEmail({ to, subject, html }) {
   const apiKey = process.env.BREVO_API_KEY;
+
+  // Refuse to hand a malformed recipient to the provider. Addresses reaching
+  // here originate in user input, and every send costs quota; a value that is
+  // not an address is a bug or an abuse attempt, not something to forward.
+  if (!isEmail(to)) {
+    throw new Error('Refusing to send: recipient is not a valid email address');
+  }
+
   if (!apiKey) {
-    console.log(`[Email DISABLED] No BREVO_API_KEY set. To: ${to} | Subject: ${subject}`);
+    // Recipient addresses are personal data; log that delivery was skipped and
+    // what it was, not who it was for.
+    console.log(`[Email DISABLED] No BREVO_API_KEY set. Subject: ${subject}`);
     return { skipped: true };
   }
 
@@ -33,12 +52,17 @@ async function sendEmail({ to, subject, html }) {
   });
 
   if (!res.ok) {
+    // The provider's response body is third-party data. It is surfaced only in
+    // an Error for the server log — never returned to a caller, and never
+    // stored — and the request headers (which carry the API key) are not echoed.
     const err = await res.text();
-    throw new Error(`Brevo API error ${res.status}: ${err}`);
+    throw new Error(`Brevo API error ${res.status}: ${err.slice(0, 500)}`);
   }
 
-  const data = await res.json();
-  console.log(`[Email] Sent to ${to}: messageId=${data.messageId}`);
+  // Nothing from this response drives an authorization or business decision;
+  // the message id is recorded for support and is not persisted or rendered.
+  const data = await res.json().catch(() => ({}));
+  console.log(`[Email] Sent, provider messageId=${String(data?.messageId ?? 'unknown').slice(0, 120)}`);
   return data;
 }
 
@@ -98,7 +122,7 @@ async function sendWelcomeEmail({ to, firstName }) {
   return sendEmail({
     to, subject: `Welcome to Treniko, ${firstName}! 🎉`,
     html: baseLayout(`
-      <h2>Welcome, ${firstName}! 👋</h2>
+      <h2>Welcome, ${escapeHtml(firstName)}! 👋</h2>
       <p>Your Treniko account is ready. You're on the <strong>Free plan</strong> with a <strong>14-day trial</strong> — no credit card needed.</p>
       <p>Here's how to get started:</p>
       <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Add your first client</strong>Add clients with contact info, goals, and health notes.</div></div>
@@ -119,7 +143,7 @@ async function sendPasswordResetEmail({ to, firstName, resetUrl }) {
     to, subject: 'Reset your Treniko password',
     html: baseLayout(`
       <h2>Password reset request</h2>
-      <p>Hi ${firstName},</p>
+      <p>Hi ${escapeHtml(firstName)},</p>
       <p>Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
       <div style="text-align:center;margin:28px 0;">
         <a href="${resetUrl}" class="btn">Reset My Password →</a>
@@ -137,7 +161,7 @@ async function sendTrialExpiryWarning7Days({ to, firstName }) {
     to, subject: '⚠️ Your Treniko trial expires in 7 days',
     html: baseLayout(`
       <h2>Your trial ends in 7 days</h2>
-      <p>Hi ${firstName},</p>
+      <p>Hi ${escapeHtml(firstName)},</p>
       <p>Your free trial expires in <strong>7 days</strong>. After that, your account switches to read-only mode.</p>
       <div class="warning"><strong>What happens when the trial ends?</strong><br>You won't be able to add clients, schedule sessions, or log trainings — but all your data stays safe.</div>
       <div style="text-align:center;margin:28px 0;">
@@ -154,7 +178,7 @@ async function sendTrialExpiryWarning3Days({ to, firstName }) {
     to, subject: '🚨 Final warning — Treniko trial expires in 3 days',
     html: baseLayout(`
       <h2>3 days left on your trial</h2>
-      <p>Hi ${firstName},</p>
+      <p>Hi ${escapeHtml(firstName)},</p>
       <p>Your Treniko trial expires in <strong>3 days</strong>.</p>
       <div class="danger"><strong>Don't lose access.</strong><br>Upgrade before your trial ends to keep scheduling sessions, logging trainings, and tracking client progress.</div>
       <div style="text-align:center;margin:28px 0;">
@@ -171,8 +195,8 @@ async function sendSubscriptionExpiredEmail({ to, firstName, planName }) {
     to, subject: 'Your Treniko subscription has expired',
     html: baseLayout(`
       <h2>Your subscription has expired</h2>
-      <p>Hi ${firstName},</p>
-      <p>Your <strong>${planName}</strong> subscription has expired. Your account is now in <strong>read-only mode</strong>.</p>
+      <p>Hi ${escapeHtml(firstName)},</p>
+      <p>Your <strong>${escapeHtml(planName)}</strong> subscription has expired. Your account is now in <strong>read-only mode</strong>.</p>
       <div class="danger"><strong>Your data is safe.</strong><br>All your clients, sessions, and training logs are preserved. Renew to regain full access instantly.</div>
       <div style="text-align:center;margin:28px 0;">
         <a href="${appUrl()}/dashboard/subscription" class="btn">Renew Subscription →</a>
@@ -187,9 +211,9 @@ async function sendFirstClientEmail({ to, firstName, clientName }) {
     to, subject: `Great start, ${firstName}! 🎯 First client added`,
     html: baseLayout(`
       <h2>You added your first client! 🎯</h2>
-      <p>Hi ${firstName},</p>
-      <p>You just added <strong>${clientName}</strong> as your first client — great start!</p>
-      <div class="step"><div class="step-num">→</div><div class="step-text"><strong>Assign a training package</strong>Create a package and assign it to ${clientName}.</div></div>
+      <p>Hi ${escapeHtml(firstName)},</p>
+      <p>You just added <strong>${escapeHtml(clientName)}</strong> as your first client — great start!</p>
+      <div class="step"><div class="step-num">→</div><div class="step-text"><strong>Assign a training package</strong>Create a package and assign it to ${escapeHtml(clientName)}.</div></div>
       <div class="step"><div class="step-num">→</div><div class="step-text"><strong>Schedule your first session</strong>Open the calendar and book your first training session.</div></div>
       <div class="step"><div class="step-num">→</div><div class="step-text"><strong>Log progress</strong>After your session, log exercises, sets, reps and track progress over time.</div></div>
       <div style="text-align:center;margin:28px 0;">
@@ -206,7 +230,7 @@ async function sendDeletionScheduledEmail({ to, firstName, deletionDate }) {
     to, subject: 'Your Treniko account is scheduled for deletion',
     html: baseLayout(`
       <h2>Account deletion scheduled</h2>
-      <p>Hi ${firstName},</p>
+      <p>Hi ${escapeHtml(firstName)},</p>
       <p>Your account and all associated data will be permanently deleted on <strong>${formatted}</strong>.</p>
       <div class="warning"><strong>Changed your mind?</strong><br>You can cancel the deletion at any time before ${formatted} from your profile settings.</div>
       <div style="text-align:center;margin:28px 0;">
@@ -223,7 +247,7 @@ async function sendVerificationEmail({ to, firstName, verificationUrl }) {
   return sendEmail({
     to, subject: 'Verify your Treniko email address',
     html: baseLayout(`
-      <h2>Verify your email, ${firstName}! ✉️</h2>
+      <h2>Verify your email, ${escapeHtml(firstName)}! ✉️</h2>
       <p>Thanks for signing up. Please verify your email address to activate your account.</p>
       <div style="text-align:center;margin:28px 0;">
         <a href="${verificationUrl}" class="btn">Verify Email →</a>

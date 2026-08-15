@@ -4,6 +4,7 @@ const { query } = require('../config/database');
 const { recordFailedLogin, resetFailedLogins } = require('../middleware/security');
 const { sendWelcomeEmail, sendVerificationEmail } = require('../services/emailService');
 const crypto = require('crypto');
+const { isEmail, normalizeEmail, validatePassword } = require('../utils/validation');
 
 /**
  * User Login
@@ -19,9 +20,12 @@ const login = async (req, res) => {
       });
     }
 
+    // Trim as well as lower-case. checkAccountLockout already normalises with
+    // .trim(), so without it here a padded address could be looked up by one
+    // and missed by the other.
     const result = await query(
       'SELECT id, tenant_id, email, password_hash, first_name, last_name, email_verified FROM users WHERE email = $1',
-      [email.toLowerCase()]
+      [normalizeEmail(email)]
     );
 
     if (result.rows.length === 0) {
@@ -89,9 +93,31 @@ const register = async (req, res) => {
       });
     }
 
+    // Registration performed no format or length validation of its own — the
+    // 6-character minimum and the email shape were enforced only by the React
+    // form, so a caller talking to the API directly could register with a
+    // one-character password or an address that could never receive the
+    // verification mail. Both checks now exist server-side (TR-MED-9).
+    if (!isEmail(email)) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'A valid email address is required'
+      });
+    }
+
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.ok) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: passwordCheck.reason
+      });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+
     const existingUser = await query(
       'SELECT id FROM users WHERE email = $1',
-      [email.toLowerCase()]
+      [normalizedEmail]
     );
 
     if (existingUser.rows.length > 0) {
@@ -113,7 +139,7 @@ const register = async (req, res) => {
       `INSERT INTO users (tenant_id, email, password_hash, first_name, last_name) 
        VALUES ($1, $2, $3, $4, $5) 
        RETURNING id, tenant_id, email, first_name, last_name`,
-      [tenantId, email.toLowerCase(), passwordHash, firstName, lastName]
+      [tenantId, normalizedEmail, passwordHash, firstName, lastName]
     );
 
     const user = userResult.rows[0];

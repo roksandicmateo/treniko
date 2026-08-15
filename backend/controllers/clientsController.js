@@ -1,4 +1,5 @@
 const { queryWithTenant } = require('../config/database');
+const { parseBoundedInt } = require('../utils/validation');
 
 /**
  * Get all clients for the authenticated tenant
@@ -114,7 +115,11 @@ const getClientSessions = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { id } = req.params;
-    const { startDate, endDate, limit = 50 } = req.query;
+    const { startDate, endDate } = req.query;
+    // Bounded (OWASP API4): the raw value went straight into SQL LIMIT, so one
+    // request could ask for the whole table, and a non-numeric value became NaN
+    // and a 500.
+    const limit = parseBoundedInt(req.query.limit, { fallback: 50, max: 200 });
 
     const clientCheck = await queryWithTenant(
       'SELECT id FROM clients WHERE id = $1 AND tenant_id = $2',
@@ -136,7 +141,7 @@ const getClientSessions = async (req, res) => {
     if (endDate)   { queryText += ` AND session_date <= $${params.length + 1}`; params.push(endDate); }
 
     queryText += ` ORDER BY session_date DESC, start_time DESC LIMIT $${params.length + 1}`;
-    params.push(parseInt(limit));
+    params.push(limit);
 
     const result = await queryWithTenant(queryText, params, tenantId);
     res.json({ success: true, sessions: result.rows });

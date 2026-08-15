@@ -2,8 +2,15 @@ const express = require('express');
 const router  = express.Router();
 const { pool, getClient } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { attachUuidParamGuards } = require('../utils/routeGuards');
+const { verifyExercisesOwned } = require('../utils/ownership');
+const { isUuid } = require('../utils/validation');
 
 router.use(authenticateToken);
+
+// A malformed UUID in the path answers 404 instead of reaching PostgreSQL
+// and surfacing as a 500 (see utils/routeGuards.js).
+attachUuidParamGuards(router);
 
 // ─── Helper: load full training with exercises + sets ─────────────────────────
 // Accepts either a pool or a checked-out client
@@ -146,16 +153,34 @@ router.post('/', async (req, res) => {
   if (!clientId)  return res.status(400).json({ error: 'clientId is required' });
   if (!startTime) return res.status(400).json({ error: 'startTime is required' });
   if (!endTime)   return res.status(400).json({ error: 'endTime is required' });
+  // Validated before it reaches Postgres: a non-UUID raised 22P02 from the
+  // lookup below, which used to sit outside the try block (see next comment).
+  if (!isUuid(clientId)) return res.status(400).json({ error: 'Invalid clientId' });
 
-  const { rows: [cl] } = await pool.query(
-    'SELECT id, is_active FROM clients WHERE id=$1 AND tenant_id=$2',
-    [clientId, tenantId]
-  );
-  if (!cl)          return res.status(404).json({ error: 'Client not found' });
-  if (!cl.is_active) return res.status(400).json({ error: 'Client is inactive' });
-
-  const dbClient = await getClient();
+  // Everything that can reject lives inside this try.
+  //
+  // The client lookup and the ownership check used to run BEFORE it. Express 4
+  // does not catch rejections from an async handler, so a rejected query here
+  // became an unhandled rejection: the request received no response at all, and
+  // Node's default behaviour for an unhandled rejection is to terminate the
+  // process. A single POST with a malformed clientId therefore took the API
+  // down — verified against a running instance, which exited with code 1.
+  let dbClient;
   try {
+    const { rows: [cl] } = await pool.query(
+      'SELECT id, is_active FROM clients WHERE id=$1 AND tenant_id=$2',
+      [clientId, tenantId]
+    );
+    if (!cl)           return res.status(404).json({ error: 'Client not found' });
+    if (!cl.is_active) return res.status(400).json({ error: 'Client is inactive' });
+
+    // Exercise references come from the request body and are written into
+    // training_exercises, which is later read back through a JOIN on `exercises`
+    // that has no tenant filter of its own. Validate ownership here (TR-MED-4).
+    const owned = await verifyExercisesOwned(pool, exercises, tenantId);
+    if (!owned.ok) return res.status(400).json({ error: owned.reason });
+
+    dbClient = await getClient();
     await dbClient.query('BEGIN');
     const { rows: [training] } = await dbClient.query(
       `INSERT INTO trainings (tenant_id, client_id, title, workout_type, start_time, end_time, notes, location, session_id)
@@ -168,11 +193,11 @@ router.post('/', async (req, res) => {
     const full = await loadFull(training.id, tenantId, dbClient);
     res.status(201).json(full);
   } catch (e) {
-    await dbClient.query('ROLLBACK');
+    if (dbClient) await dbClient.query('ROLLBACK').catch(() => {});
     console.error(e);
-    res.status(500).json({ error: 'Server error' });
+    if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {
-    dbClient.release();
+    if (dbClient) dbClient.release();
   }
 });
 
@@ -181,8 +206,16 @@ router.put('/:id', async (req, res) => {
   const { tenantId } = req.user;
   const { title, workoutType, startTime, endTime, notes, location, exercises, isCompleted } = req.body;
 
-  const dbClient = await getClient();
+  // As in POST, every await stays inside the try: an unhandled rejection here
+  // would leave the request unanswered and terminate the process.
+  let dbClient;
   try {
+    // Same check as POST — an update can introduce foreign exercise references
+    // just as easily as a create (TR-MED-4).
+    const owned = await verifyExercisesOwned(pool, exercises, tenantId);
+    if (!owned.ok) return res.status(400).json({ error: owned.reason });
+
+    dbClient = await getClient();
     await dbClient.query('BEGIN');
     const { rows: [existing] } = await dbClient.query(
       'SELECT * FROM trainings WHERE id=$1 AND tenant_id=$2',
@@ -216,11 +249,11 @@ router.put('/:id', async (req, res) => {
     const full = await loadFull(req.params.id, tenantId, dbClient);
     res.json(full);
   } catch (e) {
-    await dbClient.query('ROLLBACK');
+    if (dbClient) await dbClient.query('ROLLBACK').catch(() => {});
     console.error(e);
-    res.status(500).json({ error: 'Server error' });
+    if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {
-    dbClient.release();
+    if (dbClient) dbClient.release();
   }
 });
 

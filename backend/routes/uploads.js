@@ -6,6 +6,7 @@ const fs      = require('fs');
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { isUuid } = require('../utils/validation');
+const { verifyStoredImage } = require('../utils/fileType');
 
 router.use(authenticateToken);
 
@@ -116,11 +117,44 @@ const toImageResponse = (row, trainingId) => ({
   url: `/api/trainings/${trainingId}/images/${row.file_path}`,
 });
 
+/**
+ * Delete files this request wrote. Used when validation rejects an upload, so a
+ * refused file never survives on disk.
+ */
+const discardUploadedFiles = (files = []) => {
+  for (const file of files) {
+    try {
+      if (file?.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    } catch (e) {
+      console.error('[uploads] could not remove rejected file:', e.message);
+    }
+  }
+};
+
 // POST /api/trainings/:trainingId/images
 router.post('/:trainingId/images', requireOwnedTraining, upload.array('images', 10), async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { trainingId } = req.params;
+
+    // Content-based validation (TR-MED-3). multer's fileFilter can only see the
+    // client-supplied filename, so it cannot tell an image from a renamed
+    // executable, script or HTML document. Now that the bytes are on disk we
+    // read each file's header and require it to be a real image AND to match
+    // the extension it will be served under — the serving route derives
+    // Content-Type from that extension, so a mismatch is the exact condition
+    // that makes a stored upload dangerous to hand back.
+    //
+    // A single bad file rejects the whole request and every file it wrote:
+    // partially accepting a batch would leave the caller unsure what was stored.
+    for (const file of req.files || []) {
+      const ext = path.extname(file.filename).toLowerCase();
+      const check = verifyStoredImage(file.path, ext);
+      if (!check.ok) {
+        discardUploadedFiles(req.files);
+        return res.status(400).json({ error: 'Invalid image file', reason: check.reason });
+      }
+    }
 
     const inserted = [];
     for (const file of req.files) {
@@ -206,6 +240,32 @@ router.delete('/:trainingId/images/:imageId', requireOwnedTraining, async (req, 
     console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+// ── Upload error handling ────────────────────────────────────────────────────
+// multer rejects oversized files, too many files and disallowed extensions by
+// passing an Error to next(). Without this, those all fell through to the
+// global handler and were answered as 500 Internal Server Error — the caller
+// could not tell a rejected upload from a broken server, and (before the error
+// handler was hardened) multer's message was echoed back verbatim.
+router.use((err, req, res, next) => {
+  if (!err) return next();
+  discardUploadedFiles(req.files);
+
+  if (err instanceof multer.MulterError) {
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? 'File too large (maximum 10MB)'
+      : err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE'
+        ? 'Too many files'
+        : 'Upload rejected';
+    return res.status(400).json({ error: message });
+  }
+
+  if (err.message === 'Images only') {
+    return res.status(400).json({ error: 'Only image files are accepted' });
+  }
+
+  next(err);
 });
 
 module.exports = router;

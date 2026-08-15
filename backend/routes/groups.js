@@ -3,12 +3,17 @@ const express = require('express');
 const router  = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
-const { isUuid } = require('../utils/validation');
+const { attachUuidParamGuards } = require('../utils/routeGuards');
+const { isUuid, parseBoundedInt } = require('../utils/validation');
 
 // Mirrors the check_attendance_status constraint in migration 017.
 const ATTENDANCE_STATUSES = ['scheduled', 'completed', 'cancelled', 'no_show'];
 
 router.use(authenticateToken);
+
+// A malformed UUID in the path answers 404 instead of reaching PostgreSQL
+// and surfacing as a 500 (see utils/routeGuards.js).
+attachUuidParamGuards(router);
 
 // ── GET /api/groups ──────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
@@ -129,7 +134,7 @@ router.delete('/:id/members/:clientId', async (req, res) => {
 router.get('/:id/members/:clientId/feed', async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { limit = 20 } = req.query;
+    const limit = parseBoundedInt(req.query.limit, { fallback: 20, max: 200 });
 
     // Individual sessions
     const { rows: individual } = await pool.query(
@@ -157,7 +162,7 @@ router.get('/:id/members/:clientId/feed', async (req, res) => {
 
     const all = [...individual, ...groupSessions]
       .sort((a, b) => b.session_date.localeCompare(a.session_date) || b.start_time.localeCompare(a.start_time))
-      .slice(0, parseInt(limit));
+      .slice(0, limit);
 
     res.json({ success: true, sessions: all });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
@@ -165,8 +170,12 @@ router.get('/:id/members/:clientId/feed', async (req, res) => {
 
 // ── POST /api/groups/:id/sessions — create ONE group session ──────────────────
 router.post('/:id/sessions', async (req, res) => {
-  const client = await pool.connect();
+  // Checked out inside the try: pool.connect() rejects when the pool is
+  // exhausted or the database is unreachable, and an async handler's rejection
+  // is not caught by Express — it goes unanswered and terminates the process.
+  let client;
   try {
+    client = await pool.connect();
     const { tenantId } = req.user;
     const { sessionDate, startTime, endTime, sessionType, notes } = req.body;
     if (!sessionDate || !startTime || !endTime) {
@@ -214,11 +223,11 @@ router.post('/:id/sessions', async (req, res) => {
       memberCount: members.length
     });
   } catch (e) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK').catch(() => {});
     console.error('Create group session error:', e);
-    res.status(500).json({ error: 'Server error' });
+    if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
@@ -226,7 +235,7 @@ router.post('/:id/sessions', async (req, res) => {
 router.get('/:id/sessions', async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { limit = 50 } = req.query;
+    const limit = parseBoundedInt(req.query.limit, { fallback: 50, max: 200 });
 
     const { rows: [group] } = await pool.query(
       'SELECT * FROM groups WHERE id=$1 AND tenant_id=$2',
@@ -247,7 +256,7 @@ router.get('/:id/sessions', async (req, res) => {
        GROUP BY gs.id
        ORDER BY gs.session_date DESC, gs.start_time DESC
        LIMIT $3`,
-      [req.params.id, tenantId, parseInt(limit)]
+      [req.params.id, tenantId, limit]
     );
 
     // Per-session member details
@@ -427,8 +436,10 @@ router.get('/:id/sessions/:sessionId', async (req, res) => {
 
 // ── PUT /api/groups/:id/sessions/:sessionId — save log + attendance ───────────
 router.put('/:id/sessions/:sessionId', async (req, res) => {
-  const client = await pool.connect();
+  // As above: acquire the connection inside the try.
+  let client;
   try {
+    client = await pool.connect();
     const { tenantId } = req.user;
     const { exercises, workoutType, location, notes, sessionType, status, attendance } = req.body;
 
@@ -473,11 +484,11 @@ router.put('/:id/sessions/:sessionId', async (req, res) => {
     await client.query('COMMIT');
     res.json({ success: true, session });
   } catch (e) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK').catch(() => {});
     console.error(e);
-    res.status(500).json({ error: 'Server error' });
+    if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 

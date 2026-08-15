@@ -2,8 +2,14 @@ const express = require('express');
 const router  = express.Router();
 const { pool, getClient } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { attachUuidParamGuards } = require('../utils/routeGuards');
+const { verifyExercisesOwned } = require('../utils/ownership');
 
 router.use(authenticateToken);
+
+// A malformed UUID in the path answers 404 instead of reaching PostgreSQL
+// and surfacing as a 500 (see utils/routeGuards.js).
+attachUuidParamGuards(router);
 
 // GET /api/templates
 router.get('/', async (req, res) => {
@@ -56,8 +62,17 @@ router.post('/', async (req, res) => {
   const { name, workoutType, notes, exercises } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
 
-  const dbClient = await getClient();
+  // Every await stays inside the try. Express 4 does not catch rejections from
+  // an async handler: one escaping here would leave the request unanswered and
+  // terminate the process.
+  let dbClient;
   try {
+    // Every referenced exercise must belong to this tenant (TR-MED-4). Checked
+    // before the transaction opens so a rejected payload writes nothing at all.
+    const owned = await verifyExercisesOwned(pool, exercises, tenantId);
+    if (!owned.ok) return res.status(400).json({ error: owned.reason });
+
+    dbClient = await getClient();
     await dbClient.query('BEGIN');
     const { rows: [tmpl] } = await dbClient.query(
       `INSERT INTO training_templates (tenant_id, name, workout_type, notes)
@@ -67,18 +82,25 @@ router.post('/', async (req, res) => {
     if (exercises && exercises.length > 0) {
       for (let i = 0; i < exercises.length; i++) {
         const ex = exercises[i];
+        // exercise_name is a legacy NOT NULL column from 005_phase2.sql that
+        // migration 027 left in place; this insert never supplied it, so every
+        // POST with exercises failed with 23502 (a pre-existing defect, found
+        // while proving the ownership check above does not over-block). Filled
+        // the same way routes/trainings.js fills its equivalent column.
         const { rows: [te] } = await dbClient.query(
-          `INSERT INTO template_exercises (template_id, exercise_id, sort_order, notes)
-           VALUES ($1,$2,$3,$4) RETURNING *`,
-          [tmpl.id, ex.exerciseId, i, ex.notes || null]
+          `INSERT INTO template_exercises (template_id, exercise_id, exercise_name, sort_order, notes)
+           VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+          [tmpl.id, ex.exerciseId, ex.exerciseName || ex.name || 'Unknown', i, ex.notes || null]
         );
         if (ex.sets) {
           for (let j = 0; j < ex.sets.length; j++) {
             const s = ex.sets[j];
+            // set_number is the same kind of legacy NOT NULL column as
+            // exercise_name above; numbered from 1 exactly as trainings.js does.
             await dbClient.query(
-              `INSERT INTO template_sets (template_exercise_id, sort_order, reps, weight, duration_seconds, distance, rpe)
-               VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-              [te.id, j, s.reps || null, s.weight || null, s.durationSeconds || null, s.distance || null, s.rpe || null]
+              `INSERT INTO template_sets (template_exercise_id, set_number, sort_order, reps, weight, duration_seconds, distance, rpe)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+              [te.id, j + 1, j, s.reps || null, s.weight || null, s.durationSeconds || null, s.distance || null, s.rpe || null]
             );
           }
         }
@@ -87,11 +109,11 @@ router.post('/', async (req, res) => {
     await dbClient.query('COMMIT');
     res.status(201).json(tmpl);
   } catch (e) {
-    await dbClient.query('ROLLBACK');
+    if (dbClient) await dbClient.query('ROLLBACK').catch(() => {});
     console.error(e);
-    res.status(500).json({ error: 'Server error' });
+    if (!res.headersSent) res.status(500).json({ error: 'Server error' });
   } finally {
-    dbClient.release();
+    if (dbClient) dbClient.release();
   }
 });
 

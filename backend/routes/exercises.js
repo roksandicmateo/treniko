@@ -2,8 +2,13 @@ const express = require('express');
 const router  = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { attachUuidParamGuards } = require('../utils/routeGuards');
 
 router.use(authenticateToken);
+
+// A malformed UUID in the path answers 404 instead of reaching PostgreSQL
+// and surfacing as a 500 (see utils/routeGuards.js).
+attachUuidParamGuards(router);
 
 // GET /api/exercises?search=bench&category=Strength&muscleGroup=Chest
 router.get('/', async (req, res) => {

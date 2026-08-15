@@ -38,6 +38,58 @@ const apiRateLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+// ── Password-reset limiters (Phase 2B / TR-MED-1) ────────────────────────────
+//
+// POST /api/auth/forgot-password previously had no effective limit at all. It
+// was covered only by apiRateLimiter, which is configured with
+// `skipSuccessfulRequests: true` — and the handler deliberately answers 200 on
+// every path (including unknown emails and its own catch block) so it cannot be
+// used to enumerate accounts. Every response therefore "succeeded" and nothing
+// was ever counted, leaving an unauthenticated endpoint that sends an email per
+// call: free mail-bombing of any address, at the account's own Brevo expense.
+//
+// Two limiters, because one key is not enough:
+//   - per IP    stops one attacker cycling through many victim addresses
+//   - per email stops many IPs (or a botnet) flooding a single victim
+// Both are needed; either alone leaves the other attack open.
+
+const PASSWORD_RESET_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+const passwordResetIpRateLimiter = rateLimit({
+  windowMs: PASSWORD_RESET_WINDOW_MS,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Count every request. Not counting successes is what made the original
+  // limiter inert on an endpoint that always returns 200.
+  skipSuccessfulRequests: false,
+  message: {
+    error: 'Too many password reset requests. Please try again later.',
+    code: 'rate_limit_exceeded',
+  },
+});
+
+const passwordResetEmailRateLimiter = rateLimit({
+  windowMs: PASSWORD_RESET_WINDOW_MS,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  // Key on the target address so a victim cannot be flooded from many sources.
+  // The bucket exists whether or not the address is registered, so a 429 says
+  // nothing about whether an account exists.
+  keyGenerator: (req) => {
+    const email = typeof req.body?.email === 'string'
+      ? req.body.email.toLowerCase().trim()
+      : '';
+    return email ? `email:${email}` : `ip:${req.ip}`;
+  },
+  message: {
+    error: 'Too many password reset requests for this address. Please try again later.',
+    code: 'rate_limit_exceeded',
+  },
+});
+
 // Export endpoint — more restrictive (ZIP generation is expensive)
 const exportRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -136,6 +188,8 @@ module.exports = {
   authRateLimiter,
   apiRateLimiter,
   exportRateLimiter,
+  passwordResetIpRateLimiter,
+  passwordResetEmailRateLimiter,
   checkAccountLockout,
   recordFailedLogin,
   resetFailedLogins,

@@ -3,18 +3,26 @@ const express = require('express');
 const router  = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { attachUuidParamGuards } = require('../utils/routeGuards');
+const { isUuid, parseBoundedInt } = require('../utils/validation');
 
 router.use(authenticateToken);
+
+// A malformed UUID in the path answers 404 instead of reaching PostgreSQL
+// and surfacing as a 500 (see utils/routeGuards.js).
+attachUuidParamGuards(router);
 
 // ── GET /api/progress/client/:clientId ───────────────────────────────────────
 router.get('/client/:clientId', async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { clientId }  = req.params;
-    const { months = 6 } = req.query;
+    // Bounded: an unparseable value produced NaN and a 500, and an arbitrarily
+    // large one scanned the client's entire history on every call.
+    const months = parseBoundedInt(req.query.months, { fallback: 6, max: 120 });
 
     const since = new Date();
-    since.setMonth(since.getMonth() - parseInt(months));
+    since.setMonth(since.getMonth() - months);
     const sinceStr = since.toISOString().split('T')[0];
 
     const { rows: [client] } = await pool.query(
@@ -123,10 +131,10 @@ router.get('/client/:clientId', async (req, res) => {
 router.get('/overview', async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { months = 1 } = req.query;
+    const months = parseBoundedInt(req.query.months, { fallback: 1, max: 120 });
 
     const since = new Date();
-    since.setMonth(since.getMonth() - parseInt(months));
+    since.setMonth(since.getMonth() - months);
     const sinceStr = since.toISOString().split('T')[0];
 
     const { rows: dailySessions } = await pool.query(`
@@ -180,10 +188,10 @@ router.get('/:clientId/strength', async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { clientId } = req.params;
-    const { months = 6 } = req.query;
+    const months = parseBoundedInt(req.query.months, { fallback: 6, max: 120 });
 
     const since = new Date();
-    since.setMonth(since.getMonth() - parseInt(months));
+    since.setMonth(since.getMonth() - months);
     const sinceStr = since.toISOString().split('T')[0];
 
     const { rows } = await pool.query(`
@@ -252,6 +260,18 @@ router.post('/:clientId', async (req, res) => {
     if (!finalMetricName || value === undefined) {
       return res.status(400).json({ error: 'metric_name and value required' });
     }
+
+    // TR-MED-7. The row was stamped with the caller's tenant_id but clientId
+    // came from the URL unverified, so a trainer could file progress entries
+    // against a client id belonging to another tenant. The sibling GET handler
+    // has always performed this check; the insert did not.
+    if (!isUuid(clientId)) return res.status(400).json({ error: 'Invalid client id' });
+
+    const { rows: [client] } = await pool.query(
+      'SELECT id FROM clients WHERE id=$1 AND tenant_id=$2',
+      [clientId, tenantId]
+    );
+    if (!client) return res.status(404).json({ error: 'Client not found' });
 
     const { rows: [entry] } = await pool.query(
       `INSERT INTO progress_entries (tenant_id, client_id, metric_name, value, unit, date, notes)

@@ -2,6 +2,7 @@
 'use strict';
 
 const { pool } = require('../config/database');
+const { isUuid } = require('../utils/validation');
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -157,6 +158,25 @@ const updatePayment = async (req, res) => {
   }
 
   try {
+    // An incoming client_package_id is a foreign key the caller chose. The
+    // UPDATE below only proves the *payment* belongs to this tenant, so without
+    // this check a trainer could re-point one of their own payments at another
+    // tenant's package row (TR-MED-5). createPayment has always performed this
+    // check; the update path simply never did.
+    if (clientPackageId !== undefined && clientPackageId !== null) {
+      if (!isUuid(clientPackageId)) {
+        return res.status(400).json({ error: 'Invalid client package id.' });
+      }
+      const pkgCheck = await pool.query(
+        `SELECT id FROM client_packages
+         WHERE id = $1 AND client_id = $2 AND tenant_id = $3`,
+        [clientPackageId, clientId, tenantId]
+      );
+      if (!pkgCheck.rows.length) {
+        return res.status(404).json({ error: 'Client package not found.' });
+      }
+    }
+
     const result = await pool.query(
       `UPDATE client_payments SET
          amount            = COALESCE($1, amount),

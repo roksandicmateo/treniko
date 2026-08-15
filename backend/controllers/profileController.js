@@ -3,6 +3,7 @@
 const { pool } = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { isEmail, normalizeEmail, validatePassword } = require('../utils/validation');
 
 /**
  * GET /api/profile
@@ -52,11 +53,14 @@ const updateProfile = async (req, res) => {
   const { firstName, lastName, email, phone, bio, city, country, website, businessName, businessPhone, businessWebsite } = req.body;
 
   try {
-    // If changing email, check it's not taken by another user
+    // If changing email, validate its shape and check it's not taken
     if (email) {
+      if (!isEmail(email)) {
+        return res.status(400).json({ error: 'A valid email address is required' });
+      }
       const emailCheck = await pool.query(
         `SELECT id FROM users WHERE email = $1 AND id != $2`,
-        [email.toLowerCase().trim(), userId]
+        [normalizeEmail(email), userId]
       );
       if (emailCheck.rows.length) {
         return res.status(409).json({ error: 'This email is already in use.' });
@@ -78,7 +82,7 @@ const updateProfile = async (req, res) => {
         updated_at = NOW()
        WHERE id = $9
        RETURNING id, email, first_name, last_name, phone, bio, city, country, website`,
-      [firstName, lastName, email?.toLowerCase().trim(), phone, bio, city, country, website, userId]
+      [firstName, lastName, email ? normalizeEmail(email) : null, phone, bio, city, country, website, userId]
     );
 
     // Update tenant (business) if provided
@@ -124,8 +128,9 @@ const changePassword = async (req, res) => {
     return res.status(400).json({ error: 'Current and new password are required.' });
   }
 
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+  const passwordCheck = validatePassword(newPassword);
+  if (!passwordCheck.ok) {
+    return res.status(400).json({ error: passwordCheck.reason });
   }
 
   try {
