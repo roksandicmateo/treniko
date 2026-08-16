@@ -437,4 +437,38 @@ describe('the QA-tenant cleanup script knows about every tenant-scoped table', (
     const overlap = SHELL_TABLES.map(([t]) => t).filter((t) => data.has(t));
     expect(overlap).toEqual([]);
   });
+
+  // ── Regression: the catalogue check above cannot see production's drift ────
+  //
+  // The test above asks THIS database which tables carry a tenant_id. That is
+  // the right question, but it can only ever describe the schema it is run
+  // against — and the schema it is run against is a freshly migrated one.
+  // Migration 009 creates deletion_requests keyed by trainer_id with no
+  // tenant_id at all, so the catalogue query returns nothing for it and the
+  // test passes no matter how the script classifies it.
+  //
+  // Production carries an older deletion_requests that DOES have tenant_id, so
+  // the script's own cross-check fired there and refused to clean a tenant.
+  // A catalogue-derived assertion could not have caught that before the fact;
+  // only naming the table can. So this test names it.
+  test('deletion_requests is classified, and classified as a removable shell row', () => {
+    const shell = SHELL_TABLES.map(([t]) => t);
+    const data = TENANT_DATA_TABLES.map(([t]) => t);
+
+    expect(shell).toContain('deletion_requests');
+    expect(data).not.toContain('deletion_requests');
+
+    // Keyed by tenant_id, like every other entry the script deletes by.
+    const [, column] = SHELL_TABLES.find(([t]) => t === 'deletion_requests');
+    expect(column).toBe('tenant_id');
+  });
+
+  test('every classified table is deleted by a tenant-keyed column', () => {
+    // The delete step interpolates the column name straight into SQL, so an
+    // entry naming anything other than a tenant key would widen the blast
+    // radius of a script whose entire purpose is to be narrow.
+    for (const [table, column] of [...TENANT_DATA_TABLES, ...SHELL_TABLES]) {
+      expect(`${table}:${column}`).toBe(`${table}:tenant_id`);
+    }
+  });
 });

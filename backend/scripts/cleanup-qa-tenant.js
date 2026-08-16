@@ -74,12 +74,34 @@ const TENANT_DATA_TABLES = [
   ['package_session_usage', 'tenant_id'],
 ];
 
-/** Rows that MAY remain and that this script is authorised to remove. */
+/**
+ * Rows that MAY remain and that this script is authorised to remove.
+ *
+ * `deletion_requests` is here for a reason worth writing down. Migration 009
+ * creates it keyed by `trainer_id` alone, with NO tenant_id column — so on a
+ * freshly migrated database the catalogue cross-check below never sees it, and
+ * this list never needed to mention it. Production, however, carries an OLDER
+ * table of that name from before migration tracking, and that one DOES have
+ * `tenant_id` (the same CREATE TABLE IF NOT EXISTS drift that migration 032
+ * repairs for password_reset_tokens). The cross-check therefore fired against
+ * production and only against production, and the script refused to clean the
+ * very tenant shell it was written to remove.
+ *
+ * It belongs on THIS list, not TENANT_DATA_TABLES: a deletion request is a
+ * lifecycle record of the account's own erasure — timestamps, a status and ids
+ * — not product or personal data. Requiring it to be empty would make the
+ * script permanently unable to clean up exactly the case it exists for, since a
+ * tenant that went through account deletion always has one. It is also already
+ * ON DELETE CASCADE from tenants, so removing it explicitly changes nothing
+ * about the outcome; it only makes the count visible in the evidence printed
+ * below.
+ */
 const SHELL_TABLES = [
   ['subscription_usage', 'tenant_id'],
   ['tenant_subscriptions', 'tenant_id'],
   ['subscription_notifications', 'tenant_id'],
   ['subscription_history', 'tenant_id'],
+  ['deletion_requests', 'tenant_id'],
 ];
 
 const arg = (name) => {
