@@ -101,7 +101,13 @@ export default function GroupSessionDetail() {
           exercises,
           workoutType,
           sessionType: sessionType || null,
-          location:    location || null,
+          // `sessionLocation`, never a bare `location`: that identifier is not
+          // undefined in a browser, it resolves to window.location, and
+          // JSON.stringify turned the whole Location object into the payload.
+          // The API's 200-character limit rejected it, so EVERY group session
+          // save — attendance, status, notes, the shared exercise log — failed
+          // with 400 and nothing was ever persisted.
+          location:    sessionLocation || null,
           notes:       notes || null,
           status:      sessionStatus,
           attendance:  attendance.map(a => ({ clientId: a.clientId, status: a.status, notes: a.notes })),

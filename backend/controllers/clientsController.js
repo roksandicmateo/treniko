@@ -23,7 +23,7 @@ const getAllClients = async (req, res) => {
         c.last_session_date,
         c.is_archived,
         cs.total_sessions,
-        cs.upcoming_sessions,
+        cs.upcoming_sessions AS upcoming_sessions_count,
         cs.completed_sessions
       FROM clients c
       LEFT JOIN client_statistics cs ON c.id = cs.client_id
@@ -67,7 +67,8 @@ const getClientById = async (req, res) => {
         c.id, c.first_name, c.last_name, c.email, c.phone, c.is_active,
         c.created_at, c.updated_at, c.last_session_date,
         c.date_of_birth, c.goals, c.injuries, c.diet_notes, c.notes,
-        cs.total_sessions, cs.upcoming_sessions, cs.completed_sessions, cs.next_session_date
+        cs.total_sessions, cs.upcoming_sessions AS upcoming_sessions_count,
+        cs.completed_sessions, cs.next_session_date::text AS next_session_date
        FROM clients c
        LEFT JOIN client_statistics cs ON c.id = cs.client_id
        WHERE c.id = $1 AND c.tenant_id = $2`,
@@ -98,6 +99,18 @@ const getClientById = async (req, res) => {
       [id, tenantId], tenantId
     );
 
+    // ── The response contract for "upcoming" ─────────────────────────────
+    // Two different things used to share the name `upcoming_sessions`: the
+    // numeric count from client_statistics, spread in from the row above, and
+    // the array of session rows below — which overwrote it. The client detail
+    // page reads `Number(client.upcoming_sessions)`, and Number([...]) is NaN
+    // for anything but a single-element array, so the "Upcoming" tile on every
+    // client read 0 no matter how many sessions were scheduled.
+    //
+    // The two are now named for what they are, here and in the list endpoint
+    // above, so the count means the same thing everywhere it appears:
+    //   upcoming_sessions_count  number, from client_statistics
+    //   upcoming_sessions        array, the next 10 scheduled sessions
     res.json({
       success: true,
       client: {

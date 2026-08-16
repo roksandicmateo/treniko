@@ -46,8 +46,29 @@ export default function ProgressChart({ clientId }) {
   const entries  = data[selectedMetric] || [];
   const unit     = entries[0]?.unit || '';
 
-  const chartData = entries.map((e) => ({
-    date:  new Date(e.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+  // ── Order the measurements here, explicitly ────────────────────────────────
+  // The API returns them newest-first (for the history table below), while
+  // First / Latest / Change and the chart's x-axis all mean *chronological*.
+  // Reading them in the delivered order made every trend read backwards: a
+  // client who went from 81.0 kg on 10 Aug to 82.5 kg on 16 Aug was shown
+  // "First 82.5, Latest 81.0, Change -1.5" — a gain reported as a loss, which
+  // is worse than showing nothing.
+  //
+  // Sorting here rather than relying on the API's ORDER BY is the point: the
+  // component states the order its arithmetic needs instead of inheriting one,
+  // so a change to the query cannot silently invert the trend again. Dates are
+  // "YYYY-MM-DD" so they compare correctly as strings, and `created_at` breaks
+  // ties within a day.
+  const chronological = [...entries].sort((a, b) =>
+    String(a.date).localeCompare(String(b.date)) ||
+    String(a.created_at || '').localeCompare(String(b.created_at || ''))
+  );
+
+  // Parsed as local midnight — `new Date('2026-08-16')` is UTC midnight, which
+  // is the 15th anywhere west of Greenwich.
+  const chartData = chronological.map((e) => ({
+    date:  new Date(`${String(e.date).slice(0, 10)}T00:00:00`)
+             .toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
     value: parseFloat(e.value),
   }));
 
@@ -152,7 +173,11 @@ export default function ProgressChart({ clientId }) {
               </tr>
             </thead>
             <tbody>
-              {[...entries].reverse().map((e, i, arr) => {
+              {/* Newest first, so arr[i + 1] is the PREVIOUS measurement and the
+                  change column reads "since last time". It used to reverse the
+                  already-newest-first list, which put the *next* measurement in
+                  that slot and inverted every value in the column. */}
+              {[...chronological].reverse().map((e, i, arr) => {
                 const prevVal = arr[i + 1]?.value;
                 const change  = prevVal != null
                   ? (parseFloat(e.value) - parseFloat(prevVal)).toFixed(1)
@@ -161,9 +186,10 @@ export default function ProgressChart({ clientId }) {
                 return (
                   <tr key={e.id} className="border-t border-gray-50 hover:bg-gray-50 group">
                     <td className="px-4 py-2.5 text-gray-600">
-                      {new Date(e.date).toLocaleDateString('en-GB', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                      })}
+                      {new Date(`${String(e.date).slice(0, 10)}T00:00:00`)
+                        .toLocaleDateString('en-GB', {
+                          day: 'numeric', month: 'short', year: 'numeric',
+                        })}
                     </td>
                     <td className="px-4 py-2.5 text-right font-medium text-gray-800">
                       {e.value} {e.unit}

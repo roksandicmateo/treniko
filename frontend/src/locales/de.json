@@ -72,7 +72,8 @@
     "subscription": "Abonnement",
     "profile": "Profil",
     "logout": "Abmelden",
-    "home": "Startseite"
+    "home": "Startseite",
+    "more": "Mehr"
   },
   "auth": {
     "login": "Anmelden",

@@ -32,11 +32,19 @@ const forgotPassword = async (req, res) => {
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    // password_reset_tokens has no tenant_id column (see migration
-    // 021_password_reset.sql); user_id already determines the tenant. Inserting
-    // one raised 42703, and because this handler deliberately swallows every
-    // error to avoid email enumeration, password reset failed *silently* — the
-    // caller got {success:true} and no email was ever sent.
+    // password_reset_tokens is keyed by user_id alone: the user already
+    // determines the tenant, and password reset runs before any tenant context
+    // exists. This is the shape migration 021 defines and migration 032
+    // repairs historical databases to.
+    //
+    // Getting that shape wrong is invisible from here by design. Production ran
+    // for months on a pre-021 table that still carried `tenant_id NOT NULL`, so
+    // this INSERT raised 23502 — and because the catch below deliberately
+    // swallows every error to keep the response identical for registered and
+    // unregistered addresses, every trainer saw "check your email" while no
+    // mail was ever generated. The fix belongs in the schema, not here: an
+    // insert bent to satisfy an obsolete column would have hidden the drift
+    // instead of removing it.
     await query(
       'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
       [user.id, tokenHash, expiresAt]
@@ -60,7 +68,12 @@ const forgotPassword = async (req, res) => {
 
     return res.json({ success: true });
   } catch (err) {
-    console.error('forgotPassword error:', err);
+    // The response is deliberately indistinguishable from the success path, so
+    // this log line is the ONLY evidence that a reset failed. Name the code:
+    // the outage above was a constraint violation whose message was the whole
+    // diagnosis.
+    console.error(
+      `forgotPassword error (reset NOT sent) [${err.code || 'no code'}]:`, err.message);
     return res.json({ success: true }); // still 200 — don't leak info
   }
 };

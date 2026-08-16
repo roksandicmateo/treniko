@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import DpaAcceptanceModal from '../components/DpaAcceptanceModal';
 import axios from 'axios';
@@ -37,15 +37,6 @@ const DashboardLayout = () => {
     else setDpaLoading(false);
   }, [user]);
 
-  const bottomNavItems = [
-    { to: '/dashboard',           label: t('nav.dashboard'), icon: '🏠' },
-    { to: '/dashboard/calendar',  label: t('nav.calendar'),  icon: '📅' },
-    { to: '/dashboard/clients',   label: t('nav.clients'),   icon: '👥' },
-    { to: '/dashboard/trainings', label: t('nav.trainings'), icon: '🏋️' },
-    { to: '/dashboard/packages',  label: t('nav.packages'),  icon: '📦' },
-    { to: '/dashboard/progress',  label: t('nav.progress'),  icon: '📈' },
-  ];
-
   const allNavItems = [
     { to: '/dashboard',           label: t('nav.dashboard'), icon: '🏠' },
     { to: '/dashboard/calendar',  label: t('nav.calendar'),  icon: '📅' },
@@ -56,6 +47,35 @@ const DashboardLayout = () => {
     { to: '/dashboard/groups',    label: t('nav.groups'),    icon: '🤝' },
     { to: '/dashboard/progress',  label: t('nav.progress'),  icon: '📈' },
   ];
+
+  // ── Mobile navigation ───────────────────────────────────────────────────────
+  // The bottom bar used to be a fixed list of six destinations, and Groups and
+  // Exercises appeared only in the desktop nav — which is display:none on a
+  // phone. Both pages existed, both were routed, and neither could be reached
+  // on a 386px screen by any means other than typing the URL.
+  //
+  // Six tabs was already the most that fits (367px of a 386px viewport); eight
+  // does not, and a horizontally scrolling tab bar hides destinations just as
+  // effectively as omitting them. So the bar carries four primary destinations
+  // plus a "More" sheet holding the rest, which is the standard resolution and
+  // keeps every route one tap away.
+  //
+  // `moreNavItems` is derived by subtraction, so a destination added to
+  // allNavItems can never again be silently unreachable on mobile: if it is not
+  // a primary tab it appears in the sheet.
+  const PRIMARY_MOBILE = [
+    '/dashboard', '/dashboard/calendar', '/dashboard/clients', '/dashboard/trainings',
+  ];
+  const bottomNavItems = PRIMARY_MOBILE.map(to => allNavItems.find(i => i.to === to));
+  const moreNavItems   = allNavItems.filter(i => !PRIMARY_MOBILE.includes(i.to));
+
+  const [moreOpen, setMoreOpen] = useState(false);
+  const routerLocation = useLocation();
+  // Close the sheet on navigation — otherwise it stays over the page it just
+  // opened.
+  useEffect(() => { setMoreOpen(false); }, [routerLocation.pathname]);
+
+  const moreIsActive = moreNavItems.some(i => routerLocation.pathname.startsWith(i.to));
 
   if (dpaLoading) return null;
 
@@ -135,6 +155,39 @@ const DashboardLayout = () => {
         )}
       </main>
 
+      {/* ── Mobile "More" sheet ── */}
+      {moreOpen && (
+        <div className="sm:hidden fixed inset-0 z-50" role="dialog" aria-modal="true"
+             aria-label={t('nav.more')}>
+          <button
+            type="button"
+            aria-label={t('common.close')}
+            onClick={() => setMoreOpen(false)}
+            className="absolute inset-0 bg-black/40"
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl border-t border-gray-100 dark:border-gray-800 p-2 pb-6 safe-area-pb">
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-200 dark:bg-gray-700" />
+            {moreNavItems.map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setMoreOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'text-primary-500 dark:text-primary-400 bg-primary-50 dark:bg-gray-800'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`
+                }
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile bottom nav ── */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 z-40 safe-area-pb transition-colors duration-200">
         <div className="flex">
@@ -161,6 +214,20 @@ const DashboardLayout = () => {
               )}
             </NavLink>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setMoreOpen(o => !o)}
+            aria-expanded={moreOpen}
+            className={`flex-1 flex flex-col items-center justify-center py-2 pt-3 text-xs font-medium transition-colors ${
+              moreIsActive || moreOpen
+                ? 'text-primary-500 dark:text-primary-400'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+            }`}
+          >
+            <span className="text-xl mb-0.5">⋯</span>
+            <span className={moreIsActive || moreOpen ? 'font-semibold' : ''}>{t('nav.more')}</span>
+          </button>
         </div>
       </nav>
     </div>

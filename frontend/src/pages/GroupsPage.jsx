@@ -156,7 +156,9 @@ export default function GroupsPage() {
           {groups.map(group => (
             <div key={group.id}
               onClick={() => navigate(`/dashboard/groups/${group.id}`)}
-              className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all">
+              /* min-w-0 for the same reason as the package cards: without it a
+                 long group name sets the grid track's width and scrolls the page. */
+              className="min-w-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"

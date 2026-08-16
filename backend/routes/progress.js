@@ -235,10 +235,22 @@ router.get('/:clientId', async (req, res) => {
     const { clientId } = req.params;
     const { metric } = req.query;
 
-    let query = `SELECT * FROM progress_entries WHERE client_id=$1 AND tenant_id=$2`;
+    // `date::text`, not the DATE column as the driver parses it: a DATE becomes
+    // a JS Date at LOCAL midnight, which serialises to the previous day's
+    // 22:00Z east of Greenwich — so a measurement taken on the 16th arrived in
+    // the chart as the 15th. A calendar date has no instant to convert.
+    //
+    // The ordering is newest-first for the history table, and made total with
+    // created_at and id: `ORDER BY date DESC` alone leaves same-day entries in
+    // whatever order the executor produces, which is not a contract the
+    // frontend can build a trend on. It sorts chronologically for itself
+    // regardless (see ProgressChart) — this only makes the input stable.
+    let query = `SELECT id, tenant_id, client_id, metric_name, value, unit,
+                        date::text AS date, notes, source, created_at
+                   FROM progress_entries WHERE client_id=$1 AND tenant_id=$2`;
     const params = [clientId, tenantId];
     if (metric) { query += ` AND metric_name=$3`; params.push(metric); }
-    query += ` ORDER BY date DESC`;
+    query += ` ORDER BY date DESC, created_at DESC, id DESC`;
 
     const { rows } = await pool.query(query, params);
     const grouped = {};

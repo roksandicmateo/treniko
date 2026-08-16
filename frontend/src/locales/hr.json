@@ -72,7 +72,8 @@
     "subscription": "Pretplata",
     "profile": "Profil",
     "logout": "Odjava",
-    "home": "Početna"
+    "home": "Početna",
+    "more": "Više"
   },
   "auth": {
     "login": "Prijava",

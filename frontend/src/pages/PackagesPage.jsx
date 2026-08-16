@@ -112,7 +112,13 @@ const PackagesPage = () => {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(pkg => (
-            <div key={pkg.id} className={`bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-3 ${!pkg.is_active ? 'opacity-60' : ''}`}>
+            /* min-w-0: a grid item defaults to min-width:auto, so the track grows
+               to the item's min-content width — and the package name below is
+               `truncate`, i.e. white-space:nowrap, whose min-content is the whole
+               string. One 84-character package name widened the card to 665px
+               inside a 386px viewport and the entire page scrolled sideways. The
+               truncation only starts working once the item may shrink. */
+            <div key={pkg.id} className={`min-w-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-3 ${!pkg.is_active ? 'opacity-60' : ''}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{pkg.name}</h3>

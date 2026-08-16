@@ -6,6 +6,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { attachUuidParamGuards } = require('../utils/routeGuards');
 const { verifyExercisesOwned } = require('../utils/ownership');
 const { isUuid } = require('../utils/validation');
+const { wallClockSelect, applyWallClock, applyWallClockToAll } = require('../utils/wallClock');
 
 router.use(authenticateToken);
 
@@ -17,13 +18,14 @@ attachUuidParamGuards(router);
 // Accepts either a pool or a checked-out client
 async function loadFull(trainingId, tenantId, db) {
   const { rows: [t] } = await db.query(
-    `SELECT t.*, c.first_name, c.last_name, c.email
+    `SELECT t.*, ${wallClockSelect('t')}, c.first_name, c.last_name, c.email
      FROM trainings t
      JOIN clients c ON c.id = t.client_id
      WHERE t.id = $1 AND t.tenant_id = $2`,
     [trainingId, tenantId]
   );
   if (!t) return null;
+  applyWallClock(t);
 
   const { rows: exRows } = await db.query(
     `SELECT te.*, e.name AS exercise_name, e.category, e.default_unit
@@ -81,13 +83,13 @@ router.get('/by-session/:sessionId', async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { rows } = await pool.query(
-      `SELECT t.*, c.first_name, c.last_name
+      `SELECT t.*, ${wallClockSelect('t')}, c.first_name, c.last_name
        FROM trainings t
        JOIN clients c ON c.id = t.client_id
        WHERE t.session_id = $1 AND t.tenant_id = $2`,
       [req.params.sessionId, tenantId]
     );
-    res.json(rows[0] || null);
+    res.json(rows[0] ? applyWallClock(rows[0]) : null);
   } catch (e) {
     if (sendDbClientError(res, e)) return;
     console.error(e);
@@ -104,7 +106,7 @@ router.get('/', async (req, res) => {
     const offset = (page - 1) * limit;
     const { tenantId } = req.user;
 
-    let q = `SELECT t.*, c.first_name, c.last_name
+    let q = `SELECT t.*, ${wallClockSelect('t')}, c.first_name, c.last_name
              FROM trainings t
              JOIN clients c ON c.id = t.client_id
              WHERE t.tenant_id = $1`;
@@ -128,7 +130,10 @@ router.get('/', async (req, res) => {
     p.push(limit, offset);
 
     const { rows } = await pool.query(q, p);
-    res.json({ data: rows, total, page, limit, pages: Math.ceil(total / limit) });
+    res.json({
+      data: applyWallClockToAll(rows),
+      total, page, limit, pages: Math.ceil(total / limit),
+    });
   } catch (e) {
     if (sendDbClientError(res, e)) return;
     console.error(e);

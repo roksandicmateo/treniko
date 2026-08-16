@@ -72,7 +72,8 @@
     "subscription": "Subscription",
     "profile": "Profile",
     "logout": "Logout",
-    "home": "Home"
+    "home": "Home",
+    "more": "More"
   },
   "auth": {
     "login": "Log In",

@@ -112,9 +112,15 @@ const ProfilePage = () => {
         <div className="w-16 h-16 rounded-full bg-primary-500 text-white flex items-center justify-center text-2xl font-bold flex-shrink-0">
           {initials}
         </div>
-        <div>
-          <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">{profile?.first_name} {profile?.last_name}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{profile?.email}</p>
+        {/* min-w-0 + break-words: this column sits next to a fixed-width avatar
+            in a flex row, and an email address has no spaces to wrap at. Without
+            both, a long address set the row's width and pushed the whole page
+            wider than the viewport (425px of scrollWidth in a 386px window).
+            min-w-0 lets the column shrink below its content; break-words lets the
+            address itself break rather than demand a single unbroken line. */}
+        <div className="min-w-0 flex-1">
+          <p className="text-xl font-semibold text-gray-900 dark:text-gray-100 break-words">{profile?.first_name} {profile?.last_name}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 break-words">{profile?.email}</p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
             {profile?.created_at ? new Date(profile.created_at).toLocaleDateString(
               i18n.language === 'hr' ? 'hr-HR' : i18n.language === 'de' ? 'de-DE' : 'en-GB',

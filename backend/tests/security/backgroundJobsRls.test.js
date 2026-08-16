@@ -206,6 +206,151 @@ describe('deletionJob: the job establishes no ambient context of its own', () =>
   });
 });
 
+describe('deletionJob: account deletion erases the tenant, not just its contents', () => {
+  // Live QA ran the supported account-deletion flow in production and then went
+  // looking for what was left. The personal data was gone — and the `tenants`
+  // row was still there, with its tenant_subscriptions and subscription_usage
+  // rows attached. An account that had been deleted still existed as an account.
+  //
+  // These tests use their own throwaway tenants, because they assert that a
+  // tenant row is GONE afterwards, and they check A and B in the same breath:
+  // erasing one account must not disturb another.
+
+  const requestAccountDeletion = async (trainerId) => {
+    const { rows } = await pool.query(
+      `INSERT INTO deletion_requests
+         (trainer_id, target_type, target_id, status, scheduled_delete_at)
+       VALUES ($1, 'account', NULL, 'pending', NOW() - INTERVAL '1 day')
+       RETURNING id`,
+      [trainerId]
+    );
+    return rows[0].id;
+  };
+
+  const countRows = async (table, tenantId) => {
+    const { rows } = await pool.query(
+      `SELECT count(*)::int AS c FROM ${table} WHERE tenant_id = $1`, [tenantId]);
+    return rows[0].c;
+  };
+
+  test('the tenant row and its subscription rows go with the account', async () => {
+    const doomed = await createTenant('erase-me');
+
+    // A session, so the usage triggers are actually exercised on the way out —
+    // that ordering hazard is the one thing that can make this fail in
+    // production and not in a fixture with no sessions.
+    await asTenant(doomed, () => pool.query(
+      `INSERT INTO training_sessions (tenant_id, client_id, session_date, start_time, end_time)
+       VALUES ($1, $2, CURRENT_DATE, '08:00', '09:00')`,
+      [doomed.tenantId, doomed.clientId]
+    ));
+
+    // The residue QA found: all three exist before the job runs.
+    expect(await countRows('users', doomed.tenantId)).toBe(1);
+    expect(await countRows('tenant_subscriptions', doomed.tenantId)).toBe(1);
+    expect(await countRows('subscription_usage', doomed.tenantId)).toBe(1);
+
+    await requestAccountDeletion(doomed.userId);
+    const result = await executePendingDeletions();
+    expect(result.processed).toBeGreaterThanOrEqual(1);
+
+    const { rows: tenantRows } = await pool.query(
+      'SELECT id FROM tenants WHERE id = $1', [doomed.tenantId]);
+    expect(tenantRows).toHaveLength(0);
+
+    // Everything that hangs off the tenant went with it.
+    for (const table of [
+      'users', 'clients', 'training_sessions', 'trainings',
+      'groups', 'group_sessions', 'tenant_subscriptions', 'subscription_usage',
+    ]) {
+      expect(await countRows(table, doomed.tenantId)).toBe(0);
+    }
+
+    // The audit row survives the tenant by design (it is the record that the
+    // erasure happened); remove this test's own so repeated runs do not
+    // accumulate rows in a development database.
+    await pool.query(
+      "DELETE FROM audit_log WHERE action = 'account_permanently_deleted' AND entity_id = $1",
+      [doomed.tenantId]
+    );
+  });
+
+  test('the erasure is recorded in the audit log without an erased identity', async () => {
+    const doomed = await createTenant('erase-audited');
+    await requestAccountDeletion(doomed.userId);
+    await executePendingDeletions();
+
+    const { rows } = await pool.query(
+      `SELECT trainer_id, entity_type FROM audit_log
+        WHERE action = 'account_permanently_deleted' AND entity_id = $1`,
+      [doomed.tenantId]
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].entity_type).toBe('tenant');
+    // The subject is gone; the log records what was removed, not who they were.
+    expect(rows[0].trainer_id).toBeNull();
+
+    await pool.query(
+      "DELETE FROM audit_log WHERE action = 'account_permanently_deleted' AND entity_id = $1",
+      [doomed.tenantId]
+    );
+  });
+
+  test('no other tenant is touched by an account erasure', async () => {
+    const doomed = await createTenant('erase-neighbour');
+
+    const survivors = async () => {
+      const { rows } = await pool.query(
+        'SELECT id FROM tenants WHERE id = ANY($1::uuid[]) ORDER BY id',
+        [[A.tenantId, B.tenantId]]);
+      return rows.map((r) => r.id);
+    };
+    const before = await survivors();
+    const clientsBefore = await countRows('clients', B.tenantId);
+
+    await requestAccountDeletion(doomed.userId);
+    await executePendingDeletions();
+
+    expect(await survivors()).toEqual(before);
+    expect(await countRows('clients', B.tenantId)).toBe(clientsBefore);
+    expect(await countRows('tenant_subscriptions', A.tenantId)).toBe(1);
+
+    await pool.query(
+      "DELETE FROM audit_log WHERE action = 'account_permanently_deleted' AND entity_id = $1",
+      [doomed.tenantId]
+    );
+  });
+
+  test('a tenant with another user left is kept, and only the leaving trainer goes', async () => {
+    // Erasure is per account. A tenant that still has a user still belongs to
+    // that user, so the tenant row must survive — this is the guard that stops
+    // "delete the tenant" from becoming "delete everyone who shares it".
+    const shared = await createTenant('shared-tenant');
+    const { rows: [second] } = await pool.query(
+      `INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, dpa_accepted)
+       VALUES ($1, $2, 'x', 'Second', 'Trainer', TRUE) RETURNING id`,
+      [shared.tenantId, `second-${Date.now()}@example.test`]
+    );
+
+    await requestAccountDeletion(shared.userId);
+    await executePendingDeletions();
+
+    const { rows: tenantRows } = await pool.query(
+      'SELECT id FROM tenants WHERE id = $1', [shared.tenantId]);
+    expect(tenantRows).toHaveLength(1);
+
+    const { rows: userRows } = await pool.query(
+      'SELECT id FROM users WHERE tenant_id = $1', [shared.tenantId]);
+    expect(userRows.map((r) => r.id)).toEqual([second.id]);
+
+    await pool.query(
+      "DELETE FROM audit_log WHERE action = 'account_permanently_deleted' AND entity_id = $1",
+      [shared.tenantId]
+    );
+    await destroyTenant(shared.tenantId);
+  });
+});
+
 describe('subscriptionChecker touches only tables outside the enforced set', () => {
   // The other scheduled job. It is cross-tenant by design and was reviewed
   // alongside the deletion job; it needs no context because every table it

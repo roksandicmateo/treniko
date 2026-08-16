@@ -322,7 +322,10 @@ describe('client statistics agree with session status', () => {
     const client = res.body.clients.find(c => c.id === T.clientId);
 
     expect(Number(client.completed_sessions)).toBe(1);
-    expect(Number(client.upcoming_sessions)).toBe(1);   // only the scheduled one
+    // `upcoming_sessions_count`, not `upcoming_sessions`: the latter is the
+    // ARRAY of upcoming session rows on the client detail endpoint, and the two
+    // used to share a name (see liveQaRegression.test.js, BUG-1).
+    expect(Number(client.upcoming_sessions_count)).toBe(1);   // only the scheduled one
   });
 
   test('a cancelled session is counted nowhere', async () => {

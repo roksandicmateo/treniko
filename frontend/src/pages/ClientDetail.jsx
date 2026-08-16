@@ -379,11 +379,15 @@ export default function ClientDetail() {
         <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0">
           <span className="text-blue-600 font-bold text-2xl">{client.first_name?.[0]}{client.last_name?.[0]}</span>
         </div>
-        <div className="flex-1">
+        {/* min-w-0 / break-words / flex-shrink-0, for the reason documented on the
+            profile header: a long client name or email address in a flex row
+            with no shrink allowance widens the row past the viewport and the
+            whole page scrolls sideways on a phone. */}
+        <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{client.first_name} {client.last_name}</h1>
-              {client.email && <p className="text-gray-500 dark:text-gray-400 text-sm">{client.email}</p>}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 break-words">{client.first_name} {client.last_name}</h1>
+              {client.email && <p className="text-gray-500 dark:text-gray-400 text-sm break-words">{client.email}</p>}
               <div className="flex items-center gap-2 mt-1">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                   client.is_archived ? 'bg-yellow-100 text-yellow-700' :
@@ -394,7 +398,7 @@ export default function ClientDetail() {
                 <span className="text-gray-300 text-xs">{trainings.length} {t('training.title').toLowerCase()}</span>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               {client.is_active && !client.is_archived && (
                 <button onClick={() => { setEditTraining(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium">
                   + {t('training.title')}
@@ -447,7 +451,7 @@ export default function ClientDetail() {
           <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.completed')}</p>
         </div>
         <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-orange-500">{Number(client.upcoming_sessions) || 0}</p>
+          <p className="text-2xl font-bold text-orange-500">{Number(client.upcoming_sessions_count) || 0}</p>
           <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.upcoming')}</p>
         </div>
       </div>

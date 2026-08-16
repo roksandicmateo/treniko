@@ -2,31 +2,16 @@ import { useState, useEffect } from 'react';
 import { trainingService, templateService } from '../../services/trainingService';
 import ExerciseBuilder from './ExerciseBuilder';
 import TimeInput from '../TimeInput';
+// Training times are WALL-CLOCK values, not instants: 09:00 means 09:00 for
+// the trainer who typed it, in any zone and on either side of a DST boundary.
+// These helpers read the string instead of routing it through a Date, which is
+// what shifted every training by the UTC offset. See src/utils/wallClock.js.
+import { toDatePart, toTimePart, addHourTime, toWallClock } from '../../utils/wallClock';
 import { useTranslation } from 'react-i18next';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const WORKOUT_TYPES = ['Gym', 'Cardio', 'HIIT', 'Bodyweight', 'Custom'];
-
-function toDatePart(isoString) {
-  if (!isoString) return new Date().toISOString().slice(0, 10);
-  return new Date(isoString).toISOString().slice(0, 10);
-}
-function toTimePart(isoString) {
-  if (!isoString) return '09:00';
-  return new Date(isoString).toISOString().slice(11, 16);
-}
-function addHourTime(timeStr) {
-  if (!timeStr) return '10:00';
-  const [h, m] = timeStr.split(':').map(Number);
-  const newH = Math.min(h + 1, 23);
-  return `${String(newH).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-}
-// Legacy compat
-function toLocalInput(isoString) {
-  if (!isoString) return '';
-  return new Date(isoString).toISOString().slice(0, 16);
-}
 
 export default function AddTrainingModal({
   isOpen, onClose, onSaved,
@@ -35,7 +20,7 @@ export default function AddTrainingModal({
   sessionId = null, overrideEndTime = null,
 }) {
   const { t } = useTranslation();
-  const defaultDate = initialStartTime ? toDatePart(initialStartTime) : new Date().toISOString().slice(0,10);
+  const defaultDate = toDatePart(initialStartTime);
   const defaultTime = initialStartTime ? toTimePart(initialStartTime) : '09:00';
 
   const [clients,  setClients]  = useState(clientsProp || []);
@@ -83,8 +68,7 @@ export default function AddTrainingModal({
         })),
       });
     } else {
-      const start = initialStartTime ? toLocalInput(initialStartTime) : new Date().toISOString().slice(0, 16);
-      const sDate = initialStartTime ? toDatePart(initialStartTime) : new Date().toISOString().slice(0,10);
+      const sDate = toDatePart(initialStartTime);
       const sTime = initialStartTime ? toTimePart(initialStartTime) : '09:00';
       setForm({ clientId: initialClientId || '', title: '', workoutType: 'Gym', sessionDate: sDate, startTime: sTime, endTime: addHourTime(sTime), notes: '', location: '', exercises: [] });
     }
@@ -115,8 +99,8 @@ export default function AddTrainingModal({
     if (saveAsTemplate && !templateName.trim()) return setError('Enter a template name');
     setSaving(true);
     try {
-      const startISO = `${form.sessionDate}T${form.startTime}:00`;
-      const endISO   = `${form.sessionDate}T${form.endTime}:00`;
+      const startISO = toWallClock(form.sessionDate, form.startTime);
+      const endISO   = toWallClock(form.sessionDate, form.endTime);
       const payload = {
         ...form, startTime: startISO, endTime: endISO, sessionId: sessionId || undefined,
         exercises: form.exercises.map(ex => ({
