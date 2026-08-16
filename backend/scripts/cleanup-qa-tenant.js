@@ -6,6 +6,7 @@
  *
  *   node scripts/cleanup-qa-tenant.js --marker TRENIKO-LIVE-QA-20260816T142228Z
  *   node scripts/cleanup-qa-tenant.js --marker <marker> --apply
+ *   node scripts/cleanup-qa-tenant.js --marker <marker> --orphaned --apply
  *
  * ── What this is for ─────────────────────────────────────────────────────────
  * A QA account was created in production, exercised, and then erased through
@@ -24,12 +25,34 @@
  *   2. establishes that tenant's context — without it, row-level security hides
  *      the very rows the emptiness check is looking for and every count reads 0
  *      — and refuses to continue unless the context is verifiably in effect;
- *   3. counts the rows of every tenant-scoped product table for that tenant and
- *      refuses to continue if ANY of them is non-empty — an occupied tenant is
- *      never a leftover shell, whatever its name says;
+ *   3. requires the tenant to have NO users at all — see below — and then
+ *      counts the rows of every tenant-scoped product table, refusing to
+ *      continue if any is non-empty unless --orphaned is given;
  *   4. deletes by that one resolved tenant id, inside a transaction, asserting
  *      the affected row counts as it goes, and rolls back on any surprise;
  *   5. re-verifies that nothing matching the marker remains.
+ *
+ * ── `users` is the gate; the other tables are a warning ──────────────────────
+ * The emptiness check was originally uniform: any product row at all aborted
+ * the run. Pointed at the real leftover in production it aborted — the tenant
+ * held three training_sessions, an exercise, a group, a group session and a
+ * package, all of them QA-marked, all with client_id NULL, and NO users.
+ *
+ * That combination is not an occupied account. It is the signature of the very
+ * bug this cleanup exists to mop up: the OLD deletion path removed the trainer
+ * and the clients and then stopped, so everything else in the tenant was left
+ * behind unreachable. With zero users nobody can authenticate into the tenant,
+ * so no one can read, own or recover those rows.
+ *
+ * So the two conditions are separated by how much they actually prove:
+ *
+ *   users > 0    ABSOLUTE. A tenant with a user is somebody's live account and
+ *                is never deleted by this script, whatever flags are passed and
+ *                whatever its name says. There is no override.
+ *   other rows   A refusal by default, because an operator who expected an
+ *                empty shell must see that it is not one. `--orphaned` accepts
+ *                them — after the full inventory has been printed — and is the
+ *                only way to clear a tenant the old deletion bug stranded.
  *
  * It is a dry run unless --apply is given, and it prints the full evidence
  * either way. `--tenant-id <uuid>` may be supplied as an additional guard: when
@@ -126,9 +149,11 @@ const run = async () => {
   const marker = arg('marker');
   const expectedId = arg('tenant-id');
   const apply = process.argv.includes('--apply');
+  const orphaned = process.argv.includes('--orphaned');
 
   if (!marker) {
-    throw new Error('usage: cleanup-qa-tenant.js --marker <QA marker> [--tenant-id <uuid>] [--apply]');
+    throw new Error(
+      'usage: cleanup-qa-tenant.js --marker <QA marker> [--tenant-id <uuid>] [--orphaned] [--apply]');
   }
   if (marker.length < 12) {
     throw new Error('refusing to run: the marker is too short to identify a single tenant safely');
@@ -240,11 +265,14 @@ const run = async () => {
 
     console.log('\nrow counts for this tenant:');
     let occupied = 0;
+    let userRows = 0;
+    const occupiedTables = [];
     for (const [table, column] of TENANT_DATA_TABLES) {
       const n = await countFor(client, table, column, tenant.id);
       if (n === null) { console.log(`   ${table.padEnd(28)} (table absent)`); continue; }
-      console.log(`   ${table.padEnd(28)} ${n}`);
-      if (n > 0) occupied += n;
+      console.log(`   ${table.padEnd(28)} ${n}${n > 0 ? '   <-- occupied' : ''}`);
+      if (table === 'users') userRows = n;
+      if (n > 0) { occupied += n; occupiedTables.push(`${table}=${n}`); }
     }
     const shellCounts = {};
     for (const [table, column] of SHELL_TABLES) {
@@ -253,9 +281,36 @@ const run = async () => {
       console.log(`   ${table.padEnd(28)} ${n === null ? '(table absent)' : n}   [removable shell row]`);
     }
 
-    if (occupied > 0) {
+    // ── The absolute gate ────────────────────────────────────────────────────
+    // A tenant with even one user is somebody's account. No flag reaches past
+    // this, and it is checked before the softer condition below so that a run
+    // carrying --orphaned can never talk its way through it.
+    if (userRows > 0) {
       throw new Error(
-        `refusing to delete: tenant ${tenant.id} still holds ${occupied} row(s) of product data`);
+        `refusing to delete: tenant ${tenant.id} still has ${userRows} user(s). ` +
+        'A tenant with users is a live account, not a leftover shell, and this ' +
+        'script will not remove it under any flag.');
+    }
+
+    // ── The softer one ───────────────────────────────────────────────────────
+    // Zero users and product rows still present is the fingerprint of the old
+    // deletion bug: rows stranded in a tenant nobody can log in to. It still
+    // stops by default, because an operator who came here expecting an empty
+    // shell needs to see that it is not one, and needs to read the inventory
+    // above before agreeing to remove it.
+    if (occupied > 0 && !orphaned) {
+      throw new Error(
+        `refusing to delete: tenant ${tenant.id} still holds ${occupied} row(s) of ` +
+        `product data (${occupiedTables.join(', ')}).\n` +
+        '  It has no users, so this may be data stranded by the pre-fix deletion\n' +
+        '  path rather than a live account. Check the inventory above; if every\n' +
+        '  row is expendable, re-run with --orphaned to accept them.');
+    }
+
+    if (occupied > 0) {
+      console.log(
+        `\n--orphaned: accepting ${occupied} stranded row(s) (${occupiedTables.join(', ')})` +
+        '\n            in a tenant with 0 users; the tenant cascade removes them.');
     }
 
     if (!apply) {
@@ -267,6 +322,26 @@ const run = async () => {
     await client.query('BEGIN');
     try {
       const removed = {};
+
+      // ── Empty the trigger-bearing tables first ─────────────────────────────
+      // Same hazard jobs/deletionJob.js documents: `clients` and
+      // `training_sessions` carry AFTER DELETE triggers that maintain
+      // subscription_usage, and get_current_usage_period() RE-CREATES the usage
+      // row when it is missing. Fired from inside the `tenants` cascade, that
+      // insert references a tenant row being deleted by the same statement and
+      // the whole delete fails on a foreign key. Emptied explicitly here, while
+      // the tenant still exists, the trigger has something valid to write to
+      // and the later cascade has no rows left to fire on.
+      //
+      // On a genuinely empty shell both statements delete nothing, so this
+      // costs a no-op; it only matters on the --orphaned path.
+      for (const table of ['training_sessions', 'clients']) {
+        if (!(await tableExists(client, table))) continue;
+        const r = await client.query(
+          `DELETE FROM public.${table} WHERE tenant_id = $1`, [tenant.id]);
+        if (r.rowCount > 0) removed[table] = r.rowCount;
+      }
+
       for (const [table, column] of SHELL_TABLES) {
         if (shellCounts[table] === null) continue;
         const r = await client.query(
@@ -284,6 +359,17 @@ const run = async () => {
       const { rows: [{ n: left }] } = await client.query(
         'SELECT count(*)::int AS n FROM tenants WHERE name LIKE $1', [`%${marker}%`]);
       if (left !== 0) throw new Error(`${left} tenant(s) still match the marker after deletion`);
+
+      // The cascade is what actually clears the product tables, so check that
+      // it did rather than assuming it. A survivor here rolls the whole thing
+      // back and leaves the tenant intact to be looked at.
+      for (const [table, column] of TENANT_DATA_TABLES) {
+        const n = await countFor(client, table, column, tenant.id);
+        if (n) {
+          throw new Error(
+            `${n} row(s) survived in ${table} after the tenant cascade`);
+        }
+      }
 
       await client.query('COMMIT');
 

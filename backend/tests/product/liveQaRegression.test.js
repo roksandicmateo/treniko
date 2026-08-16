@@ -463,6 +463,55 @@ describe('the QA-tenant cleanup script knows about every tenant-scoped table', (
     expect(column).toBe('tenant_id');
   });
 
+  // ── Regression: users is an absolute gate, product rows are not ───────────
+  //
+  // Pointed at the real production leftover, the uniform "any product row
+  // aborts" check refused: the tenant held stranded training_sessions, an
+  // exercise, a group, a group session and a package — and zero users. That is
+  // not an occupied account, it is what the pre-fix deletion path left behind.
+  //
+  // The two conditions were therefore separated, and the separation is the
+  // whole safety property of this script, so it is asserted on the source: a
+  // tenant with users must be unreachable by any flag, while stranded rows may
+  // be accepted only behind an explicit --orphaned.
+  const scriptSource = require('fs').readFileSync(
+    require.resolve('../../scripts/cleanup-qa-tenant'), 'utf8');
+
+  test('a tenant with users is refused with no override available', () => {
+    expect(scriptSource).toMatch(/if \(userRows > 0\)/);
+
+    // The user gate must be evaluated BEFORE the --orphaned escape hatch, or a
+    // run carrying the flag could reach past it.
+    const userGate = scriptSource.indexOf('userRows > 0');
+    const orphanEscape = scriptSource.indexOf('occupied > 0 && !orphaned');
+    expect(userGate).toBeGreaterThan(-1);
+    expect(orphanEscape).toBeGreaterThan(-1);
+    expect(userGate).toBeLessThan(orphanEscape);
+
+    // and the user gate must not itself consult the flag
+    const gateBody = scriptSource.slice(userGate, orphanEscape);
+    expect(gateBody).not.toMatch(/orphaned/);
+  });
+
+  test('stranded product rows still stop a run that did not ask for them', () => {
+    // Default behaviour is unchanged: no --orphaned, any product row aborts.
+    expect(scriptSource).toMatch(/occupied > 0 && !orphaned/);
+    expect(scriptSource).toMatch(/--orphaned to accept them/);
+  });
+
+  test('the trigger-bearing tables are emptied before the tenant cascade', () => {
+    // clients and training_sessions maintain subscription_usage on delete, and
+    // get_current_usage_period() re-creates that row when missing. Left to the
+    // tenants cascade, the re-insert references the tenant being deleted and
+    // the erasure fails on a foreign key — the same hazard deletionJob
+    // documents. They must be deleted explicitly, first.
+    const explicit = scriptSource.indexOf("['training_sessions', 'clients']");
+    const tenantDelete = scriptSource.indexOf('DELETE FROM tenants WHERE id = $1');
+    expect(explicit).toBeGreaterThan(-1);
+    expect(tenantDelete).toBeGreaterThan(-1);
+    expect(explicit).toBeLessThan(tenantDelete);
+  });
+
   test('every classified table is deleted by a tenant-keyed column', () => {
     // The delete step interpolates the column name straight into SQL, so an
     // entry naming anything other than a tenant key would widen the blast
