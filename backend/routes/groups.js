@@ -2,7 +2,7 @@
 const express = require('express');
 const { sendDbClientError } = require('../utils/dbErrors');
 const router  = express.Router();
-const { pool } = require('../config/database');
+const { pool, getClient } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { attachUuidParamGuards } = require('../utils/routeGuards');
 const { isUuid, parseBoundedInt } = require('../utils/validation');
@@ -171,25 +171,36 @@ router.get('/:id/members/:clientId/feed', async (req, res) => {
 
 // ── POST /api/groups/:id/sessions — create ONE group session ──────────────────
 router.post('/:id/sessions', async (req, res) => {
-  // Checked out inside the try: pool.connect() rejects when the pool is
-  // exhausted or the database is unreachable, and an async handler's rejection
-  // is not caught by Express — it goes unanswered and terminates the process.
+  // Two different database handles, deliberately.
+  //
+  // The reads below go through `pool.query`, which is wrapped in
+  // config/database.js to establish the request's tenant context for the
+  // statement. The transaction uses `getClient()`, which establishes the same
+  // context on BEGIN. A raw `pool.connect()` carries NO context, and with
+  // row-level security in force for the runtime role every statement issued on
+  // it is denied — which is exactly what happened here: scheduling a group
+  // session answered 404 "Group not found" for a group that plainly existed,
+  // because the lookup itself returned no rows.
+  //
+  // The client is still checked out inside the try: pool.connect() rejects when
+  // the pool is exhausted or the database is unreachable, and an async
+  // handler's rejection is not caught by Express — it goes unanswered and
+  // terminates the process.
   let client;
   try {
-    client = await pool.connect();
     const { tenantId } = req.user;
     const { sessionDate, startTime, endTime, sessionType, notes } = req.body;
     if (!sessionDate || !startTime || !endTime) {
       return res.status(400).json({ error: 'sessionDate, startTime, endTime are required' });
     }
 
-    const { rows: [group] } = await client.query(
+    const { rows: [group] } = await pool.query(
       'SELECT * FROM groups WHERE id=$1 AND tenant_id=$2',
       [req.params.id, tenantId]
     );
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    const { rows: members } = await client.query(
+    const { rows: members } = await pool.query(
       `SELECT c.id FROM group_members gm
        JOIN clients c ON c.id = gm.client_id
        WHERE gm.group_id = $1`,
@@ -199,12 +210,14 @@ router.post('/:id/sessions', async (req, res) => {
       return res.status(400).json({ error: 'Group has no members' });
     }
 
+    client = await getClient();
     await client.query('BEGIN');
 
     // ONE group session record
     const { rows: [groupSession] } = await client.query(
       `INSERT INTO group_sessions (tenant_id, group_id, session_date, start_time, end_time, session_type, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING *, session_date::text AS session_date`,
       [tenantId, group.id, sessionDate, startTime, endTime, sessionType || null, notes || null]
     );
 
@@ -246,7 +259,13 @@ router.get('/:id/sessions', async (req, res) => {
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
     const { rows: sessions } = await pool.query(
-      `SELECT gs.*,
+      // session_date is a DATE. Returned through `gs.*` alone, node-postgres
+      // hands back a JS Date at local midnight, which JSON.stringify writes as
+      // a UTC instant — 2026-08-20 becomes "2026-08-19T22:00:00.000Z" east of
+      // Greenwich, and the calendar rendered every group session a day early.
+      // The explicit ::text column repeats the name so it overrides the one
+      // from gs.* and the API returns a plain calendar date.
+      `SELECT gs.*, gs.session_date::text AS session_date,
               COUNT(gsa.id)::int AS total_members,
               COUNT(CASE WHEN gsa.status = 'completed' THEN 1 END)::int AS completed,
               COUNT(CASE WHEN gsa.status = 'no_show'   THEN 1 END)::int AS no_shows,
@@ -390,7 +409,8 @@ router.get('/sessions/calendar', async (req, res) => {
     const { tenantId } = req.user;
     const { startDate, endDate } = req.query;
 
-    let q = `SELECT gs.*, g.name AS group_name, g.color AS group_color,
+    let q = `SELECT gs.*, gs.session_date::text AS session_date,
+                    g.name AS group_name, g.color AS group_color,
                     COUNT(gsa.id)::int AS member_count
              FROM group_sessions gs
              JOIN groups g ON g.id = gs.group_id
@@ -415,7 +435,8 @@ router.get('/:id/sessions/:sessionId', async (req, res) => {
     const { tenantId } = req.user;
 
     const { rows: [session] } = await pool.query(
-      `SELECT gs.*, g.name AS group_name, g.color AS group_color
+      `SELECT gs.*, gs.session_date::text AS session_date,
+              g.name AS group_name, g.color AS group_color
        FROM group_sessions gs
        JOIN groups g ON g.id = gs.group_id
        WHERE gs.id=$1 AND gs.tenant_id=$2`,
@@ -439,19 +460,22 @@ router.get('/:id/sessions/:sessionId', async (req, res) => {
 
 // ── PUT /api/groups/:id/sessions/:sessionId — save log + attendance ───────────
 router.put('/:id/sessions/:sessionId', async (req, res) => {
-  // As above: acquire the connection inside the try.
+  // As above: the lookup goes through the context-carrying `pool.query`, the
+  // transaction through `getClient()`. A raw pool.connect() has no tenant
+  // context and is denied by row-level security, which made saving a group
+  // session log answer 404 "Group not found".
   let client;
   try {
-    client = await pool.connect();
     const { tenantId } = req.user;
     const { exercises, workoutType, location, notes, sessionType, status, attendance } = req.body;
 
-    const { rows: [group] } = await client.query(
+    const { rows: [group] } = await pool.query(
       'SELECT id FROM groups WHERE id=$1 AND tenant_id=$2',
       [req.params.id, tenantId]
     );
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
+    client = await getClient();
     await client.query('BEGIN');
 
     // Update group session
@@ -459,7 +483,8 @@ router.put('/:id/sessions/:sessionId', async (req, res) => {
       `UPDATE group_sessions SET
          exercises=$1, workout_type=$2, location=$3, notes=$4,
          session_type=$5, status=$6, updated_at=NOW()
-       WHERE id=$7 AND tenant_id=$8 RETURNING *`,
+       WHERE id=$7 AND tenant_id=$8
+       RETURNING *, session_date::text AS session_date`,
       [
         exercises ? JSON.stringify(exercises) : null,
         workoutType || 'Gym',

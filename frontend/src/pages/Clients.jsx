@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clientsAPI, subscriptionsAPI } from '../services/api';
 import { showToast } from '../components/Toast';
 import LimitReachedModal from '../components/LimitReachedModal';
@@ -11,6 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const Clients = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [clients,      setClients]      = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [filter,       setFilter]       = useState('Active');
@@ -49,7 +51,12 @@ const Clients = () => {
     } catch (error) { console.error('Failed to load subscription:', error); }
   };
 
-  // Reset to page 1 when filter changes
+  // Reset to page 1 when the filter changes. The comment promising this was
+  // there; the code was not. Switching from a filter with several pages to one
+  // with a single page left currentPage past the end, and the list rendered as
+  // an empty table with no pagination controls to escape with.
+  useEffect(() => { setCurrentPage(1); }, [filter]);
+
   const filteredClients = clients.filter(c => {
     if (filter === 'Active')   return c.is_active && !c.is_archived;
     if (filter === 'Inactive') return !c.is_active && !c.is_archived;
@@ -80,7 +87,7 @@ const Clients = () => {
     } catch { showToast(t('common.error'), 'error'); }
   };
 
-  const handleArchive    = (e, client) => { e.stopPropagation(); showConfirm(t('clients.archive'), t('clients.archiveConfirm'), () => handleSetStatus(client, { isArchived: true, isActive: false }, t('clients.archived')), 'warning'); };
+  const handleArchive    = (e, client) => { e.stopPropagation(); showConfirm(t('clients.archive'), t('clients.archiveConfirm'), () => handleSetStatus(client, { isArchived: true, isActive: false }, t('clients.clientArchived')), 'warning'); };
   const handleReactivate = async (e, client) => {
     e.stopPropagation();
     const token = localStorage.getItem('token');
@@ -95,11 +102,11 @@ const Clients = () => {
         if (data.upgradeRequired) { setLimitModalOpen(true); loadSubscription(); return; }
       }
       if (!res.ok) { showToast(t('common.error'), 'error'); return; }
-      showToast(t('clients.active'), 'success');
+      showToast(t('clients.clientReactivated'), 'success');
       loadClients(); loadSubscription();
     } catch { showToast(t('common.error'), 'error'); }
   };
-  const handleDeactivate = (e, client) => { e.stopPropagation(); handleSetStatus(client, { isActive: false }, t('clients.inactive')); };
+  const handleDeactivate = (e, client) => { e.stopPropagation(); handleSetStatus(client, { isActive: false }, t('clients.clientDeactivated')); };
 
   const handleAdd = () => {
     if (subscription && subscription.clients_limit_reached) { setLimitModalOpen(true); return; }
@@ -133,7 +140,7 @@ const Clients = () => {
         });
       }
       setShowConsentModal(false); setModalOpen(false);
-      showToast(t('clients.active'), 'success');
+      showToast(t('clients.clientAdded'), 'success');
       loadClients(); loadSubscription();
     } catch (error) {
       if (error.response?.data?.upgradeRequired) {
@@ -149,7 +156,7 @@ const Clients = () => {
   const saveClient = async () => {
     try {
       await clientsAPI.update(editingClient.id, formData);
-      showToast(t('common.save'), 'success');
+      showToast(t('clients.clientUpdated'), 'success');
       setModalOpen(false); loadClients(); loadSubscription();
     } catch (error) { showToast(error.response?.data?.message || t('common.error'), 'error'); }
   };
@@ -158,13 +165,17 @@ const Clients = () => {
     showConfirm(t('common.delete'), t('clients.deleteConfirm'), async () => {
     try {
       await clientsAPI.delete(id);
-      showToast(t('common.delete'), 'success');
+      showToast(t('clients.clientDeleted'), 'success');
       loadClients(); loadSubscription();
     } catch { showToast(t('common.error'), 'error'); }
     }, 'danger');
   };
 
-  const handleViewClient = (id) => { window.location.href = `/dashboard/clients/${id}`; };
+  // `window.location.href` tore the whole SPA down and rebuilt it — a blank
+  // screen, a fresh bundle parse and a re-validation round trip every time a
+  // trainer tapped a client. On a phone on mobile data that is seconds, not
+  // milliseconds. Client-side navigation keeps the app alive.
+  const handleViewClient = (id) => navigate(`/dashboard/clients/${id}`);
 
   if (loading) return (
     <div>
@@ -206,12 +217,21 @@ const Clients = () => {
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+          {/* The table had five header cells over six body cells, so from the
+              sessions column rightwards every heading sat above the wrong data
+              and the actions column had no heading at all. The missing header
+              is added and each header now carries the same responsive
+              visibility as the cell beneath it. This wrapper scrolls
+              horizontally: at 375px the row of action links is wider than the
+              viewport, and without it the whole page scrolled sideways. */}
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.name')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.email')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('clients.phone')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">{t('clients.stats.completed')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.status')}</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.actions')}</th>
               </tr>
@@ -240,7 +260,7 @@ const Clients = () => {
                     </div>
                     {client.last_session_date && (
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        {new Date(client.last_session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        {new Date(client.last_session_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                       </p>
                     )}
                   </td>
@@ -273,6 +293,7 @@ const Clients = () => {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

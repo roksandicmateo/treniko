@@ -44,6 +44,102 @@ const checkConflicts = async (tenantId, sessionDate, startTime, endTime, exclude
   return [...result.rows, ...groupResult.rows];
 };
 
+// ── Package usage follows session completion ──────────────────────────────────
+//
+// A session-based package is the trainer's core unit of business: "10 sessions
+// for 400 EUR". Nothing in the product decremented it. `POST
+// /clients/:id/packages/:cpid/use-session` existed, but the only caller was the
+// training-detail page's complete toggle — so a trainer who worked the way the
+// product invites them to (mark the session complete on the calendar) watched
+// "10 sessions remaining" stay at 10 forever, while the package banner in the
+// session modal reported a balance that was never true.
+//
+// Completion is the event that consumes a session, so the server records it,
+// next to the status change that causes it. Two properties matter:
+//
+//   - idempotent: package_session_usage has a UNIQUE constraint on session_id,
+//     so completing an already-completed session cannot consume twice;
+//   - reversible: moving a session back out of 'completed' releases the usage
+//     it took, because a session marked complete by mistake must not silently
+//     cost the client a session they never had.
+//
+// A failure here is logged and swallowed: the session status change has already
+// been committed and answered for, and package bookkeeping must not turn a
+// successful update into a 500.
+const syncPackageUsageForSession = async (tenantId, sessionId, clientId, isNowCompleted) => {
+  try {
+    if (isNowCompleted) {
+      const active = await queryWithTenant(
+        `SELECT id, package_type, total_sessions, sessions_used
+           FROM client_packages
+          WHERE client_id = $1 AND tenant_id = $2 AND status = 'active'
+          ORDER BY assigned_at DESC
+          LIMIT 1`,
+        [clientId, tenantId], tenantId
+      );
+      if (active.rows.length === 0) return null;
+      const cp = active.rows[0];
+
+      const claimed = await queryWithTenant(
+        `INSERT INTO package_session_usage (tenant_id, client_package_id, session_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (session_id) DO NOTHING
+         RETURNING id`,
+        [tenantId, cp.id, sessionId], tenantId
+      );
+      if (claimed.rows.length === 0) return null;   // already counted
+
+      const updated = await queryWithTenant(
+        `UPDATE client_packages
+            SET sessions_used = sessions_used + 1, updated_at = NOW()
+          WHERE id = $1 AND tenant_id = $2
+          RETURNING *`,
+        [cp.id, tenantId], tenantId
+      );
+      const row = updated.rows[0];
+      if (row && row.package_type === 'session_based' &&
+          row.total_sessions !== null && row.sessions_used >= row.total_sessions) {
+        await queryWithTenant(
+          `UPDATE client_packages SET status = 'completed', updated_at = NOW()
+            WHERE id = $1 AND tenant_id = $2`,
+          [cp.id, tenantId], tenantId
+        );
+        row.status = 'completed';
+      }
+      return row;
+    }
+
+    const released = await queryWithTenant(
+      `DELETE FROM package_session_usage
+        WHERE session_id = $1 AND tenant_id = $2
+        RETURNING client_package_id`,
+      [sessionId, tenantId], tenantId
+    );
+    if (released.rows.length === 0) return null;
+
+    const restored = await queryWithTenant(
+      `UPDATE client_packages
+          SET sessions_used = GREATEST(sessions_used - 1, 0),
+              status = CASE
+                         WHEN status = 'completed'
+                          AND package_type = 'session_based'
+                          AND total_sessions IS NOT NULL
+                          AND GREATEST(sessions_used - 1, 0) < total_sessions
+                         THEN 'active'
+                         ELSE status
+                       END,
+              updated_at = NOW()
+        WHERE id = $1 AND tenant_id = $2
+        RETURNING *`,
+      [released.rows[0].client_package_id, tenantId], tenantId
+    );
+    return restored.rows[0] || null;
+  } catch (err) {
+    console.error('Package usage sync failed for session', sessionId, err.message);
+    return null;
+  }
+};
+
 const getSessions = async (req, res) => {
   try {
     const { tenantId } = req.user;
@@ -113,7 +209,8 @@ const createSession = async (req, res) => {
     const result = await queryWithTenant(
       `INSERT INTO training_sessions (tenant_id, client_id, session_date, start_time, end_time, session_type, notes, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
-       RETURNING id, client_id, session_date, start_time, end_time, session_type, notes, is_completed, status, created_at, updated_at`,
+       RETURNING id, client_id, session_date::text AS session_date, start_time, end_time,
+                 session_type, notes, is_completed, status, created_at, updated_at`,
       [tenantId, clientId, sessionDate, startTime, endTime, sessionType || null, notes || null], tenantId
     );
 
@@ -194,13 +291,29 @@ const updateSession = async (req, res) => {
     params.push(id, tenantId);
     const result = await queryWithTenant(
       `UPDATE training_sessions SET ${updates.join(', ')} WHERE id = $${p++} AND tenant_id = $${p++}
-       RETURNING id, client_id, session_date, start_time, end_time, session_type, notes, is_completed, status, created_at, updated_at`,
+       RETURNING id, client_id, session_date::text AS session_date, start_time, end_time,
+                 session_type, notes, is_completed, status, created_at, updated_at`,
       params, tenantId
     );
 
     const session = result.rows[0];
+
+    const wasCompleted = existing.status === 'completed';
+    const nowCompleted = session.status === 'completed';
+    let packageUsage = null;
+    if (wasCompleted !== nowCompleted) {
+      packageUsage = await syncPackageUsageForSession(tenantId, session.id, session.client_id, nowCompleted);
+    }
+
     const clientInfo = await queryWithTenant('SELECT first_name, last_name FROM clients WHERE id = $1', [session.client_id], tenantId);
-    res.json({ success: true, session: { ...session, client_first_name: clientInfo.rows[0].first_name, client_last_name: clientInfo.rows[0].last_name } });
+    res.json({
+      success: true,
+      session: { ...session, client_first_name: clientInfo.rows[0].first_name, client_last_name: clientInfo.rows[0].last_name },
+      // Present only when this update changed the session's completion state
+      // and a package was actually charged or refunded, so the caller can
+      // reflect the new balance without a second round trip.
+      ...(packageUsage ? { clientPackage: packageUsage } : {}),
+    });
   } catch (error) {
     if (sendDbClientError(res, error)) return;
     console.error('Update session error:', error);
@@ -213,8 +326,17 @@ const deleteSession = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { id } = req.params;
-    const checkResult = await queryWithTenant('SELECT id FROM training_sessions WHERE id = $1 AND tenant_id = $2', [id, tenantId], tenantId);
+    const checkResult = await queryWithTenant('SELECT id, client_id, status FROM training_sessions WHERE id = $1 AND tenant_id = $2', [id, tenantId], tenantId);
     if (checkResult.rows.length === 0) return res.status(404).json({ error: 'Not found', message: 'Session not found' });
+
+    // Deleting a completed session returns its package session to the client.
+    // The usage row would go anyway (ON DELETE CASCADE), but the counter it
+    // incremented lives on client_packages and would stay inflated with no row
+    // left to explain it.
+    if (checkResult.rows[0].status === 'completed') {
+      await syncPackageUsageForSession(tenantId, id, checkResult.rows[0].client_id, false);
+    }
+
     await queryWithTenant('DELETE FROM training_sessions WHERE id = $1 AND tenant_id = $2', [id, tenantId], tenantId);
     res.json({ success: true, message: 'Session deleted successfully' });
   } catch (error) {
@@ -224,4 +346,4 @@ const deleteSession = async (req, res) => {
   }
 };
 
-module.exports = { getSessions, getSessionById, createSession, updateSession, deleteSession };
+module.exports = { getSessions, getSessionById, createSession, updateSession, deleteSession, syncPackageUsageForSession };

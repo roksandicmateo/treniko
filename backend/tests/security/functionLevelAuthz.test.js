@@ -99,9 +99,25 @@ describe('API5: privileged and sensitive functions are gated server-side', () =>
   });
 
   test('a free-plan tenant cannot reach a paid feature by calling it directly', async () => {
-    const res = await asA(request(app).get('/api/export'));
+    // Probes training logs rather than export. /api/export is deliberately NOT
+    // behind checkFeatureAccess any more: it is how a trainer exercises data
+    // portability over their own records (GDPR Art. 20), and gating it meant
+    // every new signup — everyone starts on the free plan — got 403 from the
+    // "Export my data" button. The property under test here is that the
+    // feature gate runs and denies for an authenticated free-plan caller,
+    // which training logs exercises identically.
+    const res = await asA(
+      request(app).get(`/api/training-logs/client/${A.clientId}/completion-stats`)
+    );
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('Feature not available');
+  });
+
+  test('data export stays reachable for a free-plan tenant, by design', async () => {
+    // Pinned so the exemption above cannot be undone by accident: re-gating
+    // export would lock every beta trainer out of their own data.
+    const res = await asA(request(app).get('/api/export'));
+    expect(res.status).toBe(200);
   });
 });
 

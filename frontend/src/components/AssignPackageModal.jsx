@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-const TYPE_LABELS = {
-  session_based: '🎯 Session-based',
-  time_based: '📅 Time-based',
-  unlimited: '♾️ Unlimited',
+const TYPE_LABEL_KEYS = {
+  session_based: 'packages.typeSessionBased',
+  time_based:    'packages.typeTimeBased',
+  unlimited:     'packages.typeUnlimited',
 };
 
 const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
@@ -36,7 +36,7 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
   }, []);
 
   const handleAssign = async () => {
-    if (!selected) { setError('Please select a package.'); return; }
+    if (!selected) { setError(t('packages.selectPackage')); return; }
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
@@ -46,10 +46,10 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
         body: JSON.stringify({ packageId: selected, startDate, notes })
       });
       const data = await res.json();
-      if (!data.success) { setError(data.error || 'Failed to assign package.'); return; }
+      if (!data.success) { setError(data.error || t('common.error')); return; }
       onAssigned.onSuccess(data.package);
     } catch {
-      setError('Failed to assign package.');
+      setError(t('common.error'));
     } finally {
       setSaving(false);
     }
@@ -59,12 +59,12 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl font-bold text-gray-900">{t('packages.assignPackage')}</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('packages.assignPackage')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light">×</button>
         </div>
-        <p className="text-sm text-gray-500 mb-5">to {clientName}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">{clientName}</p>
 
         {loading ? (
           <p className="text-gray-400 text-sm text-center py-8">{t('common.loading')}</p>
@@ -104,10 +104,10 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
                         )}
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {TYPE_LABELS[p.package_type]}
-                        {p.total_sessions ? ` · ${p.total_sessions} sessions` : ''}
-                        {p.duration_days ? ` · ${p.duration_days} days` : ''}
-                        {p.sessions_per_period && p.period_days ? ` · ${p.sessions_per_period} per ${p.period_days} days` : ''}
+                        {t(TYPE_LABEL_KEYS[p.package_type] || 'packages.typeSessionBased')}
+                        {p.total_sessions ? ` · ${p.total_sessions} ${t('packages.sessions')}` : ''}
+                        {p.duration_days ? ` · ${p.duration_days} ${t('packages.days')}` : ''}
+                        {p.sessions_per_period && p.period_days ? ` · ${p.sessions_per_period} / ${p.period_days} ${t('packages.days')}` : ''}
                       </p>
                     </div>
                   </button>
@@ -123,9 +123,9 @@ const AssignPackageModal = ({ clientName, onClose, onAssigned }) => {
             {selectedPkg?.duration_days && (
               <div className="bg-blue-50 rounded-xl px-4 py-3">
                 <p className="text-xs text-blue-700">
-                  📅 Package expires: <strong>
+                  📅 {t('packages.expires')}: <strong>
                     {new Date(new Date(startDate).getTime() + selectedPkg.duration_days * 86400000)
-                      .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      .toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                   </strong> ({selectedPkg.duration_days} days)
                 </p>
               </div>

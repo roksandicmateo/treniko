@@ -12,18 +12,20 @@ const TYPE_COLORS = {
   Custom:     { bg: 'bg-yellow-50 dark:bg-yellow-900/20',text: 'text-yellow-700 dark:text-yellow-400',border: 'border-yellow-200 dark:border-yellow-800' },
 };
 
-async function recordPackageUsage(clientId) {
-  try {
-    const token = localStorage.getItem('token');
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    const res = await fetch(`${API_URL}/clients/${clientId}/packages/active`, { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    if (!data.package) return;
-    await fetch(`${API_URL}/clients/${clientId}/packages/${data.package.id}/use-session`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({})
-    });
-  } catch (err) { console.warn('Could not record package usage:', err); }
-}
+// NOTE: this page no longer charges the client's package itself.
+//
+// It used to POST .../use-session with no session id when a training was marked
+// complete. That had three problems: it was not idempotent (toggling complete
+// off and on again charged a second session), it was never refunded when the
+// training was un-completed, and the usage row it wrote had nothing linking it
+// to the session it was paid for.
+//
+// Completing a session is now what consumes a package session, recorded by the
+// API next to the status change (see syncPackageUsageForSession in
+// backend/controllers/sessionsController.js) — keyed on the session id, so it
+// charges once and gives the session back if the completion is undone. This
+// page marks the linked session complete below, which is what triggers it. A
+// training with no linked session does not consume a package session.
 
 function SetRow({ set }) {
   const { t } = useTranslation();
@@ -100,14 +102,18 @@ export default function TrainingDetailPage() {
 
   async function toggleComplete() {
     setCompleting(true);
+    setError('');
     try {
       const updated = await trainingService.update(id, { isCompleted: !training.is_completed });
       setTraining(updated.data);
-      if (!training.is_completed && training.client_id) await recordPackageUsage(training.client_id);
       if (training.session_id) {
         const { sessionsAPI } = await import('../services/api');
         await sessionsAPI.update(training.session_id, { isCompleted: !training.is_completed });
       }
+    } catch (err) {
+      // A failed toggle used to leave the button springing back with no
+      // explanation, which is indistinguishable from it having worked.
+      setError(err.response?.data?.message || t('common.error'));
     } finally { setCompleting(false); }
   }
 
@@ -117,7 +123,7 @@ export default function TrainingDetailPage() {
   }
 
   if (loading) return <div className="max-w-3xl mx-auto px-4 py-12 text-center text-gray-400 text-sm">{t('common.loading')}</div>;
-  if (error || !training) return (
+  if (!training) return (
     <div className="max-w-3xl mx-auto px-4 py-12 text-center">
       <p className="text-gray-500 dark:text-gray-400 mb-4">{error || t('common.noData')}</p>
       <button onClick={() => navigate('/dashboard/trainings')} className="text-primary-500 text-sm">← {t('training.title')}</button>
@@ -132,6 +138,12 @@ export default function TrainingDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-12">
+
+      {error && (
+        <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Delete confirm */}
       {showConfirm && (

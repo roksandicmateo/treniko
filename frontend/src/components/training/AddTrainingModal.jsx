@@ -4,6 +4,8 @@ import ExerciseBuilder from './ExerciseBuilder';
 import TimeInput from '../TimeInput';
 import { useTranslation } from 'react-i18next';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 const WORKOUT_TYPES = ['Gym', 'Cardio', 'HIIT', 'Bodyweight', 'Custom'];
 
 function toDatePart(isoString) {
@@ -54,7 +56,11 @@ export default function AddTrainingModal({
   useEffect(() => {
     if (!isOpen) return;
     if (!clientsProp) {
-      fetch('/api/clients?active=true', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      // Absolute URL (the relative one relied on the dev-server proxy), and the
+      // parameter the API actually reads: GET /api/clients filters on
+      // `isActive`, so `active=true` was ignored and the picker offered
+      // archived and deactivated clients alongside current ones.
+      fetch(`${API_URL}/clients?isActive=true`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
         .then(r => r.json())
         .then(data => setClients(Array.isArray(data) ? data : data.clients || data.data || []))
         .catch(() => {});

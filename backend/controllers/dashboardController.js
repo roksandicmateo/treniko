@@ -8,7 +8,10 @@ const { pool } = require('../config/database');
  */
 const getDashboard = async (req, res) => {
   const tenantId = req.user.tenantId;
-  const today = new Date().toISOString().split('T')[0];
+  // The server's own calendar date, not the UTC one. `toISOString()` would
+  // report yesterday between midnight and 02:00 local time in Croatia, so
+  // "today's sessions" emptied out while the trainer was still looking at it.
+  const today = new Date().toLocaleDateString('en-CA');
 
   try {
     const [
@@ -20,10 +23,22 @@ const getDashboard = async (req, res) => {
     ] = await Promise.all([
 
       // Today's sessions
+      //
+      // session_date is cast to text so the API returns a calendar date
+      // ("2026-08-20") rather than a timestamp. A DATE column comes back from
+      // node-postgres as a JS Date at local midnight and serialises as a UTC
+      // instant; the dashboard builds `session_date + 'T00:00:00'` from it and
+      // was producing "Invalid Date" for every row, and handed the same value
+      // to the session modal's date input, which then rendered empty.
+      // GET /api/sessions already casts; these did not.
+      //
+      // `status` is selected because the row component colours the marker and
+      // the badge from it, and the modal opens with it. It was never returned,
+      // so a completed or cancelled session looked scheduled.
       pool.query(
         `SELECT
-           ts.id, ts.session_date, ts.start_time, ts.end_time,
-           ts.session_type, ts.is_completed, ts.notes,
+           ts.id, ts.session_date::text AS session_date, ts.start_time, ts.end_time,
+           ts.session_type, ts.is_completed, ts.status, ts.notes,
            c.first_name, c.last_name, c.id AS client_id
          FROM training_sessions ts
          JOIN clients c ON ts.client_id = c.id
@@ -34,10 +49,14 @@ const getDashboard = async (req, res) => {
       ),
 
       // Upcoming sessions (next 7 days, excluding today)
+      //
+      // Cancelled and no-show sessions are excluded. Filtering on
+      // `is_completed = false` alone left a session the trainer had just
+      // cancelled sitting in "Upcoming this week" as though it were still on.
       pool.query(
         `SELECT
-           ts.id, ts.session_date, ts.start_time, ts.end_time,
-           ts.session_type, ts.is_completed,
+           ts.id, ts.session_date::text AS session_date, ts.start_time, ts.end_time,
+           ts.session_type, ts.is_completed, ts.status, ts.notes,
            c.first_name, c.last_name, c.id AS client_id
          FROM training_sessions ts
          JOIN clients c ON ts.client_id = c.id
@@ -45,6 +64,7 @@ const getDashboard = async (req, res) => {
            AND ts.session_date > $2
            AND ts.session_date <= $2::date + INTERVAL '7 days'
            AND ts.is_completed = false
+           AND ts.status NOT IN ('cancelled', 'no_show')
          ORDER BY ts.session_date ASC, ts.start_time ASC
          LIMIT 8`,
         [tenantId, today]
@@ -76,7 +96,8 @@ const getDashboard = async (req, res) => {
       pool.query(
         `SELECT
            (SELECT COUNT(*) FROM clients WHERE tenant_id = $1 AND is_active = true) AS active_clients,
-           (SELECT COUNT(*) FROM training_sessions WHERE tenant_id = $1 AND session_date = $2) AS sessions_today,
+           (SELECT COUNT(*) FROM training_sessions WHERE tenant_id = $1 AND session_date = $2
+             AND status <> 'cancelled') AS sessions_today,
            (SELECT COUNT(*) FROM training_sessions WHERE tenant_id = $1 AND is_completed = true
             AND session_date >= date_trunc('month', CURRENT_DATE)) AS completed_this_month,
            (SELECT COUNT(*) FROM client_packages WHERE tenant_id = $1 AND status = 'active') AS active_packages`,

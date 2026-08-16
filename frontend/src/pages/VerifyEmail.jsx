@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
@@ -12,7 +14,12 @@ const VerifyEmail = () => {
     const token = searchParams.get('token');
     if (!token) { setStatus('error'); return; }
 
-    fetch('/api/auth/verify-email?token=' + token)
+    // Built from VITE_API_URL like every other call. The relative path only
+    // resolved because the Vite dev server proxies /api; a production build
+    // served from anywhere but the API's own origin would 404, and email
+    // verification — a link the user arrives on from their inbox, with no way
+    // to retry — would fail for everyone.
+    fetch(`${API_URL}/auth/verify-email?token=${encodeURIComponent(token)}`)
       .then(r => r.json())
       .then(data => {
         if (data.success) setStatus('success');

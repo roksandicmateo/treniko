@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { sessionsAPI, clientsAPI } from '../services/api';
 import { format } from 'date-fns';
@@ -18,11 +19,15 @@ const STATUS_CONFIG = {
 };
 
 // ── Package banner ────────────────────────────────────────────────────────────
-const PackageBanner = ({ clientId }) => {
+const PackageBanner = ({ clientId, refreshKey }) => {
   const { t } = useTranslation();
   const [pkg, setPkg] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // `refreshKey` changes whenever this modal changes the session's status.
+  // Completing a session now consumes a package session server-side, so the
+  // balance shown here goes stale the moment the trainer taps "Completed" --
+  // it kept reporting the pre-completion count until the modal was reopened.
   useEffect(() => {
     if (!clientId) { setPkg(null); setLoading(false); return; }
     const token = localStorage.getItem('token');
@@ -36,7 +41,7 @@ const PackageBanner = ({ clientId }) => {
       })
       .catch(() => setPkg(null))
       .finally(() => setLoading(false));
-  }, [clientId]);
+  }, [clientId, refreshKey]);
 
   if (loading || !pkg) return null;
 
@@ -65,14 +70,14 @@ const PackageBanner = ({ clientId }) => {
             <p className={`text-xs mt-0.5 ${textColor} opacity-80`}>
               {pkg.package_type === 'session_based' && sessionsLeft !== null
                 ? isEmpty
-                  ? '⚠️ No sessions remaining'
-                  : `${sessionsLeft} session${sessionsLeft !== 1 ? 's' : ''} remaining`
+                  ? `⚠️ ${t('packages.noSessionsRemaining')}`
+                  : `${sessionsLeft} ${t('packages.sessionsRemaining')}`
                 : pkg.package_type === 'unlimited'
-                  ? `${pkg.sessions_used} sessions used · Unlimited`
-                  : `${pkg.sessions_used} sessions used`}
+                  ? `${pkg.sessions_used} ${t('packages.sessionsUsed')} · ${t('packages.unlimited')}`
+                  : `${pkg.sessions_used} ${t('packages.sessionsUsed')}`}
               {daysLeft !== null && (
                 <span className="ml-2">
-                  · {daysLeft <= 0 ? '⚠️ Expired' : `${daysLeft}d until expiry`}
+                  · {daysLeft <= 0 ? `⚠️ ${t('packages.expired')}` : `${daysLeft} ${t('packages.daysLeft')}`}
                 </span>
               )}
             </p>
@@ -105,8 +110,8 @@ const GroupQuickSelect = ({ groups, selected, onSelect }) => {
         {g.name?.[0]}
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-gray-800 truncate leading-tight">{g.name}</p>
-        <p className="text-xs text-gray-400 leading-tight">{g.member_count} member{g.member_count !== 1 ? 's' : ''}</p>
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate leading-tight">{g.name}</p>
+        <p className="text-xs text-gray-400 leading-tight">{g.member_count} {t('groups.members')}</p>
       </div>
       {selected === g.id && <span className="text-blue-600 text-sm ml-1 flex-shrink-0">✓</span>}
     </button>
@@ -123,7 +128,7 @@ const GroupQuickSelect = ({ groups, selected, onSelect }) => {
       {rest.length > 0 && !showAll && (
         <button type="button" onClick={() => setShowAll(true)}
           className="w-full py-2 text-xs text-gray-500 hover:text-gray-700 border border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
-          + {rest.length} more group{rest.length !== 1 ? 's' : ''}
+          + {rest.length} {t('groups.title').toLowerCase()}
         </button>
       )}
 
@@ -158,6 +163,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adhocAttendees, setAdhocAttendees] = useState([]); // ad-hoc group attendees
   const [groupTitle, setGroupTitle]         = useState('');
+  const [packageRefresh, setPackageRefresh] = useState(0);
 
   useEffect(() => {
     loadClients();
@@ -219,11 +225,13 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
   const handleSetStatus = async (newStatus) => {
     if (!session) return;
     setStatusLoading(true);
+    setError('');
     try {
       await sessionsAPI.update(session.id, { status: newStatus });
       if (linkedTraining) await trainingService.update(linkedTraining.id, { isCompleted: newStatus === 'completed' });
+      setPackageRefresh(n => n + 1);
       onSave();
-    } catch { setError('Failed to update session status'); }
+    } catch (err) { setError(err.response?.data?.message || t('common.error')); }
     finally { setStatusLoading(false); }
   };
 
@@ -309,7 +317,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
           </div>
 
           {/* Package banner — shows for both new and existing sessions once client is known */}
-          {activeClientId && <PackageBanner clientId={activeClientId} />}
+          {activeClientId && <PackageBanner clientId={activeClientId} refreshKey={packageRefresh} />}
 
           {/* Conflict warning */}
           {showConflictWarning && conflicts.length > 0 && (
@@ -356,12 +364,12 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                     <p className="text-xs text-green-600 font-medium uppercase tracking-wide mb-0.5">{t('sessions.trainingLogged')}</p>
                     <p className="text-sm font-semibold text-green-800">{linkedTraining.title || linkedTraining.workout_type}</p>
                     {linkedTraining.exercises?.length > 0 && (
-                      <p className="text-xs text-green-600">{linkedTraining.exercises.length} exercise{linkedTraining.exercises.length !== 1 ? 's' : ''}</p>
+                      <p className="text-xs text-green-600">{linkedTraining.exercises.length} {t('training.exercises')}</p>
                     )}
                   </div>
                   <button type="button" onClick={() => setShowAddTraining(true)}
                     className="ml-3 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
-                    View →
+                    {t('common.view')}
                   </button>
                 </div>
               ) : (
@@ -407,7 +415,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                 </button>
                 <button type="button" onClick={() => { setSessionMode('adhoc-group'); setSelectedGroupId(''); setError(''); }}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${sessionMode === 'adhoc-group' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
-                  👥 Grupno
+                  👥 {t('sessions.adhocGroup')}
                 </button>
                 <button type="button" onClick={() => { setSessionMode('group'); setError(''); }}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${sessionMode === 'group' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
@@ -435,7 +443,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.groupName')} <span className="text-gray-400 text-xs">({t('sessions.optional')})</span></label>
-                  <input type="text" className="input" placeholder="npr. Jutarnja grupa, HIIT ponedjeljak..."
+                  <input type="text" className="input" placeholder={t('sessions.groupNamePlaceholder')}
                     value={groupTitle} onChange={e => setGroupTitle(e.target.value)} />
                 </div>
                 <div>
@@ -468,7 +476,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('nav.groups')} *</label>
                 {groups.length === 0 ? (
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500">
-                    {t('groups.noGroups')}. <a href="/dashboard/groups" className="text-blue-600 hover:underline">{t('groups.addFirst')} →</a>
+                    {t('groups.noGroups')}. <Link to="/dashboard/groups" className="text-blue-600 hover:underline">{t('groups.addFirst')} →</Link>
                   </div>
                 ) : (
                   <GroupQuickSelect

@@ -29,6 +29,7 @@ export default function Calendar() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const fcLocale = i18n.language === 'hr' ? hrLocale : i18n.language === 'de' ? deLocale : undefined;
+  const dateLocale = i18n.language === 'hr' ? 'hr-HR' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
   const calRef = useRef(null);
   const mobile = window.innerWidth < 640;
 
@@ -44,8 +45,22 @@ export default function Calendar() {
   const [clientFilter,     setClientFilter]     = useState('');
   const [clients,          setClients]          = useState([]);
 
+  // The event loader reads the selected client filter. It used to be memoised
+  // with an empty dependency list, so it closed over `clientFilter` as it stood
+  // on first render — permanently ''. Choosing a client called refetchEvents()
+  // and the calendar redrew with the same unfiltered set: the filter looked
+  // live and did nothing.
+  //
+  // The value is held in a ref instead of listed as a dependency. FullCalendar
+  // treats a new function identity as a new event source and refetches, so
+  // depending on `clientFilter` directly would fight the explicit refetch
+  // below; a ref keeps the callback stable and always current.
+  const clientFilterRef = useRef('');
+  useEffect(() => { clientFilterRef.current = clientFilter; }, [clientFilter]);
+
+  const [loadError, setLoadError] = useState('');
+
   // FC manages fetch lifecycle — no infinite loop
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchEvents = useCallback(async (fetchInfo, successCallback, failureCallback) => {
     try {
       const start = format(fetchInfo.start, 'yyyy-MM-dd');
@@ -113,12 +128,20 @@ export default function Calendar() {
         };
       });
 
-      const filteredIndividual = clientFilter
-        ? individual.filter(e => String(e.extendedProps.clientId) === String(clientFilter))
+      const activeFilter = clientFilterRef.current;
+      const filteredIndividual = activeFilter
+        ? individual.filter(e => String(e.extendedProps.clientId) === String(activeFilter))
         : individual;
+      setLoadError('');
       successCallback([...filteredIndividual, ...group]);
-    } catch (e) { failureCallback(e); }
-  }, []);
+    } catch (e) {
+      // FullCalendar's failure callback only logs to the console. On a failed
+      // load the trainer saw an empty week, which reads as "no sessions" — the
+      // most misleading thing a calendar can say.
+      setLoadError(t('common.error'));
+      failureCallback(e);
+    }
+  }, [t]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -200,8 +223,17 @@ export default function Calendar() {
         </button>
       </div>
 
+      {loadError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button onClick={() => calRef.current?.getApi().refetchEvents()} className="text-xs font-semibold underline">
+            {t('common.retry')}
+          </button>
+        </div>
+      )}
+
       {/* Calendar card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
 
         {/* Toolbar */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -229,7 +261,12 @@ export default function Calendar() {
           {clients.length > 0 && (
             <select
               value={clientFilter}
-              onChange={e => { setClientFilter(e.target.value); calRef.current?.getApi().refetchEvents(); }}
+              onChange={e => {
+                const value = e.target.value;
+                setClientFilter(value);
+                clientFilterRef.current = value;   // effect runs after paint; refetch is immediate
+                calRef.current?.getApi().refetchEvents();
+              }}
               className="hidden sm:block text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[160px]"
             >
               <option value="">{t('sessions.allClients')}</option>
@@ -240,13 +277,13 @@ export default function Calendar() {
           )}
 
           {/* Right: view switcher */}
-          <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1">
+          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
             {viewOptions.map(v => (
               <button key={v.id} onClick={() => changeView(v.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   currentView === v.id
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}>
                 {v.label}
               </button>
@@ -256,7 +293,7 @@ export default function Calendar() {
 
         {/* Mobile title */}
         {mobile && title && (
-          <div className="px-4 py-2 text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-100 text-center">
+          <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-800 text-center">
             {title}
           </div>
         )}
@@ -310,7 +347,7 @@ export default function Calendar() {
       {/* Group session info popup */}
       {groupModalOpen && groupSession && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full p-5 shadow-xl border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold"
@@ -318,17 +355,17 @@ export default function Calendar() {
                   👥
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900">{groupSession.groupName}</h3>
-                  <p className="text-xs text-gray-400">Group Session</p>
+                  <h3 className="font-bold text-gray-900 dark:text-gray-100">{groupSession.groupName}</h3>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{t('sessions.groupSession')}</p>
                 </div>
               </div>
               <button onClick={() => setGroupModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
-            <div className="space-y-2 text-sm text-gray-600">
+            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
               <div className="flex items-center gap-2">
                 <span className="text-gray-400 w-5">📅</span>
-                <span>{new Date(groupSession.sessionDate + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                <span>{new Date(groupSession.sessionDate + 'T00:00:00').toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-gray-400 w-5">🕐</span>
@@ -342,7 +379,7 @@ export default function Calendar() {
               )}
               <div className="flex items-center gap-2">
                 <span className="text-gray-400 w-5">👥</span>
-                <span>{groupSession.memberCount} member{groupSession.memberCount !== 1 ? 's' : ''}</span>
+                <span>{groupSession.memberCount} {t('groups.members')}</span>
               </div>
               {groupSession.notes && (
                 <div className="flex items-start gap-2">
@@ -353,8 +390,8 @@ export default function Calendar() {
             </div>
             <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
               <button onClick={() => { setGroupModalOpen(false); navigate(`/dashboard/groups/${groupSession.groupId}`); }}
-                className="flex-1 btn-secondary text-sm">View Group →</button>
-              <button onClick={() => { setGroupModalOpen(false); navigate(`/dashboard/groups/${groupSession.groupId}/sessions/${groupSession.groupSessionId}`); }} className="flex-1 btn-primary text-sm">Open Session →</button>
+                className="flex-1 btn-secondary text-sm">{t('groups.view')}</button>
+              <button onClick={() => { setGroupModalOpen(false); navigate(`/dashboard/groups/${groupSession.groupId}/sessions/${groupSession.groupSessionId}`); }} className="flex-1 btn-primary text-sm">{t('sessions.openSession')} →</button>
             </div>
           </div>
         </div>

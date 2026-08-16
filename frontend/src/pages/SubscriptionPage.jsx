@@ -51,6 +51,13 @@ const SubscriptionPage = () => {
         showToast(errorData.message, 'error');
         setUpgradeModalOpen(false);
         if (errorData.excessClients) showToast(t('subscription.removeClientsFirst', { count: errorData.excessClients }), 'error');
+      } else if (errorData?.paymentRequired) {
+        // There is no payment provider in the product yet, so the API refuses
+        // self-service upgrades to a paid plan (402). The confirmation dialog
+        // used to stay open behind the toast, which reads as "it is still
+        // working" — close it, so the answer is unambiguous.
+        showToast(errorData.message, 'error');
+        setUpgradeModalOpen(false);
       } else { showToast(errorData?.message || t('common.error'), 'error'); }
     } finally { setProcessing(false); }
   };

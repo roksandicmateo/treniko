@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import SubscriptionBanner from '../components/SubscriptionBanner';
+import VerifyEmailBanner from '../components/VerifyEmailBanner';
 import ProfileMenu from '../components/ProfileMenu';
 import LanguageSelector from '../components/LanguageSelector';
 import { useTranslation } from 'react-i18next';
@@ -112,9 +113,26 @@ const DashboardLayout = () => {
       </nav>
 
       {/* ── Main content ── */}
+      {/*
+        Nothing below the DPA modal is rendered until the agreement is
+        accepted. It used to render underneath, so every page mounted and
+        fetched while the API was still answering 403 dpa_required for this
+        tenant — and none of them retried afterwards. The visible result on a
+        brand new account was a dashboard whose four headline figures all read
+        "—" and an onboarding checklist that never appeared, immediately after
+        signup, until the trainer happened to navigate away and back.
+
+        The modal already states that Treniko cannot be used without accepting,
+        so there is nothing behind it worth loading.
+      */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-8">
-        <SubscriptionBanner />
-        <Outlet />
+        {dpaAccepted && (
+          <>
+            <VerifyEmailBanner />
+            <SubscriptionBanner />
+            <Outlet />
+          </>
+        )}
       </main>
 
       {/* ── Mobile bottom nav ── */}

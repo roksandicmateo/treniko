@@ -23,10 +23,12 @@ const TYPE_COLORS = {
   Custom:     'bg-yellow-100 text-yellow-700',
 };
 
-const TYPE_LABELS = {
-  session_based: '🎯 Session-based',
-  time_based: '📅 Time-based',
-  unlimited: '♾️ Unlimited',
+// Keyed rather than literal so the package type reads in the interface's
+// language. These sat in English inside an otherwise Croatian screen.
+const TYPE_LABEL_KEYS = {
+  session_based: 'packages.typeSessionBased',
+  time_based:    'packages.typeTimeBased',
+  unlimited:     'packages.typeUnlimited',
 };
 
 const STATUS_STYLES = {
@@ -62,6 +64,13 @@ function PackagesSection({ clientId, clientName }) {
   const [clientPackages, setClientPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
+  // "Cancel package" called showConfirm(), which is defined inside the
+  // ClientDetail component further down this file — a different scope. Clicking
+  // it threw "showConfirm is not defined" and the error boundary replaced the
+  // whole client page. This section now owns its confirmation dialog.
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingCancel, setPendingCancel] = useState(null);
+  const [error, setError] = useState('');
   const token = () => localStorage.getItem('token');
 
   const load = useCallback(async () => {
@@ -75,15 +84,21 @@ function PackagesSection({ clientId, clientName }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleCancel = async (cp) => {
-    showConfirm(t('packages.cancelPackage'), t('packages.confirmCancel'), async () => {
-      await fetch(`${API_URL}/clients/${clientId}/packages/${cp.id}`, {
+  const handleCancel = (cp) => { setPendingCancel(cp); setConfirmOpen(true); };
+
+  const doCancel = async () => {
+    if (!pendingCancel) return;
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/clients/${clientId}/packages/${pendingCancel.id}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'cancelled' })
       });
+      if (!res.ok) { setError(t('common.error')); return; }
       load();
-    });
+    } catch { setError(t('common.error')); }
+    finally { setPendingCancel(null); }
   };
 
   const active = clientPackages.filter(p => p.status === 'active');
@@ -91,10 +106,10 @@ function PackagesSection({ clientId, clientName }) {
 
   const formatUsage = (cp) => {
     if (cp.package_type === 'session_based' && cp.total_sessions) {
-      return `${cp.sessions_used} / ${cp.total_sessions} sessions used · ${cp.total_sessions - cp.sessions_used} remaining`;
+      return `${cp.sessions_used} / ${cp.total_sessions} ${t('packages.sessionsUsed')} · ${cp.total_sessions - cp.sessions_used} ${t('packages.sessionsRemaining')}`;
     }
-    if (cp.package_type === 'unlimited') return `${cp.sessions_used} sessions used · Unlimited`;
-    if (cp.package_type === 'time_based') return cp.sessions_used > 0 ? `${cp.sessions_used} sessions used` : 'No sessions yet';
+    if (cp.package_type === 'unlimited') return `${cp.sessions_used} ${t('packages.sessionsUsed')} · ${t('packages.unlimited')}`;
+    if (cp.package_type === 'time_based') return cp.sessions_used > 0 ? `${cp.sessions_used} ${t('packages.sessionsUsed')}` : t('packages.noSessionsYet');
     return '';
   };
 
@@ -126,7 +141,7 @@ function PackagesSection({ clientId, clientName }) {
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
                     <h4 className="font-semibold text-gray-900">{cp.package_name}</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">{TYPE_LABELS[cp.package_type]}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t(TYPE_LABEL_KEYS[cp.package_type] || 'packages.typeSessionBased')}</p>
                   </div>
                   <span className="text-xs bg-green-100 text-green-700 font-medium px-2.5 py-1 rounded-full">{t('packages.status.active')}</span>
                 </div>
@@ -136,12 +151,12 @@ function PackagesSection({ clientId, clientName }) {
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{pct}% used</p>
+                    <p className="text-xs text-gray-400 mt-1">{pct}% {t('packages.used')}</p>
                   </div>
                 )}
                 <div className="flex gap-4 text-xs text-gray-500 mb-3">
-                  <span>Started: {new Date(cp.start_date).toLocaleDateString('en-GB')}</span>
-                  {cp.end_date && <span>Expires: {new Date(cp.end_date).toLocaleDateString('en-GB')}</span>}
+                  <span>{t('packages.started')}: {new Date(cp.start_date).toLocaleDateString()}</span>
+                  {cp.end_date && <span>{t('packages.expires')}: {new Date(cp.end_date).toLocaleDateString()}</span>}
                 </div>
                 {cp.price && <p className="text-xs text-gray-400 mb-3">{Number(cp.price).toFixed(2)} {cp.currency}</p>}
                 {cp.notes && <p className="text-xs text-gray-500 italic mb-3">"{cp.notes}"</p>}
@@ -161,9 +176,9 @@ function PackagesSection({ clientId, clientName }) {
                 <div>
                   <p className="text-sm font-medium text-gray-700">{cp.package_name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {new Date(cp.start_date).toLocaleDateString('en-GB')}
-                    {cp.end_date ? ` → ${new Date(cp.end_date).toLocaleDateString('en-GB')}` : ''}
-                    {' · '}{cp.sessions_used} session{cp.sessions_used !== 1 ? 's' : ''} used
+                    {new Date(cp.start_date).toLocaleDateString()}
+                    {cp.end_date ? ` → ${new Date(cp.end_date).toLocaleDateString()}` : ''}
+                    {' · '}{cp.sessions_used} {t('packages.sessionsUsed')}
                   </p>
                 </div>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_STYLES[cp.status] || 'bg-gray-100 text-gray-500'}`}>
@@ -174,6 +189,21 @@ function PackagesSection({ clientId, clientName }) {
           </div>
         </div>
       )}
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm">{error}</div>
+      )}
+
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => { setConfirmOpen(false); setPendingCancel(null); }}
+        onConfirm={() => { setConfirmOpen(false); doCancel(); }}
+        title={t('packages.cancelPackage')}
+        message={t('packages.confirmCancel')}
+        type="danger"
+        confirmText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+      />
 
       {assignOpen && (
         <AssignPackageModal
@@ -206,18 +236,18 @@ export default function ClientDetail() {
   const [editProfileOpen,   setEditProfileOpen]   = useState(false);
   const [editProfileForm,   setEditProfileForm]   = useState({ firstName: '', lastName: '', email: '', phone: '' });
   const [editProfileSaving, setEditProfileSaving] = useState(false);
+  const [editProfileError,  setEditProfileError]  = useState('');
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const API_U = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
       const hdr = { Authorization: `Bearer ${localStorage.getItem('token')}` };
       // GROUP_SESSIONS_MERGED
       const [clientRes, trainingsRes, groupRes] = await Promise.all([
-        fetch(`/api/clients/${id}`, { headers: hdr })
+        fetch(`${API_URL}/clients/${id}`, { headers: hdr })
           .then(r => { if (!r.ok) throw new Error('Client not found'); return r.json(); }),
         trainingService.getAll({ clientId: id }),
-        fetch(`${API_U}/groups/sessions/for-client/${id}`, { headers: hdr })
+        fetch(`${API_URL}/groups/sessions/for-client/${id}`, { headers: hdr })
           .then(r => r.json()).catch(() => ({ sessions: [] })),
       ]);
       setClient(clientRes.client || clientRes);
@@ -278,8 +308,9 @@ export default function ClientDetail() {
 
   async function saveProfile() {
     setEditProfileSaving(true);
+    setEditProfileError('');
     try {
-      const res = await fetch(`/api/clients/${id}`, {
+      const res = await fetch(`${API_URL}/clients/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify(editProfileForm),
@@ -288,7 +319,13 @@ export default function ClientDetail() {
       if (data.success || data.client) {
         setClient(c => ({ ...c, ...data.client }));
         setEditProfileOpen(false);
+      } else {
+        // A rejected save used to leave the dialog sitting open with no
+        // message, which reads as "nothing happened" rather than "that failed".
+        setEditProfileError(data.message || data.error || t('common.error'));
       }
+    } catch {
+      setEditProfileError(t('common.error'));
     } finally {
       setEditProfileSaving(false);
     }
@@ -296,7 +333,7 @@ export default function ClientDetail() {
 
   async function deactivateClient() {
     showConfirm(t('clients.deactivate'), `${t('clients.deactivate')} ${client.first_name} ${client.last_name}?`, async () => {
-      await fetch(`/api/clients/${id}`, {
+      await fetch(`${API_URL}/clients/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ isActive: false }),
@@ -307,7 +344,7 @@ export default function ClientDetail() {
 
   async function archiveClient() {
     showConfirm(t('clients.archive'), `${t('clients.archive')} ${client.first_name} ${client.last_name}?`, async () => {
-      await fetch(`/api/clients/${id}`, {
+      await fetch(`${API_URL}/clients/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ isArchived: true, isActive: false }),
@@ -317,7 +354,7 @@ export default function ClientDetail() {
   }
 
   async function reactivateClient() {
-    await fetch(`/api/clients/${id}`, {
+    await fetch(`${API_URL}/clients/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({ isArchived: false, isActive: true }),
@@ -325,13 +362,11 @@ export default function ClientDetail() {
     load();
   }
 
-  const upcoming = trainings.filter(tr => !tr.is_completed && new Date(tr.start_time) >= new Date());
-
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-gray-400">{t('common.loading')}</div></div>;
   if (error) return (
     <div className="p-4 text-center">
       <p className="text-red-600 mb-4">{error}</p>
-      <button onClick={() => navigate('/dashboard/clients')} className="text-blue-600 hover:underline">← Back to clients</button>
+      <button onClick={() => navigate('/dashboard/clients')} className="text-blue-600 hover:underline">← {t('clients.title')}</button>
     </div>
   );
 
@@ -354,15 +389,15 @@ export default function ClientDetail() {
                   client.is_archived ? 'bg-yellow-100 text-yellow-700' :
                   client.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {client.is_archived ? 'Archived' : client.is_active ? 'Active' : 'Inactive'}
+                  {client.is_archived ? t('clients.archived') : client.is_active ? t('clients.active') : t('clients.inactive')}
                 </span>
-                <span className="text-gray-300 text-xs">{trainings.length} training{trainings.length !== 1 ? 's' : ''}</span>
+                <span className="text-gray-300 text-xs">{trainings.length} {t('training.title').toLowerCase()}</span>
               </div>
             </div>
             <div className="flex gap-2">
               {client.is_active && !client.is_archived && (
                 <button onClick={() => { setEditTraining(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium">
-                  + Training
+                  + {t('training.title')}
                 </button>
               )}
               <div className="relative">
@@ -395,18 +430,24 @@ export default function ClientDetail() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats
+          These come from client_statistics — the same source the client list
+          reads — so the two screens cannot disagree. They used to be counted
+          here from whatever the trainings tab happened to hold (individual
+          trainings plus group sessions), which is a different population from
+          the one the list page counts, so the same client showed different
+          totals depending on where you looked. */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-blue-600">{trainings.length}</p>
+          <p className="text-2xl font-bold text-blue-600">{Number(client.total_sessions) || 0}</p>
           <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.total')}</p>
         </div>
         <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-green-600">{trainings.filter(tr => tr.is_completed).length}</p>
+          <p className="text-2xl font-bold text-green-600">{Number(client.completed_sessions) || 0}</p>
           <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.completed')}</p>
         </div>
         <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-orange-500">{upcoming.length}</p>
+          <p className="text-2xl font-bold text-orange-500">{Number(client.upcoming_sessions) || 0}</p>
           <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.upcoming')}</p>
         </div>
       </div>
@@ -426,7 +467,7 @@ export default function ClientDetail() {
       {/* Profile tab */}
       {tab === 'profile' && (
         <div className="space-y-4">
-          {[['Phone', client.phone], ['Date of Birth', client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString() : null], ['Notes', client.notes]]
+          {[[t('clients.phone'), client.phone], [t('clients.dateOfBirth'), client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString() : null], [t('common.notes'), client.notes]]
             .map(([label, value]) => value ? (
               <div key={label} className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
                 <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{label}</p>
@@ -462,7 +503,7 @@ export default function ClientDetail() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{tr.title || tr.workout_type}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(tr.session_kind === 'group' ? (tr.session_date + 'T' + (tr.start_time || '00:00')) : tr.start_time).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                      {new Date(tr.session_kind === 'group' ? (tr.session_date + 'T' + (tr.start_time || '00:00')) : tr.start_time).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -486,32 +527,35 @@ export default function ClientDetail() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('clients.editProfile')}</h2>
               <button onClick={() => setEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light">×</button>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('clients.firstName')} *</label>
                   <input type="text" value={editProfileForm.firstName} onChange={e => setEditProfileForm(f => ({ ...f, firstName: e.target.value }))} className="input" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('clients.lastName')} *</label>
                   <input type="text" value={editProfileForm.lastName} onChange={e => setEditProfileForm(f => ({ ...f, lastName: e.target.value }))} className="input" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('clients.email')}</label>
                 <input type="email" value={editProfileForm.email} onChange={e => setEditProfileForm(f => ({ ...f, email: e.target.value }))} className="input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('clients.phone')}</label>
                 <input type="tel" value={editProfileForm.phone} onChange={e => setEditProfileForm(f => ({ ...f, phone: e.target.value }))} className="input" />
               </div>
+              {editProfileError && (
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">{editProfileError}</div>
+              )}
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditProfileOpen(false)} className="flex-1 btn-secondary">{t('common.cancel')}</button>
+                <button onClick={() => { setEditProfileOpen(false); setEditProfileError(''); }} className="flex-1 btn-secondary">{t('common.cancel')}</button>
                 <button onClick={saveProfile} disabled={editProfileSaving} className="flex-1 btn-primary disabled:opacity-50">
-                  {editProfileSaving ? t('common.saving') : 'Save'}
+                  {editProfileSaving ? t('common.saving') : t('clients.saveChanges')}
                 </button>
               </div>
             </div>

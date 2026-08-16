@@ -193,7 +193,17 @@ app.use('/api/trainings', uploadRateLimiter, uploadsRouter);
 // parent training, and resolves the tenant directory from the token.
 
 // ── Export & deletion ─────────────────────────────────────────────────────────
-app.use('/api/export', checkFeatureAccess('export'), exportRoutes);
+//
+// The export endpoints are NOT behind checkFeatureAccess('export'), and must
+// not be. /api/export is how a trainer — and, through them, their clients —
+// exercises data portability (GDPR Art. 20) and gets their own records out of
+// the product. Gating it on the plan meant every trainer on the Free plan, i.e.
+// every new signup and every beta tester, got 403 from the "Export data" button
+// in the profile menu.
+//
+// `has_export` on subscription_plans still governs the *analytics* exports if
+// those are ever built; it does not govern a person's access to their own data.
+app.use('/api/export', exportRoutes);
 app.use('/api', deletionRoutes);
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────

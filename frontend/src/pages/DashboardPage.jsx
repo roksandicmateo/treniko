@@ -101,13 +101,22 @@ const DashboardPage = () => {
   const [loading,         setLoading]         = useState(true);
   const [selectedSession, setSelectedSession] = useState(null);
   const [modalOpen,       setModalOpen]       = useState(false);
+  const [loadError,       setLoadError]       = useState('');
 
+  // A failed load used to fall through to the normal dashboard with `data`
+  // still null, which renders four stat tiles reading "—" and a set of empty
+  // panels: the screen for "everything is fine and you have no clients yet" is
+  // identical to the screen for "we could not reach the server". Say which.
   const loadDashboard = () => {
     const token = localStorage.getItem('token');
+    setLoadError('');
     fetch(`${API_URL}/dashboard`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then(d => { setData(d.dashboard); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch(() => { setLoadError(t('common.error')); setLoading(false); });
   };
 
   useEffect(() => { loadDashboard(); }, []);
@@ -178,6 +187,15 @@ const DashboardPage = () => {
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">{dateStr}</p>
       </div>
+
+      {loadError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-2xl px-5 py-4 text-sm flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button onClick={() => { setLoading(true); loadDashboard(); }} className="text-xs font-semibold underline whitespace-nowrap">
+            {t('common.retry')}
+          </button>
+        </div>
+      )}
 
       <OnboardingChecklist />
 

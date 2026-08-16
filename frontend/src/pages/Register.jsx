@@ -7,6 +7,7 @@ import LanguageSelector from '../components/LanguageSelector';
 import PasswordInput from '../components/PasswordInput';
 
 const Register = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
@@ -35,14 +36,14 @@ const Register = () => {
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordMismatch'));
       setLoading(false);
       return;
     }
 
     // Validate password length
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(t('auth.passwordTooShort'));
       setLoading(false);
       return;
     }
@@ -69,14 +70,14 @@ const Register = () => {
       <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-primary-600 mb-2">TRENIKO</h1>
-          <p className="text-gray-600">Create your account</p>
+          <p className="text-gray-600">{t('auth.createAccount')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                First Name
+                {t('auth.firstName')}
               </label>
               <input
                 type="text"
@@ -92,7 +93,7 @@ const Register = () => {
 
             <div>
               <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                Last Name
+                {t('auth.lastName')}
               </label>
               <input
                 type="text"
@@ -109,8 +110,8 @@ const Register = () => {
 
           <div>
             <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-2">
-              Business Name{' '}
-              <span className="text-gray-400 font-normal">(optional)</span>
+              {t('auth.businessName')}{' '}
+              <span className="text-gray-400 font-normal">({t('common.optional')})</span>
             </label>
             <input
               type="text"
@@ -125,7 +126,7 @@ const Register = () => {
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              {t('auth.email')}
             </label>
             <input
               type="email"
@@ -141,14 +142,14 @@ const Register = () => {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+              {t('auth.password')}
             </label>
             <PasswordInput id="password" name="password" value={formData.password} onChange={handleChange} required />
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm Password
+              {t('auth.confirmPassword')}
             </label>
             <PasswordInput id="confirmPassword" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required />
           </div>
@@ -164,15 +165,15 @@ const Register = () => {
             disabled={loading}
             className="w-full btn-primary py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating account...' : 'Sign Up'}
+            {loading ? t('auth.registering') : t('auth.signUp')}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            Already have an account?{' '}
+            {t('auth.haveAccount')}{' '}
             <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
-              Log in
+              {t('auth.login')}
             </Link>
           </p>
         </div>

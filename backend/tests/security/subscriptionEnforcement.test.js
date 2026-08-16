@@ -127,11 +127,17 @@ describe('TR-HIGH-1: enforcement middleware runs with an authenticated user', ()
     await queryAs(T, 'DELETE FROM clients WHERE id = $1', [res.body.client.id]);
   });
 
-  test('checkFeatureAccess blocks a free-plan tenant from the export feature', async () => {
-    // The free plan has has_export = false. Previously this gate never ran.
+  test('data export is exempt from the feature gate, deliberately', async () => {
+    // The free plan has has_export = false, and this route used to answer 403
+    // because of it. It no longer does, and that is a decision rather than a
+    // regression: /api/export is the trainer's route to their own data under
+    // GDPR Art. 20, and everyone starts on the free plan, so the gate locked
+    // every new account out of data portability from day one.
+    //
+    // The gate itself is unchanged and still enforced — the training-logs case
+    // immediately below is the regression test for it.
     const res = await auth(request(app).get('/api/export'));
-    expect(res.status).toBe(403);
-    expect(res.body.error).toBe('Feature not available');
+    expect(res.status).toBe(200);
   });
 
   test('checkFeatureAccess blocks a free-plan tenant from training logs', async () => {

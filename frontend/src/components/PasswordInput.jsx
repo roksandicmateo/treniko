@@ -1,6 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function PasswordInput({ id, name, value, onChange, placeholder, required, autoFocus, className }) {
+  // The show/hide control's accessible name was hardcoded Croatian, so a
+  // screen reader on the English or German interface announced it in a third
+  // language. It is the same input used on login, registration and password
+  // reset.
+  const { t } = useTranslation();
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
@@ -16,7 +22,7 @@ export default function PasswordInput({ id, name, value, onChange, placeholder, 
         onClick={() => setShow(s => !s)}
         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         tabIndex={-1}
-        aria-label={show ? 'Sakrij lozinku' : 'Prikaži lozinku'}
+        aria-label={show ? t('auth.hidePassword') : t('auth.showPassword')}
       >
         {show ? (
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

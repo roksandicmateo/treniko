@@ -57,7 +57,8 @@
     "showing": "Showing",
     "of": "of",
     "tryAgain": "Try again",
-    "clearSearch": "Clear search"
+    "clearSearch": "Clear search",
+    "retry": "Retry"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -105,7 +106,13 @@
     "invalidResetLink": "This reset link is invalid or has expired.",
     "requestNewLink": "Request a new link",
     "passwordTooShort": "Password must be at least 6 characters",
-    "passwordMismatch": "Passwords do not match"
+    "passwordMismatch": "Passwords do not match",
+    "verifyEmailTitle": "Confirm your email address",
+    "verifyEmailBody": "We sent a verification link to {{email}}. You can keep working in the meantime.",
+    "verificationLinkSentTo": "We sent a verification link to",
+    "verificationLinkHint": "Click the link in the email to activate your account. Check your spam folder if you don't see it.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "dashboard": {
     "greeting_morning": "Good morning",
@@ -176,7 +183,13 @@
       "upcoming": "Upcoming"
     },
     "noAdditionalInfo": "No additional info.",
-    "sessions": "Sessions"
+    "sessions": "Sessions",
+    "clientAdded": "Client added",
+    "clientUpdated": "Client updated",
+    "clientDeleted": "Client deleted",
+    "clientArchived": "Client archived",
+    "clientReactivated": "Client reactivated",
+    "clientDeactivated": "Client deactivated"
   },
   "sessions": {
     "title": "Calendar",
@@ -228,7 +241,11 @@
     "optional": "optional",
     "participants": "Participants",
     "noClients": "No clients",
-    "participantsSelected": "participant(s) selected"
+    "participantsSelected": "participant(s) selected",
+    "groupSession": "Group session",
+    "openSession": "Open session",
+    "adhocGroup": "Group",
+    "groupNamePlaceholder": "e.g. Morning group, Monday HIIT..."
   },
   "calendar": {
     "title": "Calendar",
@@ -312,7 +329,17 @@
     "startDate": "Start Date",
     "notesPH": "e.g. Paid by bank transfer",
     "createFirst": "Create packages first before assigning them to clients.",
-    "goToPackages": "Go to Packages →"
+    "goToPackages": "Go to Packages →",
+    "noSessionsRemaining": "No sessions remaining",
+    "sessionsUsed": "sessions used",
+    "typeSessionBased": "🎯 Session-based",
+    "typeTimeBased": "📅 Time-based",
+    "typeUnlimited": "♾️ Unlimited",
+    "noSessionsYet": "No sessions yet",
+    "used": "used",
+    "started": "Started",
+    "expires": "Expires",
+    "days": "days"
   },
   "billing": {
     "title": "Billing",
@@ -451,7 +478,8 @@
     "saveSession": "Save Session",
     "backToGroup": "Back to Group",
     "locationPlaceholder": "e.g. Main gym floor",
-    "sessionNotesPlaceholder": "Workout plan, cues, observations..."
+    "sessionNotesPlaceholder": "Workout plan, cues, observations...",
+    "noGroupsHint": "Create groups to organise clients and manage group sessions."
   },
   "subscription": {
     "title": "Subscription",
@@ -532,7 +560,12 @@
       "hr": "Croatian",
       "de": "German"
     },
-    "exportSuccess": "Export is downloading..."
+    "exportSuccess": "Export is downloading...",
+    "gdprPrivacy": "GDPR & Privacy",
+    "deleteAccountWarning": "This schedules deletion of all your data in 30 days. Are you sure?",
+    "deletionScheduled": "Deletion scheduled",
+    "deletionScheduledOn": "Your account will be deleted on",
+    "cancelDeletion": "Cancel deletion"
   },
   "form": {
     "packageName": "Package Name",

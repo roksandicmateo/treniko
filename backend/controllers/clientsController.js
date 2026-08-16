@@ -80,15 +80,18 @@ const getClientById = async (req, res) => {
     }
 
     const upcomingSessions = await queryWithTenant(
-      `SELECT id, session_date, start_time, end_time, session_type, notes
+      `SELECT id, session_date::text AS session_date, start_time, end_time,
+              session_type, notes, status
        FROM training_sessions
        WHERE client_id = $1 AND tenant_id = $2 AND session_date >= CURRENT_DATE
+         AND status = 'scheduled'
        ORDER BY session_date, start_time LIMIT 10`,
       [id, tenantId], tenantId
     );
 
     const recentSessions = await queryWithTenant(
-      `SELECT id, session_date, start_time, end_time, session_type, notes
+      `SELECT id, session_date::text AS session_date, start_time, end_time,
+              session_type, notes, status
        FROM training_sessions
        WHERE client_id = $1 AND tenant_id = $2 AND session_date < CURRENT_DATE
        ORDER BY session_date DESC, start_time DESC LIMIT 10`,
@@ -134,7 +137,8 @@ const getClientSessions = async (req, res) => {
     }
 
     let queryText = `
-      SELECT id, session_date, start_time, end_time, session_type, notes, created_at
+      SELECT id, session_date::text AS session_date, start_time, end_time,
+             session_type, notes, status, is_completed, created_at
       FROM training_sessions
       WHERE client_id = $1 AND tenant_id = $2
     `;
@@ -168,11 +172,26 @@ const { firstName, lastName, email, phone, isActive, dateOfBirth, goals, injurie
       return res.status(400).json({ error: 'Validation error', message: 'First name and last name are required' });
     }
 
+    // Every field the handler accepts is written. The INSERT used to store only
+    // the first five, so a caller that supplied a date of birth, goals,
+    // injuries, diet or general notes on creation got a 201 and silently lost
+    // them — the values only ever persisted through a subsequent update.
     const result = await queryWithTenant(
-      `INSERT INTO clients (tenant_id, first_name, last_name, email, phone)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, first_name, last_name, email, phone, is_active, created_at, updated_at`,
-      [tenantId, firstName, lastName, email || null, phone || null],
+      `INSERT INTO clients (tenant_id, first_name, last_name, email, phone,
+                            is_active, is_archived, date_of_birth, goals,
+                            injuries, diet_notes, notes)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, true), COALESCE($7, false),
+               $8, $9, $10, $11, $12)
+       RETURNING id, first_name, last_name, email, phone, is_active, is_archived,
+                 date_of_birth, goals, injuries, diet_notes, notes,
+                 created_at, updated_at`,
+      [
+        tenantId, firstName, lastName, email || null, phone || null,
+        typeof isActive === 'boolean' ? isActive : null,
+        typeof isArchived === 'boolean' ? isArchived : null,
+        dateOfBirth || null, goals || null, injuries || null,
+        dietNotes || null, notes || null,
+      ],
       tenantId
     );
 

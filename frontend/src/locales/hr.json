@@ -57,7 +57,8 @@
     "showing": "Prikaz",
     "of": "od",
     "tryAgain": "Pokušaj ponovo",
-    "clearSearch": "Poništi pretragu"
+    "clearSearch": "Poništi pretragu",
+    "retry": "Pokušaj ponovno"
   },
   "nav": {
     "dashboard": "Nadzorna ploča",
@@ -105,7 +106,13 @@
     "invalidResetLink": "Ovaj link za resetiranje je nevažeći ili je istekao.",
     "requestNewLink": "Zatraži novi link",
     "passwordTooShort": "Lozinka mora imati najmanje 6 znakova",
-    "passwordMismatch": "Lozinke se ne podudaraju"
+    "passwordMismatch": "Lozinke se ne podudaraju",
+    "verifyEmailTitle": "Potvrdite svoju e-mail adresu",
+    "verifyEmailBody": "Poslali smo poveznicu za potvrdu na {{email}}. U međuvremenu možete nastaviti raditi.",
+    "verificationLinkSentTo": "Poslali smo poveznicu za potvrdu na",
+    "verificationLinkHint": "Kliknite poveznicu u e-mailu za aktivaciju računa. Provjerite mapu neželjene pošte ako je ne vidite.",
+    "showPassword": "Prikaži lozinku",
+    "hidePassword": "Sakrij lozinku"
   },
   "dashboard": {
     "greeting_morning": "Dobro jutro",
@@ -176,7 +183,13 @@
       "upcoming": "Nadolazeće"
     },
     "noAdditionalInfo": "Nema dodatnih informacija.",
-    "sessions": "Sesije"
+    "sessions": "Sesije",
+    "clientAdded": "Klijent dodan",
+    "clientUpdated": "Klijent ažuriran",
+    "clientDeleted": "Klijent obrisan",
+    "clientArchived": "Klijent arhiviran",
+    "clientReactivated": "Klijent ponovno aktiviran",
+    "clientDeactivated": "Klijent deaktiviran"
   },
   "sessions": {
     "title": "Kalendar",
@@ -228,7 +241,11 @@
     "optional": "neobavezno",
     "participants": "Sudionici",
     "noClients": "Nema klijenata",
-    "participantsSelected": "sudionik(a) odabrano"
+    "participantsSelected": "sudionik(a) odabrano",
+    "groupSession": "Grupni trening",
+    "openSession": "Otvori trening",
+    "adhocGroup": "Grupno",
+    "groupNamePlaceholder": "npr. Jutarnja grupa, HIIT ponedjeljak..."
   },
   "calendar": {
     "title": "Kalendar",
@@ -312,7 +329,17 @@
     "startDate": "Datum početka",
     "notesPH": "npr. Plaćeno bankovnim transferom",
     "createFirst": "Prvo kreirajte pakete prije dodjele klijentima.",
-    "goToPackages": "Idi na pakete →"
+    "goToPackages": "Idi na pakete →",
+    "noSessionsRemaining": "Nema preostalih treninga",
+    "sessionsUsed": "iskorištenih treninga",
+    "typeSessionBased": "🎯 Po sesijama",
+    "typeTimeBased": "📅 Vremenski",
+    "typeUnlimited": "♾️ Neograničeno",
+    "noSessionsYet": "Još nema odrađenih treninga",
+    "used": "iskorišteno",
+    "started": "Početak",
+    "expires": "Istječe",
+    "days": "dana"
   },
   "billing": {
     "title": "Plaćanje",
@@ -451,7 +478,8 @@
     "saveSession": "Spremi sesiju",
     "backToGroup": "Natrag na grupu",
     "locationPlaceholder": "npr. Glavni gym",
-    "sessionNotesPlaceholder": "Plan treninga, upute, opažanja..."
+    "sessionNotesPlaceholder": "Plan treninga, upute, opažanja...",
+    "noGroupsHint": "Kreirajte grupe za organizaciju klijenata i vođenje grupnih treninga."
   },
   "subscription": {
     "title": "Pretplata",
@@ -532,7 +560,12 @@
       "hr": "Hrvatski",
       "de": "Njemački"
     },
-    "exportSuccess": "Izvoz se preuzima..."
+    "exportSuccess": "Izvoz se preuzima...",
+    "gdprPrivacy": "GDPR i privatnost",
+    "deleteAccountWarning": "Ovo zakazuje brisanje svih vaših podataka za 30 dana. Jeste li sigurni?",
+    "deletionScheduled": "Brisanje zakazano",
+    "deletionScheduledOn": "Vaš račun bit će obrisan",
+    "cancelDeletion": "Otkaži brisanje"
   },
   "form": {
     "packageName": "Naziv paketa",

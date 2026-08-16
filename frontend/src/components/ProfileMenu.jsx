@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { showToast } from './Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -44,6 +45,22 @@ const ProfileMenu = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/export`, { headers: { Authorization: `Bearer ${token}` } });
+
+      // The response status was never checked. An error response is still a
+      // readable body, so a 403 or 500 was wrapped in a Blob and saved as
+      // "treniko-export-<time>.zip" — the browser reported a successful
+      // download of a file that was actually a JSON error, and the trainer had
+      // no way to tell. Read the failure and say so instead.
+      if (!res.ok) {
+        let message = t('errors.exportFailed');
+        try {
+          const problem = await res.json();
+          if (problem?.message || problem?.error) message = problem.message || problem.error;
+        } catch { /* non-JSON error body — keep the generic message */ }
+        showToast(message, 'error');
+        return;
+      }
+
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -144,8 +161,30 @@ const ProfileMenu = () => {
               </div>
             </div>
 
+            {/* Sections that live only in the desktop top nav.
+                The mobile bottom bar carries six destinations and Groups and
+                Exercises are not among them, so on a phone — where trainers
+                actually work — those two areas of the product were unreachable
+                by any route the interface offered. They are surfaced here,
+                where the menu is available at every breakpoint. */}
+            <div className="border-t border-gray-100 dark:border-gray-800 my-1 sm:hidden" />
+            <div onClick={() => { navigate('/dashboard/groups'); setOpen(false); }}
+              className="sm:hidden px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+              <div className="flex items-center gap-2.5">
+                <span className="text-base">🤝</span>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('nav.groups')}</p>
+              </div>
+            </div>
+            <div onClick={() => { navigate('/dashboard/exercises'); setOpen(false); }}
+              className="sm:hidden px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+              <div className="flex items-center gap-2.5">
+                <span className="text-base">💪</span>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('nav.exercises')}</p>
+              </div>
+            </div>
+
             <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-            <p className="px-3 pt-1 pb-0.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">GDPR & Privacy</p>
+            <p className="px-3 pt-1 pb-0.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('profile.gdprPrivacy')}</p>
 
             {/* Export */}
             <button onClick={handleExport} disabled={exporting}
@@ -173,7 +212,7 @@ const ProfileMenu = () => {
               ) : (
                 <div className="px-3 py-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
                   <p className="text-xs text-red-700 dark:text-red-400 font-medium mb-2">
-                    ⚠️ This will schedule deletion of all your data in 30 days. {t('common.confirm')}?
+                    ⚠️ {t('profile.deleteAccountWarning')}
                   </p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowDeleteConfirm(false)}
@@ -182,20 +221,20 @@ const ProfileMenu = () => {
                     </button>
                     <button onClick={handleRequestDeletion}
                       className="flex-1 py-1.5 text-xs rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors">
-                      {t('common.yes')}, Request
+                      {t('common.yes')}
                     </button>
                   </div>
                 </div>
               )
             ) : (
               <div className="px-3 py-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
-                <p className="text-xs text-yellow-800 dark:text-yellow-400 font-medium mb-1">⏳ Deletion scheduled</p>
+                <p className="text-xs text-yellow-800 dark:text-yellow-400 font-medium mb-1">⏳ {t('profile.deletionScheduled')}</p>
                 <p className="text-xs text-yellow-700 dark:text-yellow-500 mb-2">
-                  Your account will be deleted on {deletionDate ? new Date(deletionDate).toLocaleDateString() : '...'}
+                  {t('profile.deletionScheduledOn')} {deletionDate ? new Date(deletionDate).toLocaleDateString() : '…'}
                 </p>
                 <button onClick={handleCancelDeletion}
                   className="w-full py-1.5 text-xs rounded-lg border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors font-medium">
-                  {t('common.cancel')} Deletion
+                  {t('profile.cancelDeletion')}
                 </button>
               </div>
             )}

@@ -7,6 +7,13 @@ import { useTranslation } from 'react-i18next';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const ClientModal = ({ client, onClose, onSave }) => {
+  // `t` was referenced by the Save button's busy label but never taken from the
+  // hook, so the first render after the save started threw
+  // "t is not defined" — i.e. the component crashed on the one interaction it
+  // exists for. This file is currently unreferenced (Clients.jsx carries its
+  // own inline modal); the crash is fixed rather than left waiting for whoever
+  // wires it up next. See PRODUCT_BACKLOG_BETA.md — it is queued for removal.
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',

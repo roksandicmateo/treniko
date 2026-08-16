@@ -57,7 +57,8 @@
     "showing": "Zeige",
     "of": "von",
     "tryAgain": "Erneut versuchen",
-    "clearSearch": "Suche löschen"
+    "clearSearch": "Suche löschen",
+    "retry": "Erneut versuchen"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -105,7 +106,13 @@
     "invalidResetLink": "Dieser Reset-Link ist ungültig oder abgelaufen.",
     "requestNewLink": "Neuen Link anfordern",
     "passwordTooShort": "Das Passwort muss mindestens 6 Zeichen lang sein",
-    "passwordMismatch": "Passwörter stimmen nicht überein"
+    "passwordMismatch": "Passwörter stimmen nicht überein",
+    "verifyEmailTitle": "Bestätigen Sie Ihre E-Mail-Adresse",
+    "verifyEmailBody": "Wir haben einen Bestätigungslink an {{email}} gesendet. Sie können in der Zwischenzeit weiterarbeiten.",
+    "verificationLinkSentTo": "Wir haben einen Bestätigungslink gesendet an",
+    "verificationLinkHint": "Klicken Sie auf den Link in der E-Mail, um Ihr Konto zu aktivieren. Prüfen Sie auch Ihren Spam-Ordner.",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen"
   },
   "dashboard": {
     "greeting_morning": "Guten Morgen",
@@ -176,7 +183,13 @@
       "upcoming": "Bevorstehend"
     },
     "noAdditionalInfo": "Keine weiteren Informationen.",
-    "sessions": "Einheiten"
+    "sessions": "Einheiten",
+    "clientAdded": "Kunde hinzugefügt",
+    "clientUpdated": "Kunde aktualisiert",
+    "clientDeleted": "Kunde gelöscht",
+    "clientArchived": "Kunde archiviert",
+    "clientReactivated": "Kunde reaktiviert",
+    "clientDeactivated": "Kunde deaktiviert"
   },
   "sessions": {
     "title": "Kalender",
@@ -228,7 +241,11 @@
     "optional": "optional",
     "participants": "Teilnehmer",
     "noClients": "Keine Klienten",
-    "participantsSelected": "Teilnehmer ausgewählt"
+    "participantsSelected": "Teilnehmer ausgewählt",
+    "groupSession": "Gruppentraining",
+    "openSession": "Training öffnen",
+    "adhocGroup": "Gruppe",
+    "groupNamePlaceholder": "z. B. Morgengruppe, HIIT Montag..."
   },
   "calendar": {
     "title": "Kalender",
@@ -312,7 +329,17 @@
     "startDate": "Startdatum",
     "notesPH": "z.B. Bezahlt per Banküberweisung",
     "createFirst": "Erstellen Sie zuerst Pakete, bevor Sie sie Klienten zuweisen.",
-    "goToPackages": "Zu Paketen →"
+    "goToPackages": "Zu Paketen →",
+    "noSessionsRemaining": "Keine Einheiten übrig",
+    "sessionsUsed": "Einheiten genutzt",
+    "typeSessionBased": "🎯 Nach Einheiten",
+    "typeTimeBased": "📅 Zeitbasiert",
+    "typeUnlimited": "♾️ Unbegrenzt",
+    "noSessionsYet": "Noch keine Einheiten",
+    "used": "genutzt",
+    "started": "Beginn",
+    "expires": "Läuft ab",
+    "days": "Tage"
   },
   "billing": {
     "title": "Abrechnung",
@@ -451,7 +478,8 @@
     "saveSession": "Einheit speichern",
     "backToGroup": "Zurück zur Gruppe",
     "locationPlaceholder": "z.B. Haupttrainingsfläche",
-    "sessionNotesPlaceholder": "Trainingsplan, Hinweise, Beobachtungen..."
+    "sessionNotesPlaceholder": "Trainingsplan, Hinweise, Beobachtungen...",
+    "noGroupsHint": "Erstellen Sie Gruppen, um Kunden zu organisieren und Gruppentrainings zu verwalten."
   },
   "subscription": {
     "title": "Abonnement",
@@ -532,7 +560,12 @@
       "hr": "Kroatisch",
       "de": "Deutsch"
     },
-    "exportSuccess": "Export wird heruntergeladen..."
+    "exportSuccess": "Export wird heruntergeladen...",
+    "gdprPrivacy": "DSGVO & Datenschutz",
+    "deleteAccountWarning": "Dies plant die Löschung aller Ihrer Daten in 30 Tagen. Sind Sie sicher?",
+    "deletionScheduled": "Löschung geplant",
+    "deletionScheduledOn": "Ihr Konto wird gelöscht am",
+    "cancelDeletion": "Löschung abbrechen"
   },
   "form": {
     "packageName": "Paketname",

@@ -227,7 +227,7 @@ const register = async (req, res) => {
 const validateToken = async (req, res) => {
   try {
     const result = await query(
-      'SELECT id, tenant_id, email, first_name, last_name FROM users WHERE id = $1',
+      'SELECT id, tenant_id, email, first_name, last_name, email_verified FROM users WHERE id = $1',
       [req.user.userId]
     );
 
@@ -246,7 +246,12 @@ const validateToken = async (req, res) => {
         tenantId: user.tenant_id,
         email: user.email,
         firstName: user.first_name,
-        lastName: user.last_name
+        lastName: user.last_name,
+        // Login and registration both report this; validate did not. The client
+        // replaces its user object with this response on every page load, so
+        // the field simply vanished after a refresh and any behaviour keyed on
+        // it changed depending on how the user arrived at the page.
+        emailVerified: user.email_verified,
       }
     });
   } catch (error) {

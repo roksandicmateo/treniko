@@ -4,6 +4,10 @@ import { useTranslation } from 'react-i18next';
 import ConfirmModal from './ConfirmModal';
 
 const TrainingLogModal = ({ session, onClose, onSave }) => {
+  // As in ClientModal: the busy label called `t(...)` with no `t` in scope, so
+  // saving crashed the component. Unreferenced today; queued for removal in
+  // PRODUCT_BACKLOG_BETA.md.
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [loadingLog, setLoadingLog] = useState(true);
   const [error, setError] = useState('');

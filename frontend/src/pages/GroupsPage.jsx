@@ -148,7 +148,7 @@ export default function GroupsPage() {
         <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           <p className="text-4xl mb-3">👥</p>
           <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">{t('groups.noGroups')}</p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">Create groups to organise clients and manage group sessions.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">{t('groups.noGroupsHint')}</p>
           <button onClick={() => setModalOpen(true)} className="btn-primary">{t('groups.addFirst')}</button>
         </div>
       ) : (

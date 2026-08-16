@@ -91,7 +91,7 @@ const ClientNotesTab = ({ client, onUpdated }) => {
               <div className="bg-gray-50 rounded-xl px-4 py-3">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">🎂 {t('clients.dateOfBirth')}</p>
                 <p className="text-sm text-gray-800">
-                  {new Date(client.date_of_birth).toLocaleDateString('en-GB', {
+                  {new Date(client.date_of_birth).toLocaleDateString(undefined, {
                     day: 'numeric', month: 'long', year: 'numeric'
                   })}
                   {' '}
