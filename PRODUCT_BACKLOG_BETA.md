@@ -33,25 +33,25 @@ for this sprint.
 Whichever is chosen, do it *before* the invites go out — the first trainer to
 hit the wall has no way through it on their own.
 
-### 2. Outbound email is not configured
-`BREVO_API_KEY` is unset, so `services/emailService.js` logs
-`[Email DISABLED]` and sends nothing. Affected today:
-- **email verification** — the link never arrives (the hard block on unverified
-  accounts has been removed for exactly this reason; see the report);
-- **password reset** — a trainer who forgets their password cannot recover it
-  at all. This is the more serious of the two and is a genuine support burden
-  from day one.
+### 2. `.env.example` documents mail settings the code does not read
+Outbound email **is** configured in production (Brevo), so verification and
+password-reset messages reach users. Local development deliberately runs without
+`BREVO_API_KEY`, where `services/emailService.js` logs `[Email DISABLED]` and
+sends nothing — that is the intended local behaviour, not a fault.
 
-Also worth cleaning up: `.env.example` advertises `EMAIL_HOST` / `EMAIL_PORT` /
+What is worth fixing: `.env.example` advertises `EMAIL_HOST` / `EMAIL_PORT` /
 `EMAIL_USER` / `EMAIL_PASS`, none of which the mail service reads — it uses the
 Brevo HTTP API with `BREVO_API_KEY` and `EMAIL_FROM_ADDRESS`. Anyone configuring
-mail from the example file will configure nothing.
+mail from the example file configures nothing and gets silence, with no error to
+explain it. Correct the example file to name the variables that are actually
+read.
 
 ### 3. No "resend verification email"
-There is no endpoint and no button. Once mail works, a trainer whose message
-went to spam or who mistyped their address has no route forward. Needed before
-email verification can be enforced again (one constant in
-`frontend/src/components/PrivateRoute.jsx`).
+There is no endpoint and no button. A trainer whose message went to spam, or who
+mistyped their address at signup, has no route forward — they cannot correct the
+address and cannot trigger another send. This is the blocker for restoring the
+verification gate, which is otherwise a one-constant change in
+`frontend/src/components/PrivateRoute.jsx` now that production mail works.
 
 ### 4. Consent and legal copy are English-only
 The Data Processing Agreement modal and the health-data Consent modal are

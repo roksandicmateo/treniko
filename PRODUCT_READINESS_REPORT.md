@@ -18,9 +18,9 @@ existed. The dashboard's "Upcoming this week" list printed **"Invalid Date"** on
 every row, and opening any session from it produced an edit dialog with an empty,
 unsaveable date. Clicking "Cancel package" replaced the client page with an error
 screen. A brand-new trainer who signed up was sent to a *"Check your email"* page
-whose email is never sent, because outbound mail is not configured — and the only
-way past it was to press refresh, which happened to work because the gate was
-also inconsistent. And the number a session-package business runs on — *sessions
+whose verification link they may never be able to act on — and the only way past
+it was to press refresh, which happened to work because the gate was
+inconsistent. And the number a session-package business runs on — *sessions
 remaining* — never moved, because nothing decremented it.
 
 None of these were visible from the route table. All of them were reachable in
@@ -40,12 +40,19 @@ backend suite still passes against a freshly provisioned **non-superuser,
 NOBYPASSRLS role that owns nothing**. Both dependency audits report zero
 vulnerabilities. One new migration was needed and applied (29 total, 0 pending).
 
-**Two things stand between this and a closed beta, and neither is code.**
-Outbound email is not configured, so a trainer who forgets their password cannot
-recover it. And the Free plan caps at 5 clients / 20 sessions per month with no
-payment path, so every invited trainer hits a wall inside a week. Both are an
-hour of configuration or one business decision. Until they are done, inviting
-real trainers means inviting them into those two walls.
+**One thing stands between this and a closed beta, and it is not code.** The
+Free plan caps at 5 clients / 20 sessions per month with no payment path, so
+every invited trainer hits a wall inside a week. That is one business decision,
+not an engineering task.
+
+**Correction (post-sprint).** An earlier revision of this report named
+unconfigured outbound email as a second blocker. That was wrong: it generalised
+from the local development environment, where `BREVO_API_KEY` is unset, to
+production — where Brevo delivery *is* configured. Password reset and
+verification mail work for live users. The finding it produced (P0-4) still
+stands on its other, verified leg — the gate was inconsistent and bypassable by
+reloading the page — but the "the mail never arrives" reasoning applied only to
+local development. See "Earlier verdict, and why it changed" at the end.
 
 ---
 
@@ -55,7 +62,7 @@ real trainers means inviting them into those two walls.
 |---|---|---|
 | Register / login / logout / re-login | API + UI | pass |
 | Email verification | API + UI | **was a dead end** — fixed |
-| Forgot / reset password | code + config | works in code; **no email is sent** (see risks) |
+| Forgot / reset password | code | pass — sends in production (Brevo configured); silent in local dev |
 | DPA acceptance, onboarding | API + UI | **blocked page loads** — fixed |
 | Trainer profile & business settings | API + UI | pass |
 | Language handling (hr / en / de) | UI | **mixed languages** — fixed on all core screens |
@@ -113,15 +120,19 @@ the error boundary replaced the whole client detail page.
 *Fix:* the section owns its own confirmation dialog, and surfaces a failure
 instead of swallowing it.
 
-### P0-4 — New trainers were locked out behind an email that is never sent
+### P0-4 — The email-verification gate was inconsistent, and had no way through it
 Registration redirected to `/check-email` — *"click the link in the email to
-activate your account"* — with only a "Back to login" button. The mail service
-sends through the Brevo HTTP API and does nothing without `BREVO_API_KEY`, which
-is unset, so **the link never arrives and there is no resend**. The gate was also
-inconsistent: `/auth/validate` did not return `emailVerified`, so after any page
-reload the field was `undefined`, `undefined === false` is false, and the user was
-let straight in. Verified by hand — blocked after signing up, admitted after
-pressing refresh.
+activate your account"* — with only a "Back to login" button and **no resend**.
+The gate did not hold: `/auth/validate` did not return `emailVerified`, so after
+any page reload the field was `undefined`, `undefined === false` is false, and
+the user was let straight in. Verified by hand — blocked after signing up,
+admitted after pressing refresh. A gate that a page reload defeats is not a
+gate; it is a speed bump that only inconveniences the honest.
+
+The original write-up added "and the verification mail is never sent". That was
+true of the local environment this sprint ran in and **false of production**,
+where Brevo is configured — the correction is recorded in the executive summary
+and below.
 
 *Fix:* `/auth/validate` now returns the field, so the client's state is
 deterministic; the hard redirect is replaced by a dismissible banner asking for
@@ -187,7 +198,7 @@ All seventeen confirmed and fixed.
 Recorded in `PRODUCT_BACKLOG_BETA.md`, not built. Headline items:
 
 1. **Free-plan limits (5 clients / 20 sessions per month) with no payment path** — a business decision, see risks.
-2. **Outbound email unconfigured** — breaks password recovery and verification.
+2. **No "resend verification email"** — a trainer whose mail hits spam, or who mistyped their address, has no self-service way forward.
 3. **No "resend verification email"** endpoint or button.
 4. **DPA and health-data consent modals are English-only** — legal copy, needs a translation the owner will stand behind.
 5. Plan usage bar goes stale until the next navigation.
@@ -318,7 +329,7 @@ undone by accident.
 # Remaining Beta Risks
 
 1. **Free plan caps at 5 clients / 20 sessions per month, with no way to upgrade.** A working trainer passes both inside a week; the upgrade button then answers *"contact support"*, correctly, because there is no payment provider. **Decide and apply before invitations go out** — put testers on Pro, raise the Free limits, or add a beta plan.
-2. **Outbound email is not configured.** `BREVO_API_KEY` is unset, so nothing is sent. The sharp edge is **password reset**: a trainer who forgets their password cannot recover it, and there is no admin path either. Email verification no longer blocks anyone, but this one is a support burden from day one.
+2. **Unverified email addresses can use the product, and there is no resend.** Verification is now a banner rather than a gate (P0-4). Production *does* send the verification mail, so the gate could be restored — but until a resend endpoint exists, restoring it strands anyone whose message went to spam or who typed their address wrong. Deciding between "restore the gate" and "build resend first" is an owner call; the switch is one constant in `PrivateRoute.jsx`.
 3. **The DPA and the health-data consent modal are English-only** while the interface is Croatian. Trainers are being asked to accept a GDPR agreement, and to attest to their client's consent, in a language they may not read. Product/legal decision, not an engineering one.
 4. **No `emailVerified` enforcement means unverified addresses can use the product.** Deliberate, and reversible with one constant — but it does mean a typo'd address is not caught until someone notices.
 5. **Group and payment features have the thinnest real-world exposure.** Group session scheduling was completely broken until this sprint, so it has never been used by anyone. Payments are recorded but never reconciled against packages automatically. Both deserve close attention in the first week of beta.
@@ -327,21 +338,48 @@ undone by accident.
 
 # Beta Launch Recommendation
 
-## NOT READY FOR CLOSED BETA
+## READY FOR CLOSED BETA — after one operational step, and one deploy decision
 
-— and this is a configuration verdict, not a code one. **No engineering work
-remains.** Every P0 and P1 found in this sprint is fixed and covered by tests;
-the full trainer journey passes end to end; the security posture from the earlier
-phases is intact and verified under a restricted, RLS-enforced role; both audits
-are clean.
+**No engineering work remains.** Every P0 and P1 found in this sprint is fixed
+and covered by tests; the full trainer journey passes end to end; the security
+posture from the earlier phases is intact and verified under a restricted,
+RLS-enforced role; both audits are clean.
 
-The verdict is *not ready* because of what happens to a real trainer invited
-today:
+Two things to do before trainers are invited, neither of them code:
 
-- **In week one they hit a hard wall at 5 clients**, and the only door out says "contact support".
-- **If they forget their password, they cannot get back in**, because no email can be sent.
+1. **Give beta testers a plan that fits real use.** The Free plan stops at 5
+   clients and 20 sessions per month, and the upgrade button correctly answers
+   "contact support" because there is no payment provider. A trainer passes both
+   limits inside a week. Assign testers to Pro, raise the Free limits, or add a
+   beta plan — but decide before the invitations go out.
 
-Neither is a defect in the product; both are unmade decisions about how it is
-deployed. Ship the two of them — assign beta testers to a plan that fits real use,
-and configure `BREVO_API_KEY` — and this becomes **READY FOR CLOSED BETA** the
-same day, with no further code changes.
+2. **Deploy this work deliberately, and read the two notes below first.** The
+   changes are on `main`, not in production.
+
+## Before deploying to production
+
+- **Migration 031 must be applied to the production database.** It redefines the
+  `client_statistics` view so counts follow session status. Without it the API
+  serves the old, wrong numbers — it does not error, so the omission would be
+  silent. Applying it is a view replacement: no data is read or written, no table
+  is locked beyond a catalogue update, and it is idempotent.
+- **Email verification stops being a gate.** Unverified accounts can use the
+  product and see a banner instead of being redirected. Given that production
+  mail works, this is now a choice rather than a necessity — see risk 2. If you
+  would rather keep the gate, set `ENFORCE_EMAIL_VERIFICATION = true` in
+  `frontend/src/components/PrivateRoute.jsx` before deploying, and accept that
+  anyone whose mail goes astray has no way in until a resend path exists.
+
+## Earlier verdict, and why it changed
+
+An earlier revision of this report read **NOT READY**, on two grounds: the plan
+limits, and unconfigured outbound email. The second was wrong. It generalised
+from the local development environment — where `BREVO_API_KEY` is deliberately
+unset and the mail service logs `[Email DISABLED]` — to production, where Brevo
+delivery is configured and both password reset and verification mail reach
+users. I verified the local behaviour and inferred the deployed behaviour from
+it, which was not mine to infer. The code path itself was read correctly and is
+sound: it sends whenever the key is present.
+
+With that leg removed, one operational decision stands between the product and a
+closed beta, not two.
