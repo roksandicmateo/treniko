@@ -29,3 +29,6 @@ Thumbs.db
 # Build
 dist/
 build/
+
+# Claude Code — personal, machine-local overrides (permission mode etc.)
+.claude/settings.local.json
