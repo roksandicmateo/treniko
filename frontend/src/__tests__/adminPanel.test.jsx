@@ -283,6 +283,68 @@ describe('server-side paging and filtering', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+describe('the trainer realm cannot hijack an admin route', () => {
+  // Found on production. services/api.js (the TRAINER client) redirects the
+  // whole window to /login on any 401, and AuthProvider is mounted above every
+  // route including /admin. A stale trainer token therefore bounced an
+  // administrator off /admin to the TRAINER login before the admin realm ran.
+  //
+  // Reproduced live: with a stale trainer token `/admin` landed on `/login`;
+  // with it cleared, `/admin` correctly reached `/admin/login`.
+  //
+  // The guard is a path check, so it is asserted directly against the real
+  // interceptor rather than through a rendered tree — the bug lives in the
+  // module, not in a component.
+  const runInterceptor = async (pathname) => {
+    vi.resetModules();
+    const hrefSets = [];
+    const original = window.location;
+    delete window.location;
+    window.location = {
+      pathname,
+      get href() { return `https://treniko.com${pathname}`; },
+      set href(v) { hrefSets.push(v); },
+    };
+
+    let rejectHandler;
+    vi.doMock('axios', () => ({
+      default: {
+        create: () => ({
+          interceptors: {
+            request: { use: () => {} },
+            response: { use: (_ok, err) => { rejectHandler = err; } },
+          },
+          get: () => {}, post: () => {}, put: () => {}, patch: () => {}, delete: () => {},
+        }),
+        get: () => {},
+      },
+    }));
+
+    await import('../services/api');
+    await rejectHandler({ response: { status: 401 } }).catch(() => {});
+
+    window.location = original;
+    return hrefSets;
+  };
+
+  test('a 401 on an /admin route does NOT redirect to the trainer login', async () => {
+    const redirects = await runInterceptor('/admin/trainers');
+    expect(redirects).toEqual([]);
+  });
+
+  test('a 401 on the admin login page does not redirect either', async () => {
+    const redirects = await runInterceptor('/admin/login');
+    expect(redirects).toEqual([]);
+  });
+
+  test('a 401 on a normal trainer route still redirects to /login', async () => {
+    // The existing behaviour must be untouched everywhere else.
+    const redirects = await runInterceptor('/dashboard/clients');
+    expect(redirects).toEqual(['/login']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe('sensitive fields are never rendered', () => {
   test('a hostile payload containing secrets does not put them on screen', async () => {
     // The real API selects an explicit column list and cannot return these.

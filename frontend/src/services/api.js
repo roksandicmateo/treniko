@@ -33,7 +33,23 @@ api.interceptors.response.use(
       // Token expired or invalid
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+
+      // Never drag the admin panel to the trainer login.
+      //
+      // This interceptor performs a GLOBAL redirect, and AuthProvider is mounted
+      // above every route — including /admin. So a stale trainer token in the
+      // browser made the trainer session validation 401 on load, and this line
+      // then bounced an administrator off /admin to /login before the admin
+      // realm could even run. Observed on production: with a stale trainer token
+      // `/admin` landed on `/login`; with it cleared, `/admin` correctly reached
+      // `/admin/login`.
+      //
+      // The two realms are separate (see services/adminApi.js), and the admin
+      // subtree does its own redirecting. Clearing the dead trainer session
+      // above is still right; navigating away from /admin is not.
+      if (!window.location.pathname.startsWith('/admin')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
