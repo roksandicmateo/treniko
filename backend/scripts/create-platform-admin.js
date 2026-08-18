@@ -14,6 +14,18 @@
  * is therefore created here, by an operator with shell access to the server.
  * After that an `owner` can create the rest through POST /api/admin/admins.
  *
+ * ── Non-interactive mode ────────────────────────────────────────────────────
+ * `--non-interactive` is an explicit opt-in for automated provisioning. The
+ * password is read from stdin (all of it, trimmed) or, if stdin is a terminal,
+ * from TRENIKO_ADMIN_PASSWORD. The interactive path is untouched and
+ * --password is refused in BOTH modes.
+ *
+ * It exists because the interactive path cannot be driven from a pipe: each
+ * prompt opens its own readline interface on process.stdin, and once the first
+ * closes a piped stream is exhausted, so the second prompt never receives input
+ * and the process exits 0 having done nothing — a silent no-op that in
+ * automation looks exactly like success.
+ *
  * ── The password is never taken from the command line ───────────────────────
  * It is read from stdin with echo disabled. A password passed as an argument
  * ends up in the shell history, in `ps` output for every user on the box, and
@@ -37,6 +49,19 @@ const argOf = (name) => {
   const i = process.argv.indexOf(`--${name}`);
   return i !== -1 ? process.argv[i + 1] : undefined;
 };
+
+/**
+ * Read the whole stdin stream, trimmed. Deliberately not readline: consuming
+ * the stream once, in full, is what makes this safe to drive from a pipe.
+ */
+const readAllStdin = () =>
+  new Promise((resolve) => {
+    let buf = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (c) => { buf += c; });
+    process.stdin.on('end', () => resolve(buf.trim()));
+    process.stdin.on('error', () => resolve(''));
+  });
 
 /** Prompt on stdout, read one line from stdin. */
 const ask = (question) =>
@@ -96,7 +121,27 @@ const askHidden = (question) =>
     process.exit(2);
   }
 
+  const nonInteractive = process.argv.includes('--non-interactive');
+
+  // Start draining stdin NOW, before the first await.
+  //
+  // readAllStdin attaches its 'data'/'end' listeners when it is called. If that
+  // happens after an await — the database lookup below takes milliseconds — a
+  // short piped payload can have already ended, the 'end' event is missed, the
+  // promise never settles, and Node exits 0 with an empty event loop. That is
+  // the exact silent no-op this mode exists to eliminate, so the read starts
+  // eagerly and is awaited later.
+  const stdinPassword = nonInteractive && !process.stdin.isTTY ? readAllStdin() : null;
+
   try {
+    if (nonInteractive) {
+      // Prompting is impossible here, so everything except the password must
+      // already be on the command line. None of those are secrets.
+      for (const flag of ['email', 'first-name', 'last-name']) {
+        if (!argOf(flag)) throw new Error(`--${flag} is required in --non-interactive mode.`);
+      }
+    }
+
     const email = normalizeEmail(argOf('email') || await ask('Email: '));
     if (!isEmail(email)) throw new Error(`Not a valid email address: ${email}`);
 
@@ -107,12 +152,31 @@ const askHidden = (question) =>
     const lastName  = argOf('last-name')  || await ask('Last name: ');
     if (!firstName || !lastName) throw new Error('First and last name are required.');
 
-    const role = argOf('role') || (await ask(`Role [${ROLES.join('/')}] (default owner): `)) || 'owner';
+    // Never prompt in non-interactive mode. An `ask()` here consumes the piped
+    // stdin meant for the password and then blocks forever on EOF, which the
+    // runtime resolves by exiting 0 with nothing done — the precise silent
+    // failure this mode exists to prevent.
+    const role = nonInteractive
+      ? (argOf('role') || 'owner')
+      : (argOf('role') || (await ask(`Role [${ROLES.join('/')}] (default owner): `)) || 'owner');
     if (!ROLES.includes(role)) throw new Error(`Role must be one of: ${ROLES.join(', ')}`);
 
-    const password = await askHidden('Password (not echoed): ');
-    const confirm  = await askHidden('Confirm password:      ');
-    if (password !== confirm) throw new Error('Passwords do not match.');
+    let password;
+    if (nonInteractive) {
+      // stdin when it is a pipe, otherwise the environment variable. Never argv.
+      password = stdinPassword
+        ? await stdinPassword
+        : (process.env.TRENIKO_ADMIN_PASSWORD || '');
+      if (!password) {
+        throw new Error(
+          'No password supplied. In --non-interactive mode, pipe it to stdin or set TRENIKO_ADMIN_PASSWORD.'
+        );
+      }
+    } else {
+      password = await askHidden('Password (not echoed): ');
+      const confirm = await askHidden('Confirm password:      ');
+      if (password !== confirm) throw new Error('Passwords do not match.');
+    }
 
     const check = validatePassword(password);
     if (!check.ok) throw new Error(check.reason);
