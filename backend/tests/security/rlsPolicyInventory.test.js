@@ -98,6 +98,13 @@ const UNPROTECTED_TENANT_TABLES = {
   audit_log:
     'An append-only security log rather than tenant business data, written by ' +
     'jobs/deletionJob.js outside any request context. Keyed by trainer_id.',
+  admin_audit_log:
+    'Migration 033. An append-only record of platform-administrator writes. It ' +
+    'carries tenant_id to say which tenant an action affected, but it is a ' +
+    'security log rather than tenant business data: entries routinely span ' +
+    'tenants, are written by staff who belong to none, and must outlive both ' +
+    'the administrator and the tenant. A tenant policy would also hide the log ' +
+    'from the admin API, which establishes no tenant context by design.',
   deletion_requests:
     'jobs/deletionJob.js must enumerate pending requests across every tenant in ' +
     'order to do its work at all; that scan is what lets it then act under each ' +
@@ -109,6 +116,14 @@ const TENANT_NEUTRAL_TABLES = [
   'subscription_plans',      // the plan catalogue, identical for everyone
   'password_reset_tokens',   // keyed by user, consumed before authentication
   'schema_migrations',       // the migration ledger
+  // Migration 033 — platform administration.
+  //
+  // platform_admins holds TRENIKO staff accounts. It has no tenant_id and
+  // cannot have one: a staff account scoped to a single tenant would defeat its
+  // own purpose. It is a separate authentication realm from `users`, never
+  // reached by a tenant-scoped query, and protected by application-level
+  // authorization exactly as `users` is.
+  'platform_admins',
 ];
 
 afterAll(async () => {

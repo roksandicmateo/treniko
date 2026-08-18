@@ -14,6 +14,7 @@ const dpaRoutes = require('./routes/dpa');
 const profileRoutes = require('./routes/profile');
 const exportRoutes = require('./routes/export');
 const deletionRoutes = require('./routes/deletion');
+const adminRoutes = require('./routes/admin');
 const consentRoutes = require('./routes/consent');
 const { requireDpa } = require('./middleware/requireDpa');
 const { auditLogMiddleware, auditFailedLogin } = require('./middleware/auditLog');
@@ -115,6 +116,24 @@ app.use('/api/auth/reset-password', passwordResetIpRateLimiter);
 app.use('/api/export', exportRateLimiter);
 app.use('/api', auditLogMiddleware);
 app.use('/api/auth/login', auditFailedLogin);
+
+// ── Platform administration ───────────────────────────────────────────────────
+// Mounted deliberately ABOVE the trainer authentication gate and above the
+// tenant-context middleware.
+//
+// Above the gate, because administrators are not trainers: they authenticate
+// against platform_admins with their own token realm (middleware/adminAuth.js),
+// and must not need a trainer account to sign in.
+//
+// Above the tenant context, because that is what makes the admin surface safe.
+// No tenant context is ever established for these requests, so under the
+// NOBYPASSRLS `treniko_app` role every RLS-protected table — clients, sessions,
+// payments, training logs, progress — returns zero rows here. Platform staff
+// see tenants, trainers, subscriptions and usage counts; they cannot read a
+// trainer's clients. That boundary is enforced by PostgreSQL, not by care.
+//
+// Rate limiting and the request audit log are already mounted on '/api' above.
+app.use('/api/admin', adminRoutes);
 
 // ── Authentication gate ───────────────────────────────────────────────────────
 // MUST stay above the subscription checks below. Those middlewares read

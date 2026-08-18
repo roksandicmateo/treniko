@@ -120,6 +120,13 @@ const TENANT_DATA_TABLES = [
  * below.
  */
 const SHELL_TABLES = [
+  // Migration 033. Records of administrator actions taken against this tenant.
+  // In SHELL_TABLES rather than TENANT_DATA_TABLES deliberately: performing an
+  // admin action on a QA tenant during a QA run is expected, so treating these
+  // rows as "must be empty first" would block the very cleanup this script
+  // exists to do. For a real tenant the log is never touched — this script only
+  // ever resolves a single marker-matched QA tenant.
+  ['admin_audit_log', 'tenant_id'],
   ['subscription_usage', 'tenant_id'],
   ['tenant_subscriptions', 'tenant_id'],
   ['subscription_notifications', 'tenant_id'],

@@ -251,6 +251,14 @@ const EXCLUDED_FROM_EXPORT = {
     'the public product catalogue, identical for every tenant',
   schema_migrations:
     'database bookkeeping, no tenant data',
+  admin_audit_log:
+    'TRENIKO internal record of platform-administrator actions (migration ' +
+    '033). It names the staff member who acted, by email, so including it in a ' +
+    'self-serve customer download would disclose TRENIKO personnel rather than ' +
+    'data about the trainer. The trainer-facing record of activity on their ' +
+    'own account is audit_log, which IS exported. Where a subject access ' +
+    'request genuinely reaches admin actions, it is answered manually with the ' +
+    'staff identifiers redacted',
 };
 
 /**
