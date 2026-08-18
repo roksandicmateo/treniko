@@ -7,11 +7,16 @@ import ConsentModal from '../components/ConsentModal';
 import { useTranslation } from 'react-i18next';
 import { ClientListSkeleton } from '../components/SkeletonLoader';
 import ConfirmModal from '../components/ConfirmModal';
+import { useDateLocale } from '../utils/locale';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const Clients = () => {
   const { t } = useTranslation();
+  // The active UI language, not the browser's. Passing `undefined` to
+  // toLocaleDateString below formatted dates in the OS locale, so an English
+  // UI on a Croatian machine showed Croatian dates. See utils/locale.js.
+  const dateLocale = useDateLocale();
   const navigate = useNavigate();
   const [clients,      setClients]      = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -260,7 +265,7 @@ const Clients = () => {
                     </div>
                     {client.last_session_date && (
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        {new Date(client.last_session_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                        {new Date(client.last_session_date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}
                       </p>
                     )}
                   </td>

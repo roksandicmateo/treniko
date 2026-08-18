@@ -80,13 +80,20 @@ const checkReadOnlyMode = async (req, res, next) => {
 };
 
 /**
- * Middleware to check client limit before creating
+ * Middleware to check client limit before creating a client.
+ *
+ * Mount this on the route that CREATES a client (POST /api/clients) and
+ * nowhere else. It used to be mounted globally on '/api' and matched with
+ * `req.path.includes('/clients')`, which caught every POST that merely lived
+ * *under* a client — recording a payment, assigning a package, spending a
+ * package session, giving consent. A trainer sitting exactly on their plan's
+ * cap could therefore no longer take money or manage the clients they already
+ * had, even though none of those actions adds a client. Scoping the guard to
+ * the creating route is what makes the check mean what its name says; see
+ * tests/security/clientLimitScope.test.js.
  */
 const checkClientLimit = async (req, res, next) => {
   try {
-    // Only check on client creation
-    if (req.method !== 'POST' || !req.path.includes('/clients')) return next();
-
     if (rejectIfUnauthenticated(req, res)) return;
 
     const { tenantId } = req.user;

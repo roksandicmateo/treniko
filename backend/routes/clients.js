@@ -3,6 +3,7 @@ const router = express.Router();
 const clientsController = require('../controllers/clientsController');
 const { authenticateToken } = require('../middleware/auth');
 const { attachUuidParamGuards } = require('../utils/routeGuards');
+const { checkClientLimit } = require('../middleware/subscription');
 
 // All client routes require authentication
 router.use(authenticateToken);
@@ -34,8 +35,11 @@ router.get('/:id/sessions', clientsController.getClientSessions);
 /**
  * POST /api/clients
  * Create a new client
+ *
+ * The plan's client cap is enforced here, on the one route that adds a client,
+ * rather than globally on '/api'. See middleware/subscription.js.
  */
-router.post('/', clientsController.createClient);
+router.post('/', checkClientLimit, clientsController.createClient);
 
 /**
  * PUT /api/clients/:id

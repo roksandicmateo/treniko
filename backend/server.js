@@ -82,7 +82,7 @@ app.get('/health', (req, res) => {
 });
 
 // ── Security / rate limiting / subscription middleware ────────────────────────
-const { checkReadOnlyMode, checkClientLimit, checkSessionLimit, checkFeatureAccess } = require('./middleware/subscription');
+const { checkReadOnlyMode, checkSessionLimit, checkFeatureAccess } = require('./middleware/subscription');
 
 // Paths under /api that must stay reachable without a token. Everything else
 // below the authentication gate requires a valid JWT. Values are paths as seen
@@ -143,7 +143,10 @@ app.use('/api', (req, res, next) => {
 });
 
 app.use('/api', skipPublicPaths(checkReadOnlyMode));
-app.use('/api', skipPublicPaths(checkClientLimit));
+// checkClientLimit is deliberately NOT mounted here. Mounted on '/api' it
+// matched by path substring and fired on every POST under a client — payments,
+// package assignment, consent — locking a capped trainer out of their existing
+// book. It now guards only POST /api/clients, in routes/clients.js.
 app.use('/api', skipPublicPaths(checkSessionLimit));
 
 // ── Auth & profile ────────────────────────────────────────────────────────────
