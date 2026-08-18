@@ -327,6 +327,77 @@ describe('reading the platform', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+describe('injection cannot reach the query layer', () => {
+  // An unauthenticated injection attempt is refused by the auth gate before any
+  // SQL runs, which proves nothing about the queries themselves. These run as a
+  // FULLY AUTHENTICATED administrator, so the payload genuinely reaches
+  // listTrainers/listTenants/listAuditLog and is handled by the parameterised
+  // query rather than by the middleware.
+  const PAYLOADS = [
+    "' OR 1=1--",
+    "'; DROP TABLE users;--",
+    "%' UNION SELECT NULL,NULL,NULL--",
+    "\'; SELECT pg_sleep(5);--",
+    "' OR ''='",
+  ];
+
+  test('a payload in ?search is treated as a literal string, not SQL', async () => {
+    for (const payload of PAYLOADS) {
+      const res = await asAdmin(ownerTok)(
+        request(app).get('/api/admin/trainers').query({ search: payload }));
+
+      // 200 with zero matches is the correct outcome: it was used as a search
+      // term. A 500 would mean it reached the parser.
+      expect({ payload, status: res.status }).toEqual({ payload, status: 200 });
+      expect(Array.isArray(res.body.trainers)).toBe(true);
+      // "' OR 1=1--" must NOT behave like a tautology and return everybody.
+      expect(res.body.trainers.length).toBe(0);
+    }
+  });
+
+  test('the same payloads are inert on the tenant search', async () => {
+    for (const payload of PAYLOADS) {
+      const res = await asAdmin(ownerTok)(
+        request(app).get('/api/admin/tenants').query({ search: payload }));
+      expect({ payload, status: res.status }).toEqual({ payload, status: 200 });
+      expect(res.body.tenants.length).toBe(0);
+    }
+  });
+
+  test('the tables are all still there afterwards', async () => {
+    const { rows } = await pool.query(`
+      SELECT to_regclass('public.users')            IS NOT NULL AS users,
+             to_regclass('public.tenants')          IS NOT NULL AS tenants,
+             to_regclass('public.platform_admins')  IS NOT NULL AS admins`);
+    expect(rows[0]).toEqual({ users: true, tenants: true, admins: true });
+  });
+
+  test('a non-numeric page or pageSize falls back instead of reaching SQL', async () => {
+    const res = await asAdmin(ownerTok)(
+      request(app).get('/api/admin/trainers').query({ page: "1; DROP TABLE users", pageSize: "'; --" }));
+
+    expect(res.status).toBe(200);
+    // parseBoundedInt returns the fallback for anything unparseable.
+    expect(res.body.page).toBe(1);
+    expect(res.body.pageSize).toBeLessThanOrEqual(100);
+  });
+
+  test('a malformed uuid in a filter is rejected as validation, not passed to postgres', async () => {
+    const res = await asAdmin(ownerTok)(
+      request(app).get('/api/admin/trainers').query({ tenantId: "1' OR '1'='1" }));
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Validation error');
+  });
+
+  test('a payload in the audit filters is inert too', async () => {
+    const res = await asAdmin(ownerTok)(
+      request(app).get('/api/admin/audit').query({ entityType: "' OR 1=1--" }));
+    expect(res.status).toBe(200);
+    expect(res.body.entries.length).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe('writing, and the audit trail', () => {
   const auditFor = async (action, entityId) => {
     const { rows } = await pool.query(

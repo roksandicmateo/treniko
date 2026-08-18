@@ -216,6 +216,10 @@ describe('the application never passes untrusted input as a whole navigation tar
     // literal arrays defined in that file; every `to` is a '/dashboard/...'
     // string constant. Nothing user-supplied reaches them.
     { file: 'DashboardLayout.jsx', target: 'item.to' },
+    // components/admin/AdminLayout.jsx renders the admin sidebar from the NAV
+    // array defined at the top of that same file; every `to` is an
+    // '/admin/...' string constant. Nothing user-supplied reaches them.
+    { file: 'AdminLayout.jsx', target: 'item.to' },
   ];
 
   const isReviewed = (file, target) =>
