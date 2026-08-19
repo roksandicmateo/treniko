@@ -21,7 +21,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 
 import Landing from '../pages/Landing';
@@ -121,7 +121,16 @@ describe('the landing page is the public entry point', () => {
     expect(hrefs).toContain('/dashboard');
   });
 
-  test('every navigation target on the page is a same-origin absolute path', async () => {
+  test('every navigation target is same-origin, or one of two allowlisted profiles', async () => {
+    // The footer links out to the two TRENIKO social profiles. Those are the
+    // only off-origin destinations this page may have, and they are pinned by
+    // exact URL: an allowlist reading "any https link is fine" would not have
+    // caught the open-redirect shapes this suite exists to prevent.
+    const ALLOWED_EXTERNAL = new Set([
+      'https://www.instagram.com/treniko_fitness/',
+      'https://www.facebook.com/profile.php?id=61593112186107',
+    ]);
+
     renderApp('/');
 
     for (const a of screen.getAllByRole('link')) {
@@ -130,12 +139,55 @@ describe('the landing page is the public entry point', () => {
       if (href.startsWith('mailto:')) continue;
       if (href.startsWith('#')) continue;
 
+      if (/^https?:/i.test(href)) {
+        expect(ALLOWED_EXTERNAL.has(href), `off-origin link not allowlisted: ${href}`).toBe(true);
+        // A new-tab target gets window.opener access to this page unless severed.
+        expect(a.getAttribute('rel') || '').toContain('noopener');
+        continue;
+      }
+
       expect(href.startsWith('/')).toBe(true);
       // '//host' and '/\host' both resolve off-origin in a browser.
       expect(href.startsWith('//')).toBe(false);
       expect(href.startsWith('/\\')).toBe(false);
       expect(new URL(href, 'https://treniko.com').origin).toBe('https://treniko.com');
     }
+  });
+
+  test('every "Start for free" CTA points at /register', async () => {
+    renderApp('/');
+
+    const ctas = screen
+      .getAllByRole('link')
+      .filter((a) => /start for free/i.test(a.textContent || ''));
+
+    expect(ctas.length).toBeGreaterThan(0);
+    for (const cta of ctas) expect(cta.getAttribute('href')).toBe('/register');
+  });
+
+  test('the product showcase exposes its screens as tabs and switches between them', async () => {
+    renderApp('/');
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((t) => t.textContent)).toEqual(['Dashboard', 'Clients', 'Packages', 'Payments']);
+    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.click(tabs[1]);
+    expect(screen.getAllByRole('tab')[1].getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tabpanel')).toBeTruthy();
+  });
+
+  test('the mobile menu button controls a menu and reports its state', async () => {
+    renderApp('/');
+
+    const toggle = screen.getByRole('button', { name: /open menu/i });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe('mobile-menu');
+
+    fireEvent.click(toggle);
+    expect(
+      screen.getByRole('button', { name: /close menu/i }).getAttribute('aria-expanded')
+    ).toBe('true');
   });
 });
 
@@ -324,12 +376,25 @@ describe('the copy does not claim things the product cannot back', () => {
     }
   });
 
-  test('it does not advertise a price the product cannot charge', () => {
-    // There is no payment processor in the codebase, so the only figure the page
-    // is allowed to show is the free plan's zero.
+  test('it does not advertise a plan price the product cannot charge', () => {
+    // There is no payment processor in the codebase, so no plan price on this
+    // page could be paid. The seeded Pro/Enterprise amounts in migration 004
+    // must never appear, and the only amount attached to a billing period is 0.
+    //
+    // Sample payment amounts inside the product mock are deliberately NOT
+    // covered here — they illustrate a trainer recording what a client paid
+    // them, which is a real feature, not a TRENIKO price.
     const src = source();
-    const amounts = [...src.matchAll(/€\s*([\d.,]+)/g)].map((m) => m[1]);
-    expect(amounts.every((a) => Number(a.replace(',', '.')) === 0)).toBe(true);
+
+    for (const seeded of ['€29', '€99', '€290', '€990']) {
+      expect(src.includes(seeded), `seeded plan price ${seeded} appears in the copy`).toBe(false);
+    }
+
+    const perPeriod = [...src.matchAll(/€\s*([\d.,]+)\s*(?:<[^>]*>)*\s*(?:\/|per)\s*(?:month|year)/gi)];
+    expect(perPeriod.length).toBeGreaterThan(0);
+    for (const m of perPeriod) {
+      expect(Number(m[1].replace(',', '.'))).toBe(0);
+    }
   });
 
   test('the free-plan limits match what registration actually grants', () => {
@@ -339,5 +404,151 @@ describe('the copy does not claim things the product cannot back', () => {
     const src = source();
     expect(src).toMatch(/5 clients/);
     expect(src).toMatch(/20 sessions/);
+  });
+});
+
+/* ── 6. What the public page must never do ─────────────────────────────────── */
+
+describe('the public page leaks nothing and calls nothing', () => {
+  test('an anonymous visit makes no authenticated API call', async () => {
+    const { authAPI } = await import('../services/api');
+    authAPI.validateToken.mockClear();
+
+    renderApp('/');
+    await screen.findByRole('heading', { level: 1 });
+
+    // AuthProvider only validates when a session is already persisted. A cold
+    // visitor must not cause a request to an authenticated endpoint.
+    expect(authAPI.validateToken).not.toHaveBeenCalled();
+  });
+
+  test('the rendered DOM carries no credentials, tokens or internal hosts', async () => {
+    renderApp('/');
+    await screen.findByRole('heading', { level: 1 });
+
+    const html = document.body.innerHTML;
+    // Note: the word "password" appears legitimately in the sign-up copy
+    // ("Email, a password and your name"), so the check is for credential
+    // *values* and internal hosts, not for the word itself.
+    for (const forbidden of [/localhost/i, /127\.0\.0\.1/, /Bearer\s+[A-Za-z0-9_-]/, /eyJ[A-Za-z0-9_-]{10,}/, /api[_-]?key\s*[=:]/i, /password\s*[=:]/i]) {
+      expect(forbidden.test(html), `landing DOM matched ${forbidden}`).toBe(false);
+    }
+  });
+
+  test('the sample data in the product mock is not a real person', async () => {
+    renderApp('/');
+    await screen.findByRole('heading', { level: 1 });
+
+    const text = document.body.textContent || '';
+    // textContent runs adjacent nodes together, so scanning it for addresses
+    // produces junk like "treniko.comFAQQuestions". The reliable surface is the
+    // mailto: links themselves — and separately, that the product mock contains
+    // no '@' at all, so no client address can hide in the sample data.
+    const mailtos = [...document.querySelectorAll('a[href^="mailto:"]')].map((a) =>
+      a.getAttribute('href').replace('mailto:', '')
+    );
+    expect(mailtos.length).toBeGreaterThan(0);
+    expect([...new Set(mailtos)]).toEqual(['info@treniko.com']);
+
+    const showcase = document.querySelector('[role="tabpanel"]');
+    expect(showcase).toBeTruthy();
+    expect((showcase.textContent || '').includes('@')).toBe(false);
+
+    expect(/\+\d[\d\s()-]{7,}/.test(text), 'a phone number appears in the mock').toBe(false);
+
+    // Client names in the mock are a first name plus an initial.
+    for (const name of ['Alex M.', 'Jordan T.', 'Sam K.']) {
+      expect(text.includes(name)).toBe(true);
+    }
+  });
+
+  test('no dangerouslySetInnerHTML anywhere in the landing surface', () => {
+    const files = [
+      join(process.cwd(), 'src', 'pages', 'Landing.jsx'),
+      join(process.cwd(), 'src', 'pages', 'landing', 'ProductShowcase.jsx'),
+    ];
+    for (const f of files) {
+      expect(readFileSync(f, 'utf8').includes('dangerouslySetInnerHTML')).toBe(false);
+    }
+  });
+});
+
+/* ── 7. Attribution capture ────────────────────────────────────────────────── */
+
+describe('first-touch attribution', () => {
+  let attribution;
+
+  beforeEach(async () => {
+    sessionStorage.clear();
+    localStorage.clear();
+    attribution = await import('../utils/attribution');
+  });
+
+  const grantConsent = () =>
+    localStorage.setItem(
+      'treniko_cookie_consent',
+      JSON.stringify({ necessary: true, analytics: true, preferences: true })
+    );
+
+  const withUrl = (search) => {
+    // jsdom allows replaceState within the same origin.
+    window.history.replaceState({}, '', `/${search}`);
+  };
+
+  test('captures nothing without analytics consent', () => {
+    withUrl('?utm_source=instagram&utm_medium=social&utm_campaign=organic');
+
+    expect(attribution.captureAttribution()).toBeNull();
+    expect(sessionStorage.getItem('treniko_attribution')).toBeNull();
+  });
+
+  test('captures the UTM set once consent is given', () => {
+    grantConsent();
+    withUrl('?utm_source=instagram&utm_medium=social&utm_campaign=organic&utm_content=reel-p05');
+
+    const record = attribution.captureAttribution();
+    expect(record.utm_source).toBe('instagram');
+    expect(record.utm_medium).toBe('social');
+    expect(record.utm_campaign).toBe('organic');
+    expect(record.utm_content).toBe('reel-p05');
+    expect(record.landing_path).toBe('/');
+    expect(record.first_seen_at).toBeTruthy();
+  });
+
+  test('first touch wins — a later visit never overwrites it', () => {
+    grantConsent();
+    withUrl('?utm_source=instagram&utm_campaign=organic');
+    attribution.captureAttribution();
+
+    withUrl('?utm_source=facebook&utm_campaign=paid');
+    const second = attribution.captureAttribution();
+
+    expect(second.utm_source).toBe('instagram');
+    expect(attribution.getAttribution().utm_source).toBe('instagram');
+  });
+
+  test('stores nothing for a plain direct visit', () => {
+    grantConsent();
+    withUrl('');
+
+    expect(attribution.captureAttribution()).toBeNull();
+    expect(sessionStorage.getItem('treniko_attribution')).toBeNull();
+  });
+
+  test('caps hostile values rather than storing them whole', () => {
+    grantConsent();
+    withUrl(`?utm_source=${'x'.repeat(500)}`);
+
+    const record = attribution.captureAttribution();
+    expect(record.utm_source.length).toBe(120);
+  });
+
+  test('records the landing path without its query string', () => {
+    grantConsent();
+    withUrl('?utm_source=instagram&utm_content=secret-value');
+
+    const record = attribution.captureAttribution();
+    expect(record.landing_path).toBe('/');
+    expect(record.landing_path.includes('?')).toBe(false);
   });
 });
