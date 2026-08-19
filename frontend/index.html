@@ -3,25 +3,56 @@
   <head>
     <meta charset="UTF-8" />
 
-    <!-- Favicon — replace /favicon.ico with your actual icon file -->
+    <!-- Icons. Every file referenced here exists in public/ — the previous
+         favicon.ico and apple-touch-icon.png links did not, so both requests
+         fell through to the SPA and returned an HTML document with a 200. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="alternate icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0ea5e9" />
 
-    <title>Treniko — Training Management for Personal Trainers</title>
-    <meta name="description" content="Treniko helps personal trainers manage clients, schedule sessions, track progress, and handle packages — all in one place." />
+    <title>TRENIKO — Training Management Software for Personal Trainers</title>
+    <meta
+      name="description"
+      content="TRENIKO keeps your clients, sessions, packages and payments in one place. Training management software for independent personal trainers."
+    />
+    <link rel="canonical" href="https://treniko.com/" />
 
-    <!-- Open Graph (WhatsApp, Facebook, LinkedIn previews) -->
-    <meta property="og:title" content="Treniko — Training Management" />
-    <meta property="og:description" content="Manage clients, sessions, packages and progress. Built for personal trainers." />
+    <!-- Indexable by default, because the document served at `/` is now a public
+         landing page. The private routes share this same file, so they are
+         switched to `noindex, nofollow` at runtime by src/seo/RouteMeta.jsx and
+         disallowed outright in public/robots.txt for crawlers that do not run
+         JavaScript. Change all three together or they will disagree. -->
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph — the preview every Instagram, Facebook and WhatsApp share of
+         treniko.com renders. og:image must be an absolute URL; scrapers do not
+         resolve relative paths. -->
+    <meta property="og:site_name" content="TRENIKO" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://treniko.com" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:url" content="https://treniko.com/" />
+    <meta property="og:title" content="TRENIKO — Training Management Software for Personal Trainers" />
+    <meta
+      property="og:description"
+      content="Keep your clients, sessions, packages and payments in one place. Built for independent personal trainers."
+    />
+    <meta property="og:image" content="https://treniko.com/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="TRENIKO — run your coaching business, not your spreadsheets." />
 
-    <!-- Prevent indexing of the app itself (it's behind login) -->
-    <meta name="robots" content="noindex, nofollow" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TRENIKO — Training Management Software for Personal Trainers" />
+    <meta
+      name="twitter:description"
+      content="Keep your clients, sessions, packages and payments in one place. Built for independent personal trainers."
+    />
+    <meta name="twitter:image" content="https://treniko.com/og-image.png" />
+    <meta name="twitter:image:alt" content="TRENIKO — run your coaching business, not your spreadsheets." />
   </head>
   <body>
     <div id="root"></div>

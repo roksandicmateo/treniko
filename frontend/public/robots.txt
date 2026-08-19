@@ -1,0 +1,26 @@
+# TRENIKO — https://treniko.com/
+#
+# `/` is a public landing page and is meant to be indexed. Everything else in
+# this app is either an authentication screen or sits behind a login, so it is
+# disallowed here as well as being marked `noindex, nofollow` at runtime by
+# src/seo/RouteMeta.jsx. Two layers, because a crawler that does not execute
+# JavaScript never sees the runtime tag.
+#
+# Add a private route? Add it in both places.
+
+User-agent: *
+Allow: /$
+Allow: /privacy
+Allow: /terms
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /check-email
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /api/
+Disallow: /uploads/
+
+Sitemap: https://treniko.com/sitemap.xml

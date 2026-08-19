@@ -1,6 +1,7 @@
+import { lazy, Suspense } from 'react';
 import CookieBanner from './components/CookieBanner';
 import ErrorBoundary from './components/ErrorBoundary';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import VerifyEmail from './pages/VerifyEmail';
 import CheckEmail from './pages/CheckEmail';
 import { AuthProvider } from './context/AuthContext';
@@ -11,24 +12,14 @@ import Register from './pages/Register';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
-import PrivacyPage from './pages/PrivacyPage';
-import TermsPage from './pages/TermsPage';
-import DashboardLayout from './pages/DashboardLayout';
-import Calendar from './pages/Calendar';
-import Clients from './pages/Clients';
-import ClientDetail from './pages/ClientDetail';
-import SubscriptionPage from './pages/SubscriptionPage';
-import ProfilePage from './pages/ProfilePage';
 import Toast from './components/Toast';
-import TrainingsPage from './pages/TrainingsPage';
-import TrainingDetailPage from './pages/TrainingDetailPage';
-import PackagesPage from './pages/PackagesPage';
-import DashboardPage from './pages/DashboardPage';
-import ExercisesPage from './pages/ExercisesPage';
-import GroupsPage from './pages/GroupsPage';
-import GroupDetail from './pages/GroupDetail';
-import GroupSessionDetail from './pages/GroupSessionDetail';
-import ProgressPage from './pages/ProgressPage';
+
+// ── Public marketing surface ─────────────────────────────────────────────────
+// `/` is the landing page rather than a redirect into the app. RouteMeta keeps
+// the document head honest as the route changes: indexable on the public pages,
+// `noindex, nofollow` everywhere else. See src/seo/RouteMeta.jsx.
+import Landing from './pages/Landing';
+import RouteMeta from './seo/RouteMeta';
 
 // ── Platform administration ──────────────────────────────────────────────────
 // A separate authentication realm from the trainer app: staff accounts live in
@@ -37,14 +28,54 @@ import ProgressPage from './pages/ProgressPage';
 // admin session, and vice versa.
 import { AdminAuthProvider } from './context/AdminAuthContext';
 import AdminRoute from './components/admin/AdminRoute';
-import AdminLayout from './components/admin/AdminLayout';
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminTrainers from './pages/admin/AdminTrainers';
-import AdminTrainerDetail from './pages/admin/AdminTrainerDetail';
-import { AdminClients, AdminSubscriptions, AdminSessions } from './pages/admin/AdminTenantViews';
-import AdminActivity from './pages/admin/AdminActivity';
-import AdminSystem from './pages/admin/AdminSystem';
+
+
+// ── Code splitting ───────────────────────────────────────────────────────────
+// `/` is now a public landing page, so the first request an anonymous visitor
+// makes decides how the product feels. Everything below is reachable only after
+// a login (or an admin login), and some of it is heavy — FullCalendar and
+// recharts between them are most of the bundle. Loading it lazily keeps it out
+// of the landing page's critical path; it is fetched the moment a route that
+// needs it is entered.
+//
+// Login, Register and the legal pages stay eager: they are one click from the
+// landing page and small enough that a second round trip would cost more than
+// the bytes saved.
+const DashboardLayout     = lazy(() => import('./pages/DashboardLayout'));
+const DashboardPage       = lazy(() => import('./pages/DashboardPage'));
+const Calendar            = lazy(() => import('./pages/Calendar'));
+const Clients             = lazy(() => import('./pages/Clients'));
+const ClientDetail        = lazy(() => import('./pages/ClientDetail'));
+const SubscriptionPage    = lazy(() => import('./pages/SubscriptionPage'));
+const ProfilePage         = lazy(() => import('./pages/ProfilePage'));
+const TrainingsPage       = lazy(() => import('./pages/TrainingsPage'));
+const TrainingDetailPage  = lazy(() => import('./pages/TrainingDetailPage'));
+const PackagesPage        = lazy(() => import('./pages/PackagesPage'));
+const ExercisesPage       = lazy(() => import('./pages/ExercisesPage'));
+const GroupsPage          = lazy(() => import('./pages/GroupsPage'));
+const GroupDetail         = lazy(() => import('./pages/GroupDetail'));
+const GroupSessionDetail  = lazy(() => import('./pages/GroupSessionDetail'));
+const ProgressPage        = lazy(() => import('./pages/ProgressPage'));
+const PrivacyPage         = lazy(() => import('./pages/PrivacyPage'));
+const TermsPage           = lazy(() => import('./pages/TermsPage'));
+
+const AdminLayout         = lazy(() => import('./components/admin/AdminLayout'));
+const AdminLogin          = lazy(() => import('./pages/admin/AdminLogin'));
+const AdminDashboard      = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminTrainers       = lazy(() => import('./pages/admin/AdminTrainers'));
+const AdminTrainerDetail  = lazy(() => import('./pages/admin/AdminTrainerDetail'));
+const AdminActivity       = lazy(() => import('./pages/admin/AdminActivity'));
+const AdminSystem         = lazy(() => import('./pages/admin/AdminSystem'));
+const AdminClients        = lazy(() => import('./pages/admin/AdminTenantViews').then(m => ({ default: m.AdminClients })));
+const AdminSubscriptions  = lazy(() => import('./pages/admin/AdminTenantViews').then(m => ({ default: m.AdminSubscriptions })));
+const AdminSessions       = lazy(() => import('./pages/admin/AdminTenantViews').then(m => ({ default: m.AdminSessions })));
+
+/** Shown only while a route chunk is in flight. */
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-primary-500" />
+  </div>
+);
 
 function App() {
   return (
@@ -52,8 +83,11 @@ function App() {
       <AuthProvider>
         <Toast />
         <BrowserRouter>
+          <RouteMeta />
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Public routes */}
+            <Route path="/"                 element={<ErrorBoundary><Landing /></ErrorBoundary>} />
             <Route path="/login"            element={<Login />} />
             <Route path="/register"         element={<Register />} />
             <Route path="/forgot-password"  element={<ForgotPasswordPage />} />
@@ -120,9 +154,13 @@ function App() {
               <Route path="system" element={<AdminSystem />} />
             </Route>
 
-            <Route path="/"  element={<Navigate to="/dashboard" replace />} />
+            {/* `/` used to redirect here. It now renders the landing page above,
+                so the dashboard keeps its own address and every bookmark, deep
+                link and post-login redirect that already points at /dashboard
+                continues to work unchanged. */}
             <Route path="*"  element={<NotFoundPage />} />
           </Routes>
+          </Suspense>
           <CookieBanner />
         </BrowserRouter>
       </AuthProvider>
