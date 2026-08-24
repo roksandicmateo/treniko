@@ -253,7 +253,7 @@ const me = async (req, res) => res.json({ success: true, admin: req.admin });
  */
 const getOverview = async (req, res) => {
   try {
-    const [tenants, trainers, plans, usage, deletions, recent] = await Promise.all([
+    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources] = await Promise.all([
       pool.query(`
         SELECT COUNT(*)::int AS total,
                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int  AS last_7_days,
@@ -282,10 +282,40 @@ const getOverview = async (req, res) => {
           FROM deletion_requests`),
       pool.query(`
         SELECT t.id, t.name, t.created_at,
-               (SELECT COUNT(*)::int FROM users u WHERE u.tenant_id = t.id) AS trainer_count
+               (SELECT COUNT(*)::int FROM users u WHERE u.tenant_id = t.id) AS trainer_count,
+               -- Migration 034. Campaign labels only; signup_attribution holds
+               -- no personal data and is not RLS-protected, so this join adds
+               -- no exposure beyond the tenant name already listed here.
+               a.utm_source, a.utm_campaign, a.utm_content
           FROM tenants t
+          LEFT JOIN signup_attribution a ON a.tenant_id = t.id
          ORDER BY t.created_at DESC
          LIMIT 10`),
+
+      // How many signups carry attribution at all. `direct_or_unknown` is the
+      // honest residual: no UTMs and no external referrer, OR the visitor
+      // declined the analytics cookie category. Those two are deliberately not
+      // separated, because nothing distinguishes them server-side and guessing
+      // would be worse than the ambiguity.
+      pool.query(`
+        SELECT COUNT(*)::int AS tenants_total,
+               COUNT(a.tenant_id)::int AS attributed,
+               (COUNT(*) - COUNT(a.tenant_id))::int AS direct_or_unknown
+          FROM tenants t
+          LEFT JOIN signup_attribution a ON a.tenant_id = t.id`),
+
+      // Which channel actually produced accounts. This is the question the
+      // whole attribution exercise exists to answer.
+      pool.query(`
+        SELECT COALESCE(utm_source, '(none)')   AS utm_source,
+               COALESCE(utm_campaign, '(none)') AS utm_campaign,
+               COALESCE(utm_content, '(none)')  AS utm_content,
+               COUNT(*)::int AS signups,
+               MAX(created_at) AS most_recent
+          FROM signup_attribution
+         GROUP BY 1, 2, 3
+         ORDER BY signups DESC, most_recent DESC
+         LIMIT 25`),
     ]);
 
     return res.json({
@@ -299,6 +329,25 @@ const getOverview = async (req, res) => {
         usage: usage.rows[0],
         deletionRequests: deletions.rows[0],
         newestTenants: recent.rows,
+
+        // ── Acquisition ──────────────────────────────────────────────────
+        // Everything here counts SIGNUPS, never visits. TRENIKO has no page
+        // analytics, so landing-page views, registration starts and therefore
+        // signup conversion rate are genuinely unmeasured. They are reported
+        // explicitly below rather than omitted, so an empty panel can never be
+        // mistaken for a zero.
+        acquisition: {
+          ...attribution.rows[0],
+          bySource: attributionSources.rows,
+          notMeasured: {
+            landingPageVisits: 'No page analytics is installed.',
+            registrationStarts: 'No /register page-view event exists.',
+            signupConversionRate: 'Requires visits; only the numerator exists.',
+            socialTrafficBySource: 'Attribution records signups, not visits.',
+            trialToPaidConversion:
+              'There is no payment processor in the product, so no paid conversion can occur.',
+          },
+        },
       },
     });
   } catch (error) {

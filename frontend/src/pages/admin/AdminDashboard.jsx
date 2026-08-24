@@ -116,15 +116,107 @@ const AdminDashboard = () => {
                           <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{t.name}</p>
                           <p className="text-xs text-gray-500">{formatDate(t.created_at)}</p>
                         </div>
-                        <span className="badge-gray shrink-0">
-                          {t.trainer_count} trainer{t.trainer_count === 1 ? '' : 's'}
-                        </span>
+                        <div className="shrink-0 flex items-center gap-2">
+                          {/* Migration 034. Campaign label, not a person. */}
+                          {t.utm_source && (
+                            <span className="badge-blue" title={[t.utm_campaign, t.utm_content].filter(Boolean).join(' · ')}>
+                              {t.utm_source}
+                            </span>
+                          )}
+                          <span className="badge-gray">
+                            {t.trainer_count} trainer{t.trainer_count === 1 ? '' : 's'}
+                          </span>
+                        </div>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
             </div>
+
+            {/* ── Acquisition ───────────────────────────────────────────────
+                Signups by channel. Every number here counts an ACCOUNT, never
+                a visit — see the "not measured" note below, which is rendered
+                deliberately so that an empty panel is never read as a zero. */}
+            {o.acquisition && (
+              <div className="card overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                  <h2 className="font-semibold text-gray-900 dark:text-gray-100">Acquisition</h2>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Where signups came from. First touch, captured on the landing page and kept for
+                    the life of the account.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 border-b border-gray-100 dark:border-gray-800">
+                  <StatCard label="Signups" value={o.acquisition.tenants_total} />
+                  <StatCard
+                    label="With a known source"
+                    value={o.acquisition.attributed}
+                    hint={
+                      o.acquisition.tenants_total > 0
+                        ? `${Math.round((o.acquisition.attributed / o.acquisition.tenants_total) * 100)}% of signups`
+                        : undefined
+                    }
+                  />
+                  <StatCard
+                    label="Direct or unknown"
+                    value={o.acquisition.direct_or_unknown}
+                    hint="no tags, or analytics cookies declined"
+                  />
+                </div>
+
+                {o.acquisition.bySource.length === 0 ? (
+                  <p className="px-6 py-8 text-sm text-gray-500">
+                    No signup has carried a campaign tag yet. The first tagged registration will
+                    appear here.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                          <th className="px-6 py-3">Source</th>
+                          <th className="px-6 py-3">Campaign</th>
+                          <th className="px-6 py-3">Content</th>
+                          <th className="px-6 py-3 text-right">Signups</th>
+                          <th className="px-6 py-3 text-right">Most recent</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                        {o.acquisition.bySource.map((r) => (
+                          <tr key={`${r.utm_source}-${r.utm_campaign}-${r.utm_content}`}>
+                            <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100">{r.utm_source}</td>
+                            <td className="px-6 py-3 text-gray-500">{r.utm_campaign}</td>
+                            <td className="px-6 py-3 text-gray-500">{r.utm_content}</td>
+                            <td className="px-6 py-3 text-right tabular-nums">{r.signups}</td>
+                            <td className="px-6 py-3 text-right text-gray-500">{formatDate(r.most_recent)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {o.acquisition.notMeasured && (
+                  <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/30">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Not measured
+                    </p>
+                    <ul className="mt-2 space-y-1">
+                      {Object.entries(o.acquisition.notMeasured).map(([key, why]) => (
+                        <li key={key} className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="font-medium text-gray-800 dark:text-gray-200">
+                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())}
+                          </span>{' '}
+                          — {why}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
 
             {o.deletionRequests.pending > 0 && (
               <div className="card p-5 border-l-4 border-l-amber-500">

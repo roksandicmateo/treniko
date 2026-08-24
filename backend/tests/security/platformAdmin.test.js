@@ -295,6 +295,48 @@ describe('reading the platform', () => {
     expect(o.usage).toHaveProperty('clients_total');
   });
 
+  test('the acquisition panel reports signups, and is honest about what it cannot', async () => {
+    const res = await asAdmin(ownerTok)(request(app).get('/api/admin/overview'));
+    expect(res.status).toBe(200);
+    const a = res.body.overview.acquisition;
+
+    // Counts of accounts, not of visits.
+    expect(a.tenants_total).toBeGreaterThan(0);
+    expect(a.attributed + a.direct_or_unknown).toBe(a.tenants_total);
+    expect(Array.isArray(a.bySource)).toBe(true);
+
+    // The metrics that genuinely cannot be produced are named, with a reason,
+    // rather than omitted — an absent panel reads as a zero, and a zero here
+    // would be a lie. If page analytics is ever added, delete the key; do not
+    // start emitting a number from somewhere else.
+    expect(a.notMeasured.landingPageVisits).toMatch(/no page analytics/i);
+    expect(a.notMeasured.signupConversionRate).toMatch(/visits/i);
+    expect(a.notMeasured.trialToPaidConversion).toMatch(/no payment processor/i);
+  });
+
+  test('the overview exposes no tenant business data, only campaign labels', async () => {
+    const res = await asAdmin(ownerTok)(request(app).get('/api/admin/overview'));
+    expect(res.status).toBe(200);
+    const body = JSON.stringify(res.body);
+
+    // The admin API deliberately establishes no tenant context, so the
+    // RLS-protected tables return nothing. This asserts the acquisition work
+    // did not quietly open a path to them.
+    for (const forbidden of [
+      'password_hash', 'verification_token', 'date_of_birth',
+      'health', 'medical', 'phone_number',
+    ]) {
+      expect(body.toLowerCase()).not.toContain(forbidden);
+    }
+
+    // Attribution fields are campaign labels and must be the only new strings.
+    for (const row of res.body.overview.acquisition.bySource) {
+      expect(Object.keys(row).sort()).toEqual(
+        ['most_recent', 'signups', 'utm_campaign', 'utm_content', 'utm_source'].sort()
+      );
+    }
+  });
+
   test('tenants can be listed, searched and paged', async () => {
     const res = await asAdmin(ownerTok)(request(app).get('/api/admin/tenants?pageSize=5'));
     expect(res.status).toBe(200);
