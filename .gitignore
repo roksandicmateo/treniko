@@ -29,6 +29,10 @@ Thumbs.db
 # Build
 dist/
 build/
+# The SSR bundle for the homepage prerender. Intermediate build output: it is
+# produced by `npm run build` (vite build --ssr), consumed by
+# scripts/prerender.mjs, and never served. See src/entry-prerender.jsx.
+dist-ssr/
 
 # Claude Code — personal, machine-local overrides (permission mode etc.)
 .claude/settings.local.json

@@ -82,45 +82,105 @@ const ICONS = {
 /**
  * Fades a block in the first time it scrolls into view.
  *
- * IntersectionObserver rather than a scroll listener, one observer per block,
- * disconnected as soon as it fires. `prefers-reduced-motion` and the absence of
- * IntersectionObserver both fall through to "already visible" — the content is
- * never gated behind an animation that might not run.
+ * ── Why this starts visible ──────────────────────────────────────────────────
+ * It used to start at `opacity-0` and reveal on intersection. That was fine
+ * while the page was client-rendered and invisible to crawlers anyway. It is
+ * not fine now that the homepage is prerendered: the server HTML would have
+ * carried `opacity-0` on every block below the hero, which is a page whose text
+ * is present but invisible — indistinguishable from hidden-text cloaking, and
+ * exactly what a crawler is entitled to be suspicious of.
+ *
+ * So the initial state is **visible**, on the server and in the first client
+ * render alike. That also keeps hydration honest: both sides produce the same
+ * markup, so React has nothing to reconcile.
+ *
+ * ── Why the animation still happens ──────────────────────────────────────────
+ * After mount, a block that is currently **below the viewport** hides itself
+ * and waits for the observer. The visitor cannot see that happen — it is off
+ * screen by definition — so the scroll-reveal effect is unchanged in practice.
+ *
+ * A block that is already on screen when the effect runs is left alone
+ * permanently. Hiding something the visitor is looking at in order to fade it
+ * back in is a flicker, not an animation, and it is the specific failure mode
+ * that makes naive scroll-reveal look broken on a prerendered page.
+ *
+ * `prefers-reduced-motion`, a missing IntersectionObserver, and a page rendered
+ * without JavaScript at all now converge on the same outcome: the content is
+ * simply there.
  */
 function Reveal({ children, className = '', delay = 0 }) {
   const ref = useRef(null);
-  const [shown, setShown] = useState(false);
+  // Visible first. Never render opacity-0 on the server — see above.
+  const [hidden, setHidden] = useState(false);
 
+  // Decide, once, whether this block is a candidate for animating in.
   useEffect(() => {
     const node = ref.current;
     const reduced =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (!node || reduced || typeof IntersectionObserver !== 'function') {
-      setShown(true);
-      return undefined;
-    }
+    if (!node || reduced || typeof IntersectionObserver !== 'function') return;
+
+    // Only animate what cannot currently be seen. Hiding something already on
+    // screen in order to fade it back in is a flicker, not an animation.
+    if (node.getBoundingClientRect().top < window.innerHeight) return;
+
+    setHidden(true);
+  }, []);
+
+  // Watch, but only while actually hidden, and stop the moment it is revealed.
+  //
+  // The subtlety is the rootMargin, and it is the whole point of this effect.
+  //
+  // A default IntersectionObserver reports *threshold crossings*. Jump straight
+  // from the top of the page to the bottom — Ctrl+End, a hash link, a hard flick
+  // on a phone — and a block can travel from below the fold to above the
+  // viewport within a single frame. It was not intersecting before and is not
+  // intersecting after, so no threshold is crossed, no callback fires, and the
+  // block would keep opacity-0 for the rest of the session.
+  //
+  // Growing the root's top edge by a very large margin changes what
+  // "intersecting" means: not "on screen" but "has reached or passed the reveal
+  // line". A block below the fold is still outside it; the moment it is level
+  // with the viewport bottom *or anywhere above it* — including far above,
+  // after a jump — it is inside, which is a genuine crossing, so the callback
+  // fires and the content is revealed.
+  //
+  // This is defence against a real IntersectionObserver behaviour rather than
+  // against an observed failure: it could not be reproduced in the automation
+  // browser, because that tab runs backgrounded and Chrome throttles rAF,
+  // scroll events and IntersectionObserver entirely when document.hidden is
+  // true. The behaviour is pinned by tests instead — see
+  // src/__tests__/reveal.test.jsx — which is the only way to assert it
+  // deterministically.
+  //
+  // A scroll listener was considered and rejected: it is strictly weaker, since
+  // scroll events do not fire for programmatic jumps in every environment.
+  useEffect(() => {
+    if (!hidden) return undefined;
+    const node = ref.current;
+    if (!node) return undefined;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          setShown(true);
+          setHidden(false);
           observer.disconnect();
         }
       },
-      { rootMargin: '0px 0px -10% 0px' }
+      { rootMargin: '100000px 0px -10% 0px' }
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [hidden]);
 
   return (
     <div
       ref={ref}
-      style={shown && delay ? { transitionDelay: `${delay}ms` } : undefined}
+      style={!hidden && delay ? { transitionDelay: `${delay}ms` } : undefined}
       className={`transition-all duration-700 ease-out motion-reduce:transition-none ${
-        shown ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+        hidden ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'
       } ${className}`}
     >
       {children}
