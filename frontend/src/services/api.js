@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// Exported so non-axios callers resolve the same origin. utils/pageView.js
+// sends its beacon with navigator.sendBeacon, which cannot go through the
+// axios instance below but must still respect VITE_API_URL — a build served
+// from an origin other than the API's own would otherwise post into the void.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Create axios instance
 const api = axios.create({

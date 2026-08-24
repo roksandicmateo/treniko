@@ -16,6 +16,11 @@ const AdminDashboard = () => {
 
   const o = data?.overview;
 
+  // Views and signups arrive as separate per-channel rows from a FULL OUTER
+  // JOIN, so a channel appears whether it has one, the other, or both.
+  const channels = o?.acquisition?.views?.byChannel ?? [];
+  const measuringSince = o?.acquisition?.views?.measuring_since ?? null;
+
   // The subscriptions endpoint returns one row per (plan, status) pair, so the
   // split has to be summed rather than read off a field.
   const paidPlans = ['pro', 'enterprise'];
@@ -148,7 +153,16 @@ const AdminDashboard = () => {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 border-b border-gray-100 dark:border-gray-800">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 p-6 border-b border-gray-100 dark:border-gray-800">
+                  <StatCard
+                    label="Page views"
+                    value={o.acquisition.views?.views_total ?? 0}
+                    hint={
+                      o.acquisition.views?.last_7_days != null
+                        ? `${o.acquisition.views.last_7_days} in the last 7 days`
+                        : undefined
+                    }
+                  />
                   <StatCard label="Signups" value={o.acquisition.tenants_total} />
                   <StatCard
                     label="With a known source"
@@ -166,10 +180,24 @@ const AdminDashboard = () => {
                   />
                 </div>
 
-                {o.acquisition.bySource.length === 0 ? (
+                {/* The aggregate visit-to-signup rate is deliberately NOT
+                    shown. Views begin the day the counter shipped; signups go
+                    back to the first account ever created. Dividing one by the
+                    other produces a number well above reality that somebody
+                    would then quote. Per-channel rates below appear only where
+                    both sides actually have data. */}
+                {measuringSince && (
+                  <p className="px-6 py-3 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                    Page views counted since <span className="font-medium">{formatDate(measuringSince)}</span>.
+                    Signups predate that, so no overall visit-to-signup rate is shown here — it would
+                    divide all-time signups by a shorter window of views. Views are page loads, not
+                    unique people.
+                  </p>
+                )}
+
+                {channels.length === 0 ? (
                   <p className="px-6 py-8 text-sm text-gray-500">
-                    No signup has carried a campaign tag yet. The first tagged registration will
-                    appear here.
+                    Nothing measured yet. The first page view or tagged registration will appear here.
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -178,19 +206,27 @@ const AdminDashboard = () => {
                         <tr className="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
                           <th className="px-6 py-3">Source</th>
                           <th className="px-6 py-3">Campaign</th>
-                          <th className="px-6 py-3">Content</th>
+                          <th className="px-6 py-3 text-right">Views</th>
                           <th className="px-6 py-3 text-right">Signups</th>
-                          <th className="px-6 py-3 text-right">Most recent</th>
+                          <th className="px-6 py-3 text-right">Conversion</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                        {o.acquisition.bySource.map((r) => (
-                          <tr key={`${r.utm_source}-${r.utm_campaign}-${r.utm_content}`}>
+                        {channels.map((r) => (
+                          <tr key={`${r.utm_source}-${r.utm_campaign}`}>
                             <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100">{r.utm_source}</td>
                             <td className="px-6 py-3 text-gray-500">{r.utm_campaign}</td>
-                            <td className="px-6 py-3 text-gray-500">{r.utm_content}</td>
+                            <td className="px-6 py-3 text-right tabular-nums">{r.views}</td>
                             <td className="px-6 py-3 text-right tabular-nums">{r.signups}</td>
-                            <td className="px-6 py-3 text-right text-gray-500">{formatDate(r.most_recent)}</td>
+                            <td className="px-6 py-3 text-right tabular-nums text-gray-500">
+                              {/* Shown only where views exist. A signup with no
+                                  views is normal - it predates the counter, or
+                                  the beacon was blocked - and printing a rate
+                                  there would be a fabricated number. */}
+                              {r.views > 0
+                                ? `${Math.round((r.signups / r.views) * 100)}%`
+                                : <span title="No views recorded for this channel yet">not measured</span>}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

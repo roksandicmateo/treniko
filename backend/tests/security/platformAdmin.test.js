@@ -305,12 +305,16 @@ describe('reading the platform', () => {
     expect(a.attributed + a.direct_or_unknown).toBe(a.tenants_total);
     expect(Array.isArray(a.bySource)).toBe(true);
 
-    // The metrics that genuinely cannot be produced are named, with a reason,
-    // rather than omitted — an absent panel reads as a zero, and a zero here
-    // would be a lie. If page analytics is ever added, delete the key; do not
-    // start emitting a number from somewhere else.
-    expect(a.notMeasured.landingPageVisits).toMatch(/no page analytics/i);
-    expect(a.notMeasured.signupConversionRate).toMatch(/visits/i);
+    // Migration 035 supplies the denominator.
+    expect(typeof a.views.views_total).toBe('number');
+    expect(Array.isArray(a.views.byChannel)).toBe(true);
+
+    // What still genuinely cannot be produced is named, with a reason, rather
+    // than omitted - an absent metric reads as a zero, and a zero here would
+    // be a lie. Landing-page visits left this list when they became real; the
+    // rest must not leave it by starting to emit a number from somewhere else.
+    expect(a.notMeasured.landingPageVisits).toBeUndefined();
+    expect(a.notMeasured.uniqueVisitors).toMatch(/identifier/i);
     expect(a.notMeasured.trialToPaidConversion).toMatch(/no payment processor/i);
   });
 
@@ -333,6 +337,12 @@ describe('reading the platform', () => {
     for (const row of res.body.overview.acquisition.bySource) {
       expect(Object.keys(row).sort()).toEqual(
         ['most_recent', 'signups', 'utm_campaign', 'utm_content', 'utm_source'].sort()
+      );
+    }
+    // The page-view side carries campaign labels and counts, nothing else.
+    for (const row of res.body.overview.acquisition.views.byChannel) {
+      expect(Object.keys(row).sort()).toEqual(
+        ['signups', 'utm_campaign', 'utm_source', 'views'].sort()
       );
     }
   });

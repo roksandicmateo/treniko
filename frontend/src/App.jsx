@@ -20,6 +20,7 @@ import Toast from './components/Toast';
 // `noindex, nofollow` everywhere else. See src/seo/RouteMeta.jsx.
 import Landing from './pages/Landing';
 import RouteMeta from './seo/RouteMeta';
+import PageViewTracker from './seo/PageViewTracker';
 
 // ── Platform administration ──────────────────────────────────────────────────
 // A separate authentication realm from the trainer app: staff accounts live in
@@ -84,6 +85,7 @@ function App() {
         <Toast />
         <BrowserRouter>
           <RouteMeta />
+          <PageViewTracker />
           <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Public routes */}

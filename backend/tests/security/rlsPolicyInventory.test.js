@@ -131,6 +131,13 @@ const TENANT_NEUTRAL_TABLES = [
   // reached by a tenant-scoped query, and protected by application-level
   // authorization exactly as `users` is.
   'platform_admins',
+  // Migration 035. Anonymous page views. There is no tenant_id and there
+  // cannot be one: a view happens before anybody has an account, and most
+  // never lead to one. The table holds a path, a referrer host, campaign
+  // labels and a timestamp — no IP, no user agent, no cookie, no visitor
+  // identifier of any kind — so there is nothing here belonging to any tenant
+  // or identifying any person.
+  'page_view',
 ];
 
 afterAll(async () => {

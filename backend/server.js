@@ -15,12 +15,14 @@ const profileRoutes = require('./routes/profile');
 const exportRoutes = require('./routes/export');
 const deletionRoutes = require('./routes/deletion');
 const adminRoutes = require('./routes/admin');
+const metricsRoutes = require('./routes/metrics');
 const consentRoutes = require('./routes/consent');
 const { requireDpa } = require('./middleware/requireDpa');
 const { auditLogMiddleware, auditFailedLogin } = require('./middleware/auditLog');
 const {
   helmetMiddleware, authRateLimiter, apiRateLimiter, exportRateLimiter, checkAccountLockout,
   passwordResetIpRateLimiter, passwordResetEmailRateLimiter, uploadRateLimiter,
+  pageViewRateLimiter,
 } = require('./middleware/security');
 const { authenticateToken } = require('./middleware/auth');
 const { runWithTenantContext } = require('./config/tenantContext');
@@ -94,6 +96,11 @@ const PUBLIC_API_PATHS = new Set([
   '/auth/forgot-password',
   '/auth/reset-password',
   '/auth/verify-email',
+  // Migration 035. The anonymous page-view counter fires on public marketing
+  // routes, before anybody has an account — requiring a token would mean
+  // counting only people who already registered, which is the opposite of what
+  // a signup funnel needs to measure.
+  '/metrics/view',
 ]);
 const isPublicApiPath = (req) => PUBLIC_API_PATHS.has(req.path);
 
@@ -107,6 +114,9 @@ app.use('/api', apiRateLimiter);
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/login', checkAccountLockout);
 app.use('/api/auth/register', authRateLimiter);
+// The one endpoint where an unauthenticated caller can cause rows to be
+// written. Tighter than the general /api allowance — see middleware/security.js.
+app.use('/api/metrics/view', pageViewRateLimiter);
 // Password reset: unauthenticated, and every call sends an email. Limited per
 // IP and per target address (TR-MED-1). Mounted here so the limiters run before
 // the router — express.json() above has already parsed the body the per-email
@@ -133,6 +143,13 @@ app.use('/api/auth/login', auditFailedLogin);
 // trainer's clients. That boundary is enforced by PostgreSQL, not by care.
 //
 // Rate limiting and the request audit log are already mounted on '/api' above.
+// ── Anonymous page views ──────────────────────────────────────────────────────
+// Mounted above the trainer authentication gate, for the same structural reason
+// the admin routes are: this request has no token and never will. It reads
+// nothing, returns nothing, establishes no tenant context, and writes one row
+// containing no personal data.
+app.use('/api/metrics', metricsRoutes);
+
 app.use('/api/admin', adminRoutes);
 
 // ── Authentication gate ───────────────────────────────────────────────────────

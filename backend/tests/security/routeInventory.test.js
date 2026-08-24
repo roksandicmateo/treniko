@@ -34,6 +34,18 @@ const PUBLIC_BY_DESIGN = new Map([
   ['POST /api/auth/forgot-password', 'reset request (rate limited, non-enumerating)'],
   ['POST /api/auth/reset-password', 'gated by a single-use token'],
   ['GET /api/auth/verify-email', 'gated by a single-use token'],
+  // Migration 035. The anonymous page-view counter. It must be public because
+  // it fires on the landing page, before anybody has an account — requiring a
+  // token would mean counting only people who had already registered, which
+  // is the opposite of what a signup funnel needs to measure.
+  //
+  // It is write-only and answers 204 with an empty body, so there is nothing
+  // to read back. It stores a path, a referrer host, campaign labels and a
+  // timestamp — no IP, no user agent, no cookie, no identifier — so an
+  // unauthenticated caller can neither learn anything nor be learned about.
+  // Its own limiter (30/min, middleware/security.js) bounds what an anonymous
+  // caller can write. See tests/security/pageView.test.js.
+  ['POST /api/metrics/view', 'anonymous page-view counter, write-only, no personal data'],
 ]);
 
 /** A syntactically valid id that belongs to nobody. */

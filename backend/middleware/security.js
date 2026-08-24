@@ -148,6 +148,34 @@ const exportRateLimiter = rateLimit({
 // Keyed by user rather than by IP: these routes are authenticated, so the
 // account is the meaningful identity, and it cannot be changed by spoofing a
 // header. The IP is used only as a fallback if the key is somehow missing.
+// ── Page-view counter (migration 035) ────────────────────────────────────────
+//
+// POST /api/metrics/view is public and unauthenticated by necessity: it fires
+// before anybody has an account. That makes it the one endpoint on the platform
+// where an anonymous caller can cause an unbounded number of rows to be
+// written, so it needs a tighter limit than the general 300/min.
+//
+// The limit is generous for a person and useless for a script. A real visitor
+// fires one request per page load; 30 a minute covers even determined
+// clicking around the four public routes, while capping any single address at
+// roughly 43k rows a day rather than millions.
+//
+// Two consequences worth being explicit about, because they are the honest
+// limits of this defence:
+//   * it is keyed by address, so a distributed caller could still inflate the
+//     numbers. These are marketing counts, not billing records — the correct
+//     response to obviously fake traffic is to discount it, not to build
+//     bot detection nobody asked for.
+//   * it protects the disk, which is the part that actually matters.
+const pageViewRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests.', code: 'rate_limit_exceeded' },
+  skipSuccessfulRequests: false,
+});
+
 const uploadRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 100,
@@ -253,6 +281,7 @@ module.exports = {
   passwordResetIpRateLimiter,
   passwordResetEmailRateLimiter,
   uploadRateLimiter,
+  pageViewRateLimiter,
   checkAccountLockout,
   recordFailedLogin,
   resetFailedLogins,

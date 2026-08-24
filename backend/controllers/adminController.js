@@ -253,7 +253,7 @@ const me = async (req, res) => res.json({ success: true, admin: req.admin });
  */
 const getOverview = async (req, res) => {
   try {
-    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources] = await Promise.all([
+    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource] = await Promise.all([
       pool.query(`
         SELECT COUNT(*)::int AS total,
                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int  AS last_7_days,
@@ -316,6 +316,47 @@ const getOverview = async (req, res) => {
          GROUP BY 1, 2, 3
          ORDER BY signups DESC, most_recent DESC
          LIMIT 25`),
+
+      // Migration 035. The denominator. Counts page VIEWS, not unique
+      // visitors — there is no identifier to deduplicate by, deliberately.
+      pool.query(`
+        SELECT COUNT(*)::int AS views_total,
+               COUNT(*) FILTER (WHERE viewed_at >= NOW() - INTERVAL '7 days')::int  AS last_7_days,
+               COUNT(*) FILTER (WHERE viewed_at >= NOW() - INTERVAL '30 days')::int AS last_30_days,
+               MIN(viewed_at) AS measuring_since
+          FROM page_view`),
+
+      // Views and signups per channel, joined so a conversion rate can be
+      // computed per source rather than only in aggregate.
+      //
+      // FULL OUTER JOIN on purpose: a channel can have views and no signups
+      // (the common case, and the one worth seeing), or signups and no views —
+      // which happens for every account created before this table existed, and
+      // for anyone whose browser blocked the beacon. Either side dropping rows
+      // would quietly flatter or hide a channel.
+      pool.query(`
+        WITH v AS (
+          SELECT COALESCE(utm_source, '(direct)')   AS source,
+                 COALESCE(utm_campaign, '(none)')   AS campaign,
+                 COUNT(*)::int AS views
+            FROM page_view
+           GROUP BY 1, 2
+        ),
+        s AS (
+          SELECT COALESCE(utm_source, '(direct)')   AS source,
+                 COALESCE(utm_campaign, '(none)')   AS campaign,
+                 COUNT(*)::int AS signups
+            FROM signup_attribution
+           GROUP BY 1, 2
+        )
+        SELECT COALESCE(v.source, s.source)     AS utm_source,
+               COALESCE(v.campaign, s.campaign) AS utm_campaign,
+               COALESCE(v.views, 0)             AS views,
+               COALESCE(s.signups, 0)           AS signups
+          FROM v FULL OUTER JOIN s
+            ON v.source = s.source AND v.campaign = s.campaign
+         ORDER BY views DESC, signups DESC
+         LIMIT 25`),
     ]);
 
     return res.json({
@@ -331,19 +372,34 @@ const getOverview = async (req, res) => {
         newestTenants: recent.rows,
 
         // ── Acquisition ──────────────────────────────────────────────────
-        // Everything here counts SIGNUPS, never visits. TRENIKO has no page
-        // analytics, so landing-page views, registration starts and therefore
-        // signup conversion rate are genuinely unmeasured. They are reported
-        // explicitly below rather than omitted, so an empty panel can never be
-        // mistaken for a zero.
+        // Both halves of the funnel: page views (migration 035) as the
+        // denominator, signups (migration 034) as the numerator, joined per
+        // channel so a conversion rate can be read per source rather than only
+        // in aggregate.
+        //
+        // What still cannot be produced is listed in `notMeasured` with the
+        // reason for each, rather than omitted — an absent metric reads as a
+        // zero, and a zero here would be a lie.
         acquisition: {
           ...attribution.rows[0],
           bySource: attributionSources.rows,
+
+          // Migration 035. `measuringSince` is the honest qualifier on every
+          // rate below it: views only exist from the moment the counter
+          // shipped, while signups go back to the first account ever created.
+          // Dividing all-time signups by since-035 views would invent a
+          // conversion rate well above reality, so the UI shows the date and
+          // suppresses the aggregate rate until the periods are comparable.
+          views: {
+            ...views.rows[0],
+            byChannel: viewsBySource.rows,
+          },
+
           notMeasured: {
-            landingPageVisits: 'No page analytics is installed.',
-            registrationStarts: 'No /register page-view event exists.',
-            signupConversionRate: 'Requires visits; only the numerator exists.',
-            socialTrafficBySource: 'Attribution records signups, not visits.',
+            uniqueVisitors:
+              'Views are counted without any cookie or identifier, so repeat views by one person cannot be collapsed.',
+            registrationStarts:
+              'The /register page view is counted, but starting to type in the form is not.',
             trialToPaidConversion:
               'There is no payment processor in the product, so no paid conversion can occur.',
           },
