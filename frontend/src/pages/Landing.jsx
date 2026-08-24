@@ -961,6 +961,14 @@ export default function Landing() {
                 </a>
               </li>
               <li>
+                <a
+                  href="/free-personal-trainer-client-tracker"
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  Free session tracker
+                </a>
+              </li>
+              <li>
                 <a href="/guides" className="text-gray-600 hover:text-gray-900">All guides</a>
               </li>
             </ul>

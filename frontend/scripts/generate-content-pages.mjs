@@ -392,6 +392,11 @@ ${cta('Start with the clients you already have. Adding one and booking a session
         <p>Six things worth checking before you pick one, and how to tell when you do not need
           one yet.</p>
       </a>
+      <a class="card" href="/free-personal-trainer-client-tracker">
+        <h3>Free client &amp; session tracker</h3>
+        <p>A spreadsheet template where the remaining-session count works itself out. No
+          sign-up needed.</p>
+      </a>
     </div>`,
   });
 }
@@ -616,13 +621,13 @@ ${cta('In TRENIKO a package counts down as sessions are marked completed, and it
 
     <h2>Read next</h2>
     <div class="cards">
+      <a class="card" href="/free-personal-trainer-client-tracker">
+        <h3>Free client &amp; session tracker template</h3>
+        <p>A spreadsheet that does the countdown for you. No sign-up needed.</p>
+      </a>
       <a class="card" href="/guides/client-management">
         <h3>How to manage personal training clients</h3>
         <p>What to track per client, and what to deliberately leave out.</p>
-      </a>
-      <a class="card" href="/personal-trainer-software">
-        <h3>What to look for in personal trainer software</h3>
-        <p>Six checks, and when you do not need any of it yet.</p>
       </a>
     </div>`,
   });
@@ -741,6 +746,122 @@ ${cta('TRENIKO is built for exactly this handover: no setup wizard, no configura
       <a class="card" href="/guides/client-management">
         <h3>How to manage personal training clients</h3>
         <p>A structure that survives a busy week.</p>
+      </a>
+    </div>`,
+  });
+}
+
+/* 6 ── /free-personal-trainer-client-tracker ──────────────────────────────── */
+{
+  const path = '/free-personal-trainer-client-tracker';
+  const crumbs = [
+    { name: 'TRENIKO', path: '/' },
+    { name: 'Free client & session tracker', path },
+  ];
+  const title = 'Free Personal Trainer Client & Session Tracker (Spreadsheet) | TRENIKO';
+  const description =
+    'A free spreadsheet template for personal trainers: clients, packages, sessions used and remaining, payments. Remaining sessions calculate themselves. No sign-up, no email required.';
+  const FILE = '/downloads/treniko-client-session-tracker.csv';
+
+  PAGES.push({
+    path,
+    title,
+    description,
+    crumbs,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        breadcrumb(crumbs),
+        ORG,
+        {
+          // The thing on offer really is a downloadable file, described the way
+          // it actually behaves. No rating, no review, no price theatre.
+          '@type': 'HowTo',
+          '@id': `${ORIGIN}${path}#howto`,
+          name: 'How to track personal training clients and remaining sessions in a spreadsheet',
+          description,
+          inLanguage: 'en',
+          totalTime: 'PT10M',
+          supply: { '@type': 'HowToSupply', name: 'A spreadsheet application (Excel, Google Sheets, LibreOffice or Numbers)' },
+          step: [
+            { '@type': 'HowToStep', name: 'Download and open the template', text: 'Download the CSV and open it in your spreadsheet application. No account or sign-up is needed.' },
+            { '@type': 'HowToStep', name: 'Add one row per client', text: 'Fill in the client, the package they are on, how many sessions it contains and how many they have used.' },
+            { '@type': 'HowToStep', name: 'Let the remaining count calculate itself', text: 'The remaining-sessions column is a formula. Never type over it — a hand-maintained count is the number that drifts.' },
+            { '@type': 'HowToStep', name: 'Decide your cancellation policy once', text: 'Write down whether a late cancellation or a no-show uses a session, and tell the client before it first costs them one.' },
+            { '@type': 'HowToStep', name: 'Run the weekly check', text: 'Each week look at anyone with two or fewer sessions left, anyone with an outstanding payment, and anyone who has not trained in three weeks.' },
+          ],
+        },
+      ],
+    },
+    body: `    <p class="eyebrow">Free template</p>
+    <h1>Free personal trainer client &amp; session tracker</h1>
+    <p class="lede">A spreadsheet for keeping track of who your clients are, what they
+      bought, how many sessions they have left and whether they have paid. The remaining
+      count works itself out. No sign-up, no email address, nothing to buy.</p>
+
+    <div class="cta-row">
+      <a class="btn" href="${FILE}" download>Download the template (CSV, 2 KB)</a>
+    </div>
+    <p style="font-size:14px;color:#6b7280">Opens in Excel, Google Sheets, LibreOffice and Numbers.
+      In Google Sheets: <em>File → Import → Upload</em>.</p>
+
+    <h2>What is in it</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Column</th><th>What it is for</th></tr></thead>
+        <tbody>
+          <tr><td>Client · Contact</td><td>Who they are and how you reach them.</td></tr>
+          <tr><td>Package</td><td>What they actually bought — "10-session pack", not "training".</td></tr>
+          <tr><td>Sessions bought · used</td><td>The two numbers you maintain. Update <em>used</em> when a session is completed, not when it is booked.</td></tr>
+          <tr><td><strong>Sessions remaining</strong></td><td><strong>A formula.</strong> It subtracts used from bought every time you open the file, so it cannot drift out of step with the other two.</td></tr>
+          <tr><td>Package start · expires</td><td>"Ten sessions within four months" is a different product from "ten sessions", and the difference needs writing down.</td></tr>
+          <tr><td>Amount paid · status</td><td>So "has this one paid?" is answered by looking rather than remembering.</td></tr>
+          <tr><td>Notes</td><td>The shoulder, the shift pattern, the knee that objects to lunges.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>The one column that matters</h2>
+    <p>Remaining sessions is a formula, and that is deliberate. Almost every awkward
+      conversation about a package comes from a number somebody typed and then forgot to
+      update — you and the client end up with different totals and both of you are being
+      honest. A calculated column cannot disagree with the numbers it is calculated from.</p>
+    <p>The other half of that problem is not arithmetic at all: it is that nobody wrote
+      down whether a late cancellation uses a session. Decide it once, put it in Notes,
+      and say it when they buy. We go through the options in
+      <a href="/guides/session-packages">tracking packages and remaining sessions</a>.</p>
+
+    <h2>The weekly check</h2>
+    <p>Ten minutes, and it is most of client retention:</p>
+    <ul>
+      <li>Anyone with <strong>two or fewer sessions left</strong> — say something this week,
+        not during their last session.</li>
+      <li>Anyone with an <strong>outstanding payment</strong> — one message, not a mental note.</li>
+      <li>Anyone who <strong>has not trained in three weeks</strong> and has not said why.</li>
+    </ul>
+    <p>None of that needs software. It needs the answers to be visible in one place, which
+      is exactly what the template is for.</p>
+
+    <h2>When a spreadsheet stops being enough</h2>
+    <p>Honestly: for a lot of trainers it never does, and this file is the whole solution.
+      It is free, it is yours, and nobody can change its pricing.</p>
+    <p>It starts to cost you when the same fact lives in two places — sessions in a
+      calendar, payments in the spreadsheet — and the two disagree. A spreadsheet cannot
+      count down on its own, cannot warn you before a package runs out, and cannot tell you
+      anything, because it is only ever answered and never asked. We wrote that comparison
+      out properly, including the cases where the spreadsheet wins, in
+      <a href="/guides/software-vs-spreadsheets">software vs spreadsheets</a>.</p>
+${cta('TRENIKO does what this template does, without the copying: packages count down as sessions are completed, alerts arrive at two sessions remaining, and payments sit against the sessions they paid for.')}
+
+    <h2>Read next</h2>
+    <div class="cards">
+      <a class="card" href="/guides/client-management">
+        <h3>How to manage personal training clients</h3>
+        <p>What to record per client, and what to deliberately leave out.</p>
+      </a>
+      <a class="card" href="/personal-trainer-software">
+        <h3>What to look for in personal trainer software</h3>
+        <p>Six checks — and how to tell when you do not need any of it yet.</p>
       </a>
     </div>`,
   });

@@ -18,6 +18,8 @@ Allow: /terms
 # is in the response body rather than behind a JavaScript render.
 Allow: /personal-trainer-software
 Allow: /guides
+Allow: /free-personal-trainer-client-tracker
+Allow: /downloads/
 Disallow: /login
 Disallow: /register
 Disallow: /forgot-password
