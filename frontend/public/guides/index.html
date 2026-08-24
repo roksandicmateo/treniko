@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guides for Personal Trainers Running Their Own Business | TRENIKO</title>
+<meta name="description" content="Practical guides on managing personal training clients, tracking session packages, and deciding when a spreadsheet stops being enough.">
+<link rel="canonical" href="https://treniko.com/guides">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="alternate icon" type="image/png" sizes="96x96" href="/favicon-96.png">
+<meta name="theme-color" content="#0ea5e9">
+
+<meta property="og:site_name" content="TRENIKO">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_GB">
+<meta property="og:url" content="https://treniko.com/guides">
+<meta property="og:title" content="Guides for Personal Trainers Running Their Own Business | TRENIKO">
+<meta property="og:description" content="Practical guides on managing personal training clients, tracking session packages, and deciding when a spreadsheet stops being enough.">
+<meta property="og:image" content="https://treniko.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Guides for Personal Trainers Running Their Own Business | TRENIKO">
+<meta name="twitter:description" content="Practical guides on managing personal training clients, tracking session packages, and deciding when a spreadsheet stops being enough.">
+<meta name="twitter:image" content="https://treniko.com/og-image.png">
+
+<link rel="stylesheet" href="/assets-static/content.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "TRENIKO",
+          "item": "https://treniko.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Guides",
+          "item": "https://treniko.com/guides"
+        }
+      ]
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://treniko.com/#organization",
+      "name": "TRENIKO",
+      "url": "https://treniko.com/"
+    },
+    {
+      "@type": "CollectionPage",
+      "@id": "https://treniko.com/guides#webpage",
+      "url": "https://treniko.com/guides",
+      "name": "Guides for Personal Trainers Running Their Own Business | TRENIKO",
+      "description": "Practical guides on managing personal training clients, tracking session packages, and deciding when a spreadsheet stops being enough.",
+      "inLanguage": "en"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+  <header class="site">
+    <div class="wrap-wide bar">
+      <a class="brand" href="/"><svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><rect width="100" height="100" rx="22" fill="#0ea5e9"/><rect x="19" y="28" width="62" height="16" rx="3.2" fill="#fff"/><rect x="42" y="28" width="16" height="48" rx="3.2" fill="#fff"/></svg>TRENIKO</a>
+      <nav>
+        <a href="/personal-trainer-software">Software</a>
+        <a href="/guides">Guides</a>
+        <a href="/">Product</a>
+      </nav>
+    </div>
+  </header>
+  <div class="wrap crumbs"><a href="/">TRENIKO</a> <span aria-hidden="true">›</span> <span>Guides</span></div>
+  <main class="wrap">
+    <p class="eyebrow">Guides</p>
+    <h1>Guides for trainers who also run the business</h1>
+    <p class="lede">Short, practical write-ups on the operational side of personal training — the
+      part nobody certifies you in. No sign-up required to read any of them.</p>
+
+    <div class="cards">
+      <a class="card" href="/guides/client-management">
+        <h3>How to manage personal training clients</h3>
+        <p>What to record per client, what to leave out, and the review habit that makes a
+          check-in start from the record instead of from memory.</p>
+      </a>
+      <a class="card" href="/guides/session-packages">
+        <h3>Tracking training packages and remaining sessions</h3>
+        <p>Why the session count drifts, what a package actually needs to store, and the rule that
+          keeps it honest.</p>
+      </a>
+      <a class="card" href="/guides/software-vs-spreadsheets">
+        <h3>Personal trainer software vs spreadsheets</h3>
+        <p>An honest comparison, including the cases where the spreadsheet wins and you should
+          keep it.</p>
+      </a>
+      <a class="card" href="/personal-trainer-software">
+        <h3>Personal trainer software: what to look for</h3>
+        <p>Six things worth checking before you pick one, and how to tell when you do not need
+          one yet.</p>
+      </a>
+    </div>
+  </main>
+  <footer class="site">
+    <div class="wrap">
+      <div class="links">
+        <a href="/">TRENIKO</a>
+        <a href="/personal-trainer-software">Personal trainer software</a>
+        <a href="/guides">Guides</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </div>
+      <p style="margin:0">Training management software for independent personal trainers.
+        Free while TRENIKO is early — there is no payment processor in the product,
+        so there is nothing to pay and no card to enter.</p>
+    </div>
+  </footer>
+  <script>
+  (function () {
+    try {
+      var p = location.pathname.replace(/\/$/, '') || '/';
+      var q = new URLSearchParams(location.search);
+      var body = { path: p };
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (k) {
+        var v = q.get(k);
+        if (v) body[k] = String(v).trim().slice(0, 255);
+      });
+      if (document.referrer) {
+        try {
+          var u = new URL(document.referrer);
+          if (u.host && u.host !== location.host) body.referrer_host = u.host.slice(0, 255);
+        } catch (e) { /* unparseable referrer is simply not recorded */ }
+      }
+      var payload = JSON.stringify(body);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/metrics/view', new Blob([payload], { type: 'application/json' }));
+      }
+
+      // Hand any incoming campaign tags to the app, so first-touch attribution
+      // survives a landing that was not the landing page.
+      var carry = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']
+        .filter(function (k) { return q.get(k); })
+        .map(function (k) { return k + '=' + encodeURIComponent(q.get(k)); })
+        .join('&');
+      if (carry) {
+        document.querySelectorAll('a[href="/"], a[href="/register"]').forEach(function (a) {
+          a.setAttribute('href', a.getAttribute('href') + '?' + carry);
+        });
+      }
+    } catch (e) { /* a counter must never break the page it counts */ }
+  })();
+  </script>
+</body>
+</html>

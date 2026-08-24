@@ -832,7 +832,7 @@ export default function Landing() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-gray-200 bg-white px-5 py-12 sm:px-8">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <Wordmark />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-600">
@@ -869,6 +869,40 @@ export default function Landing() {
               <li><a href="#for-trainers" className="text-gray-600 hover:text-gray-900">For trainers</a></li>
               <li><a href="#pricing" className="text-gray-600 hover:text-gray-900">Pricing</a></li>
               <li><a href="#faq" className="text-gray-600 hover:text-gray-900">FAQ</a></li>
+            </ul>
+          </nav>
+
+          <nav aria-label="Guides" className="text-sm">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400">Learn</h2>
+            <ul className="mt-4 space-y-2.5">
+              {/* Plain anchors, not react-router Links: these are static HTML
+                  pages served off disk, not SPA routes. A client-side
+                  navigation would ask the router for a route that does not
+                  exist. A real navigation is also what lets a crawler see them
+                  as separate documents. */}
+              <li>
+                <a href="/personal-trainer-software" className="text-gray-600 hover:text-gray-900">
+                  Personal trainer software
+                </a>
+              </li>
+              <li>
+                <a href="/guides/client-management" className="text-gray-600 hover:text-gray-900">
+                  Managing clients
+                </a>
+              </li>
+              <li>
+                <a href="/guides/session-packages" className="text-gray-600 hover:text-gray-900">
+                  Packages &amp; sessions
+                </a>
+              </li>
+              <li>
+                <a href="/guides/software-vs-spreadsheets" className="text-gray-600 hover:text-gray-900">
+                  Software vs spreadsheets
+                </a>
+              </li>
+              <li>
+                <a href="/guides" className="text-gray-600 hover:text-gray-900">All guides</a>
+              </li>
             </ul>
           </nav>
 
