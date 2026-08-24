@@ -141,6 +141,14 @@ describe('BUG-4: the measurement trend reads chronologically', () => {
     { id: '1', date: '2026-08-10', value: '81.00', unit: 'kg', created_at: '2026-08-10T10:00:00Z' },
   ];
 
+  // Every query below is scoped to the container this render returned rather
+  // than to `screen`, which searches the whole document. The assertions are
+  // unchanged; the scoping is what makes them reliable. `screen.getByText`
+  // throws "found multiple elements" the moment more than one chart is mounted,
+  // and under CPU contention that happened often enough to fail the suite
+  // roughly one run in three while passing in isolation every time.
+  let view;
+
   const renderChart = async (entries = ENTRIES) => {
     vi.doMock('../services/trainingService', () => ({
       progressService: {
@@ -151,12 +159,12 @@ describe('BUG-4: the measurement trend reads chronologically', () => {
       templateService: { getAll: vi.fn().mockResolvedValue({ data: [] }) },
     }));
     const { default: ProgressChart } = await import('../components/progress/ProgressChart');
-    render(<ProgressChart clientId="c1" />);
-    await waitFor(() => expect(screen.getByText('First')).toBeTruthy());
+    view = render(<ProgressChart clientId="c1" />);
+    await waitFor(() => expect(within(view.container).getByText('First')).toBeTruthy());
   };
 
   const tileValue = (label) => {
-    const tile = screen.getByText(label).parentElement;
+    const tile = within(view.container).getByText(label).parentElement;
     return within(tile).getAllByText(/[\d.+-]/).map((n) => n.textContent.trim()).pop();
   };
 
@@ -195,7 +203,7 @@ describe('BUG-4: the measurement trend reads chronologically', () => {
 
   test('the history table lists newest first and shows the change since the previous entry', async () => {
     await renderChart();
-    const rows = document.querySelectorAll('tbody tr');
+    const rows = view.container.querySelectorAll('tbody tr');
     expect(rows).toHaveLength(3);
     expect(rows[0].textContent).toMatch(/20 Aug 2026/);
     expect(rows[0].textContent).toMatch(/\+0\.5/);     // 83.0 − 82.5
@@ -206,7 +214,7 @@ describe('BUG-4: the measurement trend reads chronologically', () => {
 
   test('a calendar date is shown as that day, not the day before', async () => {
     await renderChart();
-    const rows = document.querySelectorAll('tbody tr');
+    const rows = view.container.querySelectorAll('tbody tr');
     // `new Date('2026-08-10')` is UTC midnight, i.e. the 9th west of Greenwich.
     expect(rows[2].textContent).toMatch(/10 Aug 2026/);
   });

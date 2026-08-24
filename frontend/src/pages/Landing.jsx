@@ -545,7 +545,7 @@ export default function Landing() {
               </ul>
             </div>
 
-            <Reveal>
+            <Reveal className="min-w-0">
               <ProductShowcase />
             </Reveal>
           </div>

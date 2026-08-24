@@ -552,3 +552,115 @@ describe('first-touch attribution', () => {
     expect(record.landing_path.includes('?')).toBe(false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('the product showcase cannot widen the page on a phone', () => {
+  // Found in visual QA at 375 px: selecting the Clients tab pushed the whole
+  // document to 491 px and the page scrolled sideways.
+  //
+  // The cause was not the table. The table is deliberately `min-w-[420px]`
+  // inside an `overflow-x-auto` wrapper, which is the right pattern — a
+  // four-column table is not readable narrower than that, so it scrolls inside
+  // its own card. That wrapper never got the chance to scroll: a grid item and
+  // a `<figure>` both default to `min-width: auto`, which means "at least as
+  // wide as my content". Each ancestor grew to fit the 420 px table instead of
+  // constraining it, and the overflow container was never narrower than what it
+  // contained, so it had nothing to scroll.
+  //
+  // This is BUG-6 from liveQa.regression.test.jsx returning in a new component:
+  // flex and grid children that were not allowed to shrink below their content.
+  // jsdom computes no layout, so — as that suite does for the same class of
+  // defect — this is asserted against the source.
+  const showcaseSrc = readFileSync(
+    join(process.cwd(), 'src', 'pages', 'landing', 'ProductShowcase.jsx'),
+    'utf8'
+  );
+  const landingSrc = readFileSync(join(process.cwd(), 'src', 'pages', 'Landing.jsx'), 'utf8');
+
+  test('the showcase root may shrink below its content', () => {
+    expect(/<figure className="[^"]*\bmin-w-0\b/.test(showcaseSrc)).toBe(true);
+  });
+
+  test('the grid item holding the showcase may shrink below its content', () => {
+    expect(/<Reveal className="[^"]*\bmin-w-0\b[^"]*">\s*<ProductShowcase/.test(landingSrc)).toBe(
+      true
+    );
+  });
+
+  test('the wide table still scrolls inside its own container', () => {
+    // The fix must not have been applied by removing the min-width from the
+    // table, which would fix the overflow by making the table unreadable.
+    expect(/min-w-\[420px\]/.test(showcaseSrc)).toBe(true);
+    const wrapper = showcaseSrc.indexOf('overflow-x-auto');
+    const table = showcaseSrc.indexOf('min-w-[420px]');
+    expect(wrapper).toBeGreaterThan(-1);
+    expect(wrapper).toBeLessThan(table);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('reduced motion is respected', () => {
+  // Reveal starts its children at opacity-0 and fades them in when an
+  // IntersectionObserver fires. That is a real accessibility hazard if it is
+  // ever the only thing that makes content visible: a visitor who has asked for
+  // reduced motion would get a blank page.
+  //
+  // Both stubs below matter. Reporting `prefers-reduced-motion: reduce` alone
+  // proves nothing in jsdom, because jsdom defines neither matchMedia nor
+  // IntersectionObserver and Reveal already falls through to "visible" when
+  // they are missing — the assertion would pass without the feature existing.
+  // So IntersectionObserver is stubbed to a real object that never fires. The
+  // only way the content can be visible is the reduced-motion branch.
+  const observers = [];
+
+  beforeEach(() => {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    window.IntersectionObserver = vi.fn().mockImplementation(function () {
+      observers.push(this);
+      this.observe = vi.fn();
+      this.disconnect = vi.fn();
+    });
+  });
+
+  afterEach(() => {
+    observers.length = 0;
+    delete window.matchMedia;
+    delete window.IntersectionObserver;
+  });
+
+  test('content is visible without waiting for an animation that will not run', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AuthProvider>
+          <Landing />
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    const heading = await screen.findByRole('heading', { name: /run your personal training/i });
+    expect(heading).toBeTruthy();
+
+    // Every Reveal must have settled on the visible class, not the hidden one.
+    const hidden = document.querySelectorAll('.opacity-0');
+    expect(hidden.length).toBe(0);
+    expect(document.querySelectorAll('.transition-all.opacity-100').length).toBeGreaterThan(0);
+  });
+
+  test('nothing was left waiting on an observer', () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AuthProvider>
+          <Landing />
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    // Reduced motion short-circuits before an observer is ever constructed.
+    expect(observers.length).toBe(0);
+  });
+});

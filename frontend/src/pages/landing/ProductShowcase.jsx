@@ -270,7 +270,7 @@ export default function ProductShowcase() {
   const View = VIEWS[tab];
 
   return (
-    <figure className="m-0">
+    <figure className="m-0 min-w-0">
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10">
         {/* browser chrome */}
         <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-3 py-2.5">
