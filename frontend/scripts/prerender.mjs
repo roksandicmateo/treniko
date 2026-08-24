@@ -54,8 +54,31 @@ if (!shell.includes(ROOT_DIV)) {
   fail(`dist/index.html does not contain ${ROOT_DIV} — the template changed shape`);
 }
 
-// The untouched shell serves every route that is not `/`.
-writeFileSync(join(DIST, 'app.html'), shell, 'utf8');
+// The shell serves every route that is not `/`, with two head tags removed.
+//
+// index.html hardcodes `<link rel="canonical" href="https://treniko.com/">` and
+// the matching og:url, which is correct for the homepage and wrong for every
+// other page built from the same template. RouteMeta rewrites both at runtime,
+// so a JavaScript-executing crawler sees the right values — but a crawler that
+// does not run JS was being told that /privacy and /terms are the homepage.
+//
+// Both are in the sitemap and both are meant to be indexed, so that is a
+// duplicate signal pointing them at `/`. Serving no canonical is strictly
+// better than serving a wrong one: with none, a search engine falls back to the
+// URL it fetched, which is the right answer. RouteMeta still supplies the
+// precise value for anything that renders.
+//
+// Deliberately scoped to app.html. index.html keeps its canonical, because for
+// the homepage it is true.
+const appShell = shell
+  .replace(/\s*<link rel="canonical"[^>]*>/, '')
+  .replace(/\s*<meta property="og:url"[^>]*>/, '');
+
+if (appShell.includes('rel="canonical"') || appShell.includes('og:url')) {
+  fail('app.html still carries a canonical or og:url — the head template changed shape');
+}
+
+writeFileSync(join(DIST, 'app.html'), appShell, 'utf8');
 
 const { render } = await import(`file://${SSR_ENTRY}`);
 const html = render();
