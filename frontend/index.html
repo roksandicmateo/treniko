@@ -53,6 +53,70 @@
     />
     <meta name="twitter:image" content="https://treniko.com/og-image.png" />
     <meta name="twitter:image:alt" content="TRENIKO — run your coaching business, not your spreadsheets." />
+
+    <!-- Structured data.
+         Two types only, and both are things that can be checked against the
+         product rather than asserted about it:
+
+           SoftwareApplication — what this is, who it is for, what it costs.
+           Organization        — who publishes it, and where else it exists.
+
+         There is deliberately NO aggregateRating and NO review. TRENIKO has
+         almost no customers yet, so any rating here would be invented, and
+         invented review markup is both a lie to the reader and a manual action
+         from Google. Add it when there is something real to cite, and not
+         before.
+
+         `price: 0` is not marketing. There is no payment processor anywhere in
+         the product, so zero is the only price that can currently be charged —
+         the same fact the pricing section on the page states in words. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://treniko.com/#software",
+          "name": "TRENIKO",
+          "applicationCategory": "BusinessApplication",
+          "applicationSubCategory": "Training management software for personal trainers",
+          "operatingSystem": "Web browser",
+          "url": "https://treniko.com/",
+          "description": "TRENIKO keeps clients, sessions, packages, payments, progress and training plans for independent personal trainers in one workspace, instead of spread across a phone, a calendar and a spreadsheet.",
+          "inLanguage": ["en", "hr", "de"],
+          "publisher": { "@id": "https://treniko.com/#organization" },
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR",
+            "availability": "https://schema.org/InStock",
+            "description": "Free plan: up to 5 clients and 20 sessions a month. No credit card required."
+          },
+          "featureList": [
+            "Client records with goals, private notes and full history",
+            "One-to-one and group session scheduling",
+            "Session packages that count down automatically, with low-balance alerts",
+            "Payment records with amount, method and paid or pending status",
+            "Progress measurements tracked over time",
+            "Training plans built from an exercise library and saved as templates",
+            "Data export and account deletion"
+          ]
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://treniko.com/#organization",
+          "name": "TRENIKO",
+          "url": "https://treniko.com/",
+          "logo": "https://treniko.com/og-image.png",
+          "email": "info@treniko.com",
+          "sameAs": [
+            "https://www.instagram.com/treniko_fitness/",
+            "https://www.facebook.com/profile.php?id=61593112186107"
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

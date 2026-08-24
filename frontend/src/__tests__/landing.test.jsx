@@ -343,6 +343,59 @@ describe('static SEO files', () => {
 
 /* ── 5. Honesty ────────────────────────────────────────────────────────────── */
 
+describe('structured data says only what the product can back', () => {
+  const html = readFileSync(join(process.cwd(), 'index.html'), 'utf8');
+
+  const graph = () => {
+    const m = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    expect(m, 'no JSON-LD block found in index.html').toBeTruthy();
+    return JSON.parse(m[1])['@graph'];
+  };
+
+  test('the JSON-LD is valid JSON and declares the expected types', () => {
+    const types = graph().map((n) => n['@type']);
+    expect(types).toContain('SoftwareApplication');
+    expect(types).toContain('Organization');
+  });
+
+  test('it carries no rating or review markup', () => {
+    // TRENIKO has almost no customers. Any rating here would be invented, and
+    // invented review markup is a lie to the reader and a manual action from
+    // Google. This test is the thing standing between "we should add rich
+    // snippets" and a fabricated one.
+    const raw = JSON.stringify(graph());
+    for (const forbidden of ['aggregateRating', 'ratingValue', 'reviewCount', 'Review']) {
+      expect(raw.includes(forbidden), `JSON-LD contains ${forbidden}`).toBe(false);
+    }
+  });
+
+  test('the advertised price matches what the product can actually charge', () => {
+    const app = graph().find((n) => n['@type'] === 'SoftwareApplication');
+    // There is no payment processor in the product, so zero is the only
+    // honest price — the same claim the pricing section makes in words.
+    expect(app.offers.price).toBe('0');
+    expect(app.offers.priceCurrency).toBe('EUR');
+  });
+
+  test('the social profiles match the ones the footer links', () => {
+    const org = graph().find((n) => n['@type'] === 'Organization');
+    expect(org.sameAs).toContain('https://www.instagram.com/treniko_fitness/');
+    expect(org.sameAs).toContain('https://www.facebook.com/profile.php?id=61593112186107');
+  });
+
+  test('every feature it lists is one the landing page also claims', () => {
+    const app = graph().find((n) => n['@type'] === 'SoftwareApplication');
+    // Structured data drifting away from the visible copy is how a page ends
+    // up advertising something it does not do.
+    for (const keyword of ['Client', 'session', 'package', 'Payment', 'Progress', 'Training']) {
+      expect(
+        app.featureList.some((f) => f.toLowerCase().includes(keyword.toLowerCase())),
+        `featureList mentions nothing about ${keyword}`
+      ).toBe(true);
+    }
+  });
+});
+
 describe('the copy does not claim things the product cannot back', () => {
   /**
    * Landing.jsx with its comments removed. The comments explain *why* the copy
