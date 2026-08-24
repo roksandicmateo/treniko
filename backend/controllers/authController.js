@@ -5,6 +5,7 @@ const { recordFailedLogin, resetFailedLogins } = require('../middleware/security
 const { sendWelcomeEmail, sendVerificationEmail } = require('../services/emailService');
 const crypto = require('crypto');
 const { isEmail, normalizeEmail, validatePassword } = require('../utils/validation');
+const { recordSignupAttribution } = require('../utils/signupAttribution');
 
 /**
  * User Login
@@ -84,7 +85,7 @@ const login = async (req, res) => {
  */
 const register = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, businessName } = req.body;
+    const { email, password, firstName, lastName, businessName, attribution } = req.body;
 
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({
@@ -175,6 +176,18 @@ const register = async (req, res) => {
        )`,
       [tenantId]
     );
+
+    // First-touch signup attribution. Deliberately placed AFTER the account,
+    // the subscription and the usage record already exist, and deliberately
+    // awaited rather than fired and forgotten: it must be ordered before the
+    // 201 so an integration test can assert on it, and it cannot fail the
+    // registration because recordSignupAttribution never throws. Unknown keys
+    // are ignored and every value is truncated — see utils/signupAttribution.js.
+    await recordSignupAttribution({
+      tenantId: user.tenant_id,
+      userId: user.id,
+      raw: attribution,
+    });
 
     const token = jwt.sign(
       {

@@ -1,5 +1,6 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import { getAttribution } from '../utils/attribution';
 
 const AuthContext = createContext(null);
 
@@ -51,7 +52,19 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (data) => {
     try {
-      const response = await authAPI.register(data);
+      // First-touch attribution, captured on the landing page and carried here
+      // in sessionStorage. It is only ever present when the visitor accepted
+      // the analytics cookie category — utils/attribution.js writes nothing
+      // without consent, so an absent value here is the consent mechanism
+      // working, not a bug.
+      //
+      // Sent as a nested object rather than spread into the payload so it can
+      // never collide with, or be mistaken for, a registration field. The
+      // server whitelists the eight keys it accepts and ignores the rest.
+      const attribution = getAttribution();
+      const response = await authAPI.register(
+        attribution ? { ...data, attribution } : data
+      );
       const { token, user } = response.data;
 
       localStorage.setItem('token', token);

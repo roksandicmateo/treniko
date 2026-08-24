@@ -132,6 +132,10 @@ const SHELL_TABLES = [
   ['subscription_notifications', 'tenant_id'],
   ['subscription_history', 'tenant_id'],
   ['deletion_requests', 'tenant_id'],
+  // Migration 034. A QA tenant that registered through the normal path is
+  // expected to have an attribution row, so requiring it to be empty first
+  // would block the cleanup this script exists to perform.
+  ['signup_attribution', 'tenant_id'],
 ];
 
 const arg = (name) => {

@@ -83,6 +83,14 @@ const tenantDatasets = (tenantId, trainerId) => [
     sql: 'SELECT * FROM tenants WHERE id = $1',
     params: [tenantId] },
 
+  // Migration 034. How this trainer arrived: the campaign labels that were in
+  // the landing-page URL at first touch. Included deliberately — it is data
+  // about the subject, it contains no third-party personal data, and including
+  // it is the more defensible Article 15 answer than leaving it out.
+  { name: 'signup_attribution',
+    sql: 'SELECT * FROM signup_attribution WHERE tenant_id = $1',
+    params: [tenantId] },
+
   // ── Scheduling ────────────────────────────────────────────────────────────
   { name: 'sessions',
     sql: 'SELECT * FROM training_sessions WHERE tenant_id = $1 ORDER BY session_date, start_time',

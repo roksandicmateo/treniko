@@ -92,6 +92,13 @@ const UNPROTECTED_TENANT_TABLES = {
   subscription_usage:
     'Written during registration (pre-context) and maintained by triggers that ' +
     'fire on cascade deletes, where no context is established.',
+  signup_attribution:
+    'Migration 034. Written during registration, before a tenant context can ' +
+    'exist — the tenant is milliseconds old and no request has established a ' +
+    'context for it, so a policy here would fail closed on the one flow that ' +
+    'must never fail closed. Nothing in the authenticated application reads ' +
+    'it; it is read only by operational reporting run as the owner role and ' +
+    'by the platform-admin aggregate, which reads counts and no business data.',
   subscription_notifications:
     'Written across all tenants by jobs/subscriptionChecker.js from a timer, ' +
     'with no request and therefore no tenant context.',
