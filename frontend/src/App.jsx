@@ -21,6 +21,7 @@ import Toast from './components/Toast';
 import Landing from './pages/Landing';
 import RouteMeta from './seo/RouteMeta';
 import PageViewTracker from './seo/PageViewTracker';
+import AttributionCapture from './seo/AttributionCapture';
 
 // ── Platform administration ──────────────────────────────────────────────────
 // A separate authentication realm from the trainer app: staff accounts live in
@@ -86,6 +87,11 @@ function App() {
         <BrowserRouter>
           <RouteMeta />
           <PageViewTracker />
+          {/* Mounted here rather than on the landing page, which was the only
+              place attribution used to be captured. Every content-page CTA and
+              the Instagram bio link send visitors straight to /register, so a
+              landing-page-only capture recorded them all as unattributed. */}
+          <AttributionCapture />
           <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Public routes */}
