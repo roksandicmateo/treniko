@@ -253,7 +253,7 @@ const me = async (req, res) => res.json({ success: true, admin: req.admin });
  */
 const getOverview = async (req, res) => {
   try {
-    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource] = await Promise.all([
+    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource, viewsByPath] = await Promise.all([
       pool.query(`
         SELECT COUNT(*)::int AS total,
                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int  AS last_7_days,
@@ -357,6 +357,29 @@ const getOverview = async (req, res) => {
             ON v.source = s.source AND v.campaign = s.campaign
          ORDER BY views DESC, signups DESC
          LIMIT 25`),
+
+      // Which page. The channel breakdown above answers "where did they come
+      // from"; this answers "what did they read", and since the content cluster
+      // grew to eleven pages that is the question that decides what gets
+      // written next. Without it the roadmap is chosen by taste.
+      //
+      // Windowed to 30 days for two reasons: it is the horizon a content
+      // decision is actually made on, and the filter uses page_view_viewed_at_idx
+      // rather than scanning the table — there is no index on `path`, and
+      // adding one for a query nobody runs hourly would be premature.
+      //
+      // Paths are normalised at write time (trailing slash stripped by the
+      // beacon), so `/guides` and `/guides/` are already one row.
+      pool.query(`
+        SELECT path,
+               COUNT(*)::int AS views,
+               COUNT(*) FILTER (WHERE viewed_at >= NOW() - INTERVAL '7 days')::int AS last_7_days,
+               MAX(viewed_at) AS most_recent
+          FROM page_view
+         WHERE viewed_at >= NOW() - INTERVAL '30 days'
+         GROUP BY path
+         ORDER BY views DESC, most_recent DESC
+         LIMIT 30`),
     ]);
 
     return res.json({
@@ -393,6 +416,12 @@ const getOverview = async (req, res) => {
           views: {
             ...views.rows[0],
             byChannel: viewsBySource.rows,
+
+            // Last 30 days only, unlike every other figure here. Labelled as
+            // such in the UI, because a 30-day count sitting next to all-time
+            // counts is otherwise read as all-time and quietly understates
+            // every page.
+            byPath: viewsByPath.rows,
           },
 
           notMeasured: {

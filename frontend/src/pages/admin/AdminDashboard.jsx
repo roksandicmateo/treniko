@@ -19,6 +19,7 @@ const AdminDashboard = () => {
   // Views and signups arrive as separate per-channel rows from a FULL OUTER
   // JOIN, so a channel appears whether it has one, the other, or both.
   const channels = o?.acquisition?.views?.byChannel ?? [];
+  const pages = o?.acquisition?.views?.byPath ?? [];
   const measuringSince = o?.acquisition?.views?.measuring_since ?? null;
 
   // The subscriptions endpoint returns one row per (plan, status) pair, so the
@@ -231,6 +232,50 @@ const AdminDashboard = () => {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {/* ── Which pages ──────────────────────────────────────────
+                    The channel table above answers where visitors came from.
+                    This answers what they read, which is the half that decides
+                    what gets written next. Thirty days, not all time — labelled
+                    on the header, because an unlabelled 30-day count next to
+                    all-time counts reads as all-time. */}
+                {pages.length > 0 && (
+                  <div className="border-t border-gray-100 dark:border-gray-800">
+                    <div className="px-6 pt-5 pb-2">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        Most-viewed pages
+                      </h3>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Last 30 days. Page loads, not unique visitors — there is no identifier to
+                        deduplicate by.
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                            <th className="px-6 py-3">Page</th>
+                            <th className="px-6 py-3 text-right">Views (30d)</th>
+                            <th className="px-6 py-3 text-right">Last 7 days</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                          {pages.map((r) => (
+                            <tr key={r.path}>
+                              <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100 break-all">
+                                {r.path}
+                              </td>
+                              <td className="px-6 py-3 text-right tabular-nums">{r.views}</td>
+                              <td className="px-6 py-3 text-right tabular-nums text-gray-500">
+                                {r.last_7_days}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 
