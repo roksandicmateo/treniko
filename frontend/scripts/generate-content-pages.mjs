@@ -134,8 +134,36 @@ const footer = () => `  <footer class="site">
  *    unchanged. Nothing is invented: if there are no tags on the way in, none
  *    are added on the way out.
  */
-const beacon = () => `  <script>
-  (function () {
+/**
+ * The page-view beacon and the UTM hand-off, emitted as an external file.
+ *
+ * ── Why it stopped being inline ──────────────────────────────────────────────
+ * It was an inline <script>, which is the one thing that makes a strict
+ * Content-Security-Policy impossible: `script-src 'self'` blocks it, and the
+ * alternatives are `'unsafe-inline'` (which disables the protection the header
+ * exists to provide) or a sha256 hash in the nginx config that has to be kept
+ * in sync with a string in this file by hand. Neither survives contact with a
+ * future edit.
+ *
+ * As a file it is also cached once and reused across every content page,
+ * instead of being re-sent in the body of each one.
+ *
+ * The filename carries a hash of its own bytes, for the same reason the
+ * stylesheet does: a fixed name plus a long cache is a change nobody sees.
+ *
+ * ── What it does, unchanged ──────────────────────────────────────────────────
+ * 1. **Counts the view.** Same contract as the React beacon in
+ *    src/utils/pageView.js: no cookie, no storage, no identifier, fire and
+ *    forget, and a failure is invisible.
+ *
+ * 2. **Carries the campaign across.** Someone arriving from Reddit lands on a
+ *    guide, not on `/`, so the React attribution capture — which only runs
+ *    inside the app — never sees the UTM tags and the signup is recorded as
+ *    direct. Any incoming utm_* parameters are appended to the links that lead
+ *    into the app, so the existing first-touch capture picks them up unchanged.
+ *    Nothing is invented: no tags in, no tags out.
+ */
+const BEACON_SOURCE = `(function () {
     try {
       var p = location.pathname.replace(/\\/$/, '') || '/';
       var q = new URLSearchParams(location.search);
@@ -168,7 +196,22 @@ const beacon = () => `  <script>
       }
     } catch (e) { /* a counter must never break the page it counts */ }
   })();
-  </script>`;
+`;
+
+const beaconHash = createHash('sha256').update(BEACON_SOURCE).digest('hex').slice(0, 10);
+const BEACON_HREF = `/assets-static/beacon.${beaconHash}.js`;
+
+writeFileSync(join(PUBLIC, 'assets-static', `beacon.${beaconHash}.js`), BEACON_SOURCE, 'utf8');
+
+for (const f of readdirSync(join(PUBLIC, 'assets-static'))) {
+  if (/^beacon\.[0-9a-f]{10}\.js$/.test(f) && f !== `beacon.${beaconHash}.js`) {
+    unlinkSync(join(PUBLIC, 'assets-static', f));
+  }
+}
+
+// `defer` rather than inline-at-end-of-body: it runs after the document is
+// parsed, which is what the inline version relied on for the link rewrite.
+const beacon = () => `  <script src="${BEACON_HREF}" defer></script>`;
 
 /**
  * Build one page.
