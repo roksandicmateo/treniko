@@ -19,102 +19,109 @@ and was checked. Nothing is marked done on the strength of having been queued.
 
 ## URGENT
 
-### U1 — Google Search Console · ~10 minutes · **do this before anything else**
+### U1 — Google Search Console · ~10 minutes · **do this first**
 
 **Status:** `TODO` · Verified absent 25 Aug 2026: no `google-site-verification`
-meta tag in the homepage head, and no verification TXT record on the domain
-(only the Zoho SPF record exists).
+meta tag, no verification TXT record (only the Zoho SPF record exists).
 
-**Why it is first, and why nothing else substitutes for it.** Right now nobody
-can answer whether Google has indexed a single one of the fourteen public URLs.
-The first-party analytics counts visits *after* they arrive; it cannot see an
-impression that never became a click, which is the entire question at this
-stage. Every content decision from here is a guess until this exists — and it
-is ten minutes.
+**Why nothing substitutes for it.** Nobody can currently say whether Google has
+indexed a single one of the fourteen public URLs, or what anyone searches to
+reach them. The first-party analytics counts visits *after* they arrive; it
+cannot see an impression that never became a click, and at this stage that is
+most of the information. Until this exists, every content decision is a guess.
 
-**Steps**
+**No claim is made anywhere in this repository about TRENIKO's index status or
+ranking.** There is no way to know, and stating one would be invention.
 
-1. Go to <https://search.google.com/search-console> and sign in with the Google
-   account that should own this long-term. Pick deliberately: moving the
-   property later is annoying.
-2. **Add property → Domain** (the left-hand box, not "URL prefix"). The domain
-   property covers `http`, `https`, `www` and every subdomain in one record,
-   which matters because `www.treniko.com` and `http://` both redirect here.
-3. Google shows a TXT record like `google-site-verification=<random-string>`.
-4. Add it at your DNS provider: type `TXT`, name `@` (or blank, or `treniko.com`
-   — the provider decides), value exactly the string Google gave.
-   ⚠️ **Do not remove or overwrite the existing SPF record**
-   (`v=spf1 include:zoho.eu ~all`). A domain can hold several TXT records; add,
-   do not replace. Deleting the SPF record breaks outbound email.
-5. Wait for propagation — usually minutes, occasionally an hour — then press
-   **Verify**.
-6. Once verified: **Sitemaps** in the left sidebar → submit `sitemap.xml` →
-   Submit. It should report 14 discovered URLs.
-7. **URL Inspection** on `https://treniko.com/` → *Request indexing*. Do the
-   same for `/free-personal-trainer-client-tracker` and
-   `/personal-trainer-software`. Three is enough; the sitemap handles the rest,
-   and hammering the button does not help.
+#### The five steps. There are no others.
 
-**Then tell me**, and the next session reads real queries and impressions and
-rewrites the content roadmap against them instead of against hypotheses.
+1. <https://search.google.com/search-console> → sign in with the Google account
+   that should own this long-term. Moving the property later is annoying, so
+   pick deliberately.
+
+2. **Add property → Domain** (the left box, not "URL prefix"). One record covers
+   `http`, `https`, `www` and every subdomain — which matters, because
+   `www.treniko.com` and `http://` both 301 to the apex.
+
+3. Add the TXT record Google shows you at your DNS provider: type `TXT`, name
+   `@` (or blank — the provider decides), value exactly the
+   `google-site-verification=…` string.
+
+   ⚠️ **Add, do not replace.** The existing `v=spf1 include:zoho.eu ~all` record
+   must stay. A domain holds several TXT records; overwriting the SPF one breaks
+   outbound email.
+
+   Then press **Verify** — usually minutes, occasionally an hour.
+
+4. **Sitemaps** → submit `sitemap.xml`. It should report **14** URLs.
+
+5. **URL Inspection** → *Request indexing* for exactly three:
+   `/`, `/free-personal-trainer-client-tracker`, `/personal-trainer-software`.
+   The sitemap handles the rest and pressing the button more does not help.
+
+#### What to check afterwards, and when
+
+**Do not look for anything in the first week.** A new property is empty and an
+empty report at day three means nothing.
+
+| When | Where | What a healthy answer looks like |
+|---|---|---|
+| ~3 days | Sitemaps | 14 discovered, status Success |
+| ~1 week | Pages | Some URLs in *Indexed*; the rest *Discovered* or *Crawled — currently not indexed*, which is normal for a new domain and not an error |
+| ~1 month | Performance | First impressions. Clicks probably still zero — impressions are the signal at this stage |
+| ~2–3 months | Performance → Queries | **This is the one that changes what gets written.** Real queries replace every hypothesis in `marketing/RESEARCH_2026.md` § 4 |
+
+**Then tell me**, and the next session reads the queries and rewrites the content
+roadmap against data instead of guesses.
 
 ---
 
-### U2 — nginx: security headers, and a real 404 · ~15 minutes · needs root
+### U2 — Set the Instagram bio link · **one tap**
 
-**Status:** `TODO` · **This one is technical and I could not do it.** Reading
-`/etc/nginx/sites-enabled/treniko` over SSH was refused by the sandbox's
-permission classifier, so I could neither inspect nor safely edit the config.
-Everything else on the server was deployed normally. Either run the steps below,
-or grant the Bash permission and I will do it next session.
+**Status:** `TODO`
 
-**What is wrong.** Measured against production on 25 Aug 2026:
+Fifty-four social pieces are written across cycles 1 and 2, fourteen are live in
+Instagram's scheduler, and not one of them points at anything on the website —
+they were all written before the site had anything to link to. The bio link is
+the only persistent path from a profile visit to treniko.com, and it is one tap.
 
-| Problem | Evidence | Consequence |
-|---|---|---|
-| No `Strict-Transport-Security` | `curl -I https://treniko.com/` returns no HSTS header | A first visit over `http://` can be intercepted before the redirect fires. This is a login-bearing app |
-| No `X-Content-Type-Options` | absent | Browsers may MIME-sniff a response into something executable |
-| No `Referrer-Policy` | absent | Full URLs leak to third parties in the `Referer` header |
-| No frame protection | no CSP `frame-ancestors`, no `X-Frame-Options` | The app can be framed |
-| No `Cache-Control` on content pages | `/guides` returns only `Last-Modified` | Cloudflare will not cache them, and browsers fall back to heuristics |
-| Extensionless unknown paths return 200 | `/nope` → 200, `/nope.html` → 404 | A soft 404. **Partly fixed already** — commit `06101ec` makes the SPA fallback `noindex, nofollow`, so this no longer creates indexable URLs. A real 404 is still the correct answer |
+Set it to:
 
-**The config.** Inside the `server { listen 443 ssl; ... }` block:
-
-```nginx
-    # Sent on every response. HSTS is the important one: this app takes
-    # passwords, and without it a first http:// visit is interceptable before
-    # the redirect runs. Start with a short max-age, raise it once you are
-    # confident nothing on the domain needs plain http.
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Content-Type-Options    "nosniff" always;
-    add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
-    add_header X-Frame-Options           "SAMEORIGIN" always;
-
-    # The static content pages change when they are regenerated, not on a
-    # timer. Revalidation keeps them correct without refetching the body.
-    location ~* ^/(guides|personal-trainer-software|personal-trainer-client-management-software|free-personal-trainer-client-tracker) {
-        add_header Cache-Control "public, max-age=0, must-revalidate" always;
-        try_files $uri $uri/index.html $uri/ =404;
-    }
+```
+https://treniko.com/free-personal-trainer-client-tracker?utm_source=instagram&utm_medium=social&utm_campaign=organic&utm_content=link-in-bio
 ```
 
-⚠️ **`add_header` does not inherit.** If any `location` block in the file
-already has its own `add_header`, it discards every one from the server block
-and they must be repeated inside it. That is nginx's actual behaviour and it is
-the usual reason "I added the header and it is not there".
+Then leave it there. A bio link that rotates per post builds no recognition, and
+this is the page that asks the visitor for nothing — no account, no email, no
+card — while still explaining honestly where a spreadsheet stops working.
 
-**Verify before and after, do not assume:**
+It is now measurable, which it was not last week: the download click writes its
+own row, so tracker views versus downloads is a real number rather than a guess.
 
-```bash
-nginx -t                       # must say "syntax is ok" — do not reload otherwise
-systemctl reload nginx         # reload, not restart: no dropped connections
-curl -sI https://treniko.com/ | grep -iE 'strict-transport|x-content-type|referrer'
-curl -sI https://treniko.com/guides | grep -i cache-control
-```
+Do the same on the Facebook Page button with `utm_source=facebook`. The existing
+Page CTA already carries `utm_content=page-cta` — leave that one alone.
 
-If anything looks wrong, `git`-less rollback is just removing the added lines
-and reloading again. Nothing here touches the application.
+The six empty "Story · Link" slots in cycle 2 have destinations chosen in
+`marketing/DISTRIBUTION_2026.md` § 6. No dates or copy change.
+
+---
+
+### U3 — Message the trainers you already know · **this week**
+
+**Status:** `TODO` · The single highest-probability route to user number one, and
+the only one I cannot do any part of.
+
+Everything built over the last two sessions — twelve pages, the tracker, the
+schema, the headers, the analytics — is a compounding asset that pays out over
+months. It is not what produces the first user. The first user is a conversation.
+
+Not a pitch. Something closer to:
+
+> I built the thing I kept complaining about — tracking who has how many sessions
+> left. Would you look at it and tell me where it is wrong?
+
+Three replies is a successful week. Ask them to break it; that is a real request
+and it gets answered more often than a launch announcement.
 
 ---
 
@@ -269,6 +276,14 @@ training. Send the tracker as a gift with no ask attached. It is free, it has no
 email wall, and it is genuinely useful — which is the only version of this that
 works. Do not ask for a post in the first message.
 
+### O5 — Croatian startup directories
+**Status:** `NOT VERIFIED` · StartupBlink and the EU-Startups directory both
+returned HTTP 403 to an automated fetch, so their terms could not be checked.
+**EU-Startups is believed to charge for directory listings** — verify the cost
+before submitting anything, and if it is paid, skip it.
+
+---
+
 ### O6 — Cloudflare blocks GPTBot. Decide whether you want that.
 **Status:** `TODO` — **a decision, not a task.**
 
@@ -303,18 +318,27 @@ curl -s -o /dev/null -w "%{http_code}
 "   -A "Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)"   https://treniko.com/
 ```
 
-### O5 — Croatian startup directories
-**Status:** `NOT VERIFIED` · StartupBlink and the EU-Startups directory both
-returned HTTP 403 to an automated fetch, so their terms could not be checked.
-**EU-Startups is believed to charge for directory listings** — verify the cost
-before submitting anything, and if it is paid, skip it.
-
----
-
 ## Done
 
-*Nothing yet.* This section stays empty until an item above is actually live and
-has been checked. It is not a plan tracker.
+Only things that are live and were checked.
+
+| | What | Verified |
+|---|---|---|
+| ✅ | **Security headers on every static response** — HSTS, nosniff, Referrer-Policy, X-Frame-Options, Permissions-Policy, and an enforcing CSP with `script-src 'self'` | `npm run check:headers` passes against production. CSP confirmed enforcing, not merely present: a cross-origin fetch is blocked while the same-origin API call completes |
+| ✅ | **`/privacy` and `/terms` no longer noindex** for non-rendering crawlers | Raw HTML now carries `index, follow`, a self-referential canonical and a real title |
+| ✅ | **Homepage `Cache-Control`** — it had none, and index.html names the hashed bundles | `no-cache, must-revalidate` on every HTML response |
+| ✅ | **Download tracking** on the free tracker | Verified end to end on production; the QA rows were deleted afterwards |
+| ✅ | **Referrer breakdown** in the admin panel — organic search was being counted as `(direct)` | Query verified against the production database |
+| ✅ | **pm2 log rotation** | `logrotate -d` recognises both files |
+
+**The nginx work that was in U2 is finished.** The config is now in
+`deploy/nginx/` so it is reviewable in a diff, with the two things that bite
+written down. Backups are in `/root/nginx-backups/`.
+
+**The password-reset error reported last session was not a live bug.** It was
+fixed on 16 Aug by migration 032 and is covered by a regression test that
+rebuilds the broken historical table. It looked current only because nothing
+rotated the pm2 logs — which is now fixed.
 
 ---
 
@@ -330,3 +354,8 @@ needed you, so they were done instead:
 - The soft-404 `noindex` fix
 - The per-page view breakdown in the admin acquisition dashboard
 - The research in `marketing/RESEARCH_2026.md`
+- The full technical audit in `marketing/SEO_AUDIT_2026-08.md`
+- Topic selection and architecture in `marketing/CONTENT_HUB_2026.md`
+- Directory, community, backlink, social and first-users tables in
+  `marketing/DISTRIBUTION_2026.md` — including paste-ready listing copy and two
+  finished community posts
