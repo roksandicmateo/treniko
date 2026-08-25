@@ -21,6 +21,14 @@
     });
   }
 
+  // Hours went through the same formatter as money for one reason: without it
+  // they printed with a JavaScript dot while every money figure beside them
+  // used the reader's locale separator, so a Croatian visitor saw "1.67 h"
+  // next to "24,00". Two decimal conventions in one table reads as a bug.
+  function hours2(v) {
+    return v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
   function calc() {
     var rate = num(el.rate);
     var minutes = num(el.length) + num(el.prep) + num(el.travel) + num(el.messaging) + num(el.admin);
@@ -37,7 +45,7 @@
 
     var rows = [
       ['Time you actually spend per session',
-       minutes + ' min' + (minutes !== 60 ? ' (' + (Math.round(hours * 100) / 100) + ' h)' : ''),
+       minutes + ' min' + (minutes !== 60 ? ' (' + hours2(Math.round(hours * 100) / 100) + ' h)' : ''),
        'The session plus everything around it.'],
       ['What that hour really pays', money(realHourly) + ' / hour',
        'Your headline rate divided by the time the session actually costs you.'],
