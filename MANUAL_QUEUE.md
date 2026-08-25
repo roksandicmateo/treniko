@@ -87,6 +87,46 @@ touchpoint before any DM.
 
 # THIS WEEK
 
+## W0 · Facebook Page → Page messaging · **new, and it needs no personal profile**
+
+The one channel found that routes around the Groups wall entirely: the TRENIKO
+**Page** can message another business **Page** directly. Your personal profile is
+not involved at any point.
+
+1. Page → **Settings → Privacy → Messages** → enable Page-to-Page messaging
+2. Find Croatian trainers who run a business Page, and small Varaždin/Zagreb
+   gyms. If a Page has no *Send message* button, messaging is off — move on
+3. Send **five a day, maximum**, personalising the first line every time
+
+Message text: `marketing/NEW_CHANNELS_2026-08.md` § 1.
+
+⚠️ Five a day, personalised. Identical repeated Page messages are treated as
+spam by Meta, and that is a Page restriction you cannot appeal quickly.
+
+---
+
+## W0b · Email 10 gyms in Varaždin and Zagreb · ~45 minutes
+
+Published business addresses, personalised, one question at the centre: *do your
+trainers book their own clients and handle their own payments?* Even a "no,
+reception does it" is a useful answer.
+
+Text: `NEW_CHANNELS_2026-08.md` § 2. Small independent gyms only — not chains.
+
+---
+
+## W0c · Pitch Netokracija · ~15 minutes
+
+`info@netokracija.com`. Editorial coverage is free; advertising is the paid
+product. **Pitch the story, never buy the placement.**
+
+The angle is not a launch announcement — it is why the free tools came before
+the product. Text: `NEW_CHANNELS_2026-08.md` § 3.
+
+---
+
+
+
 ## W1 · Email 3 trainer education providers · ~30 minutes
 
 HFS Academy · Fitnes učilište · Flexyfit Academy. Their students are newly
