@@ -272,6 +272,53 @@ parenthetical disclosure removed *and* the link removed, post it. If not, don't.
 
 ---
 
+## 5a. Second pass — subreddits checked 25 Aug, later the same day
+
+Four more, and one correction to an assumption worth recording.
+
+| Subreddit | Members | Promo allowed? | Rule, as written | Verdict |
+|---|---:|---|---|---|
+| **r/hrvatska** | 96,642 | ✅ **No self-promo rule at all** | Six rules total: Reddit's own rules, no antivax, no cross-sub sniping, **all posts must be in Croatian (Latin script)**, no student surveys, no money-begging | **Second-best Croatian option.** Smaller than r/Croatia but far fewer restrictions. Post in Croatian |
+| **r/SideProject** | 818,286 | ✅ Yes | **Zero rules listed.** Describes itself as "for sharing and receiving constructive feedback on side projects" | Open. Founders, not trainers — good for feedback and a first link |
+| **r/indiehackers** | 189,172 | ✅ Once | *"Users can self promote their product 1 time using the Self Promotion flair. The purpose is for feedback and critique not advertisement"* | One post, flaired, framed as a request for critique |
+| **r/startups** | 2,117,654 | ⚠️ Weekly thread | Feedback requests, surveys and polls belong in the **weekly Feedback Thread**. No direct promo posts. Blog links need prior mod approval | The weekly thread, nothing else |
+| **r/Zagreb** | 26,098 | ⚠️ Mods only | *"Ankete, oglasi i promocija nisu dozvoljeni. Razumne iznimke je potrebno dogovoriti s moderatorima."* | Closed by default — but modmail is an explicitly named path. Worth one polite ask |
+| **r/smallbusinessowners** | 21,731 | ⚠️ Comments only | *"B2B vendors may comment if it is relevant to the post and adds value"* | Comments in relevant threads |
+| **r/GrowthHacking** | 154,856 | ❌ Effectively | Needs **100 community karma** *and* mod permission for SaaS promotion | Not worth the runway |
+
+### The correction
+
+**r/personaltrainer** (4,586 — singular, not the 94k r/personaltraining) looked
+like a breakthrough: its promo rule carves out an exception for *"a valuable,
+free online fitness resource"*, which is exactly what the free tracker is.
+
+It is not a breakthrough, and the reason is Rule 1:
+
+> This subreddit is not for discussions about how to become a personal trainer,
+> certification programs, or training courses for fitness professionals. **Our
+> focus is on resources for individuals seeking online training**, not for those
+> looking to enter the profession.
+
+**It is a subreddit for people looking to hire a trainer, not for trainers
+running a business.** The free-resource exception means a free *fitness*
+resource for consumers. TRENIKO's tracker is a business tool for trainers, and
+posting it there would be off-topic even though it would technically clear the
+promotion rule.
+
+Recorded because the mistake was tempting: a rule that permits what you want to
+do is not the same as an audience that wants it.
+
+### Updated ranking
+
+1. **r/Croatia** (438k) — daily thread first, weekend post later
+2. **r/hrvatska** (96k) — Croatian-language, fewest restrictions
+3. **r/SideProject** (818k) — the RLS write-up, no rules to trip over
+4. **r/indiehackers** (189k) — one flaired post
+5. **r/SaaS** (789k) — one disclosed mention per 60 days
+6. r/startups weekly thread · r/smallbusinessowners comments · r/Zagreb via modmail
+
+---
+
 ## 6. Honest expectation
 
 Reddit will probably not produce a trainer.

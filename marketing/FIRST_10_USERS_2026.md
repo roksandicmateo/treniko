@@ -41,6 +41,20 @@ migration 036, correctly.
 
 ---
 
+## Where the rest of this lives
+
+This file holds the ICP, the objections, the activation definition and the
+feedback questions — the *thinking*. Three companions hold the *doing*:
+
+- `FIRST_10_USERS_EXECUTION_2026.md` — outreach scripts, the pipeline, the
+  Instagram bio, the 7- and 30-day plans, stop conditions
+- **`ACQUISITION_BACKLOG_2026.md` — the ranked top 10, and what not to do.**
+  Start there if you only read one
+- `CROATIA_ACQUISITION_2026.md`, `REDDIT_DISTRIBUTION_2026.md`,
+  `INSTAGRAM_ORGANIC_2026.md`, `FACEBOOK_ORGANIC_2026.md` — per-channel research
+
+---
+
 ## Who the first ten are
 
 **Not "personal trainers".** That is a market, not a person you can find on a
