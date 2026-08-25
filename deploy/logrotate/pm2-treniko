@@ -1,0 +1,25 @@
+# pm2 writes treniko-api-{out,error}.log and never rotates them itself.
+# Install to /etc/logrotate.d/pm2-treniko.
+#
+# This is not a disk-space measure — the files are a few hundred kilobytes. It
+# is a diagnostic one. On 25 Aug 2026 an error from 16 Aug was still sitting in
+# the middle of the error log, was read as current, and sent someone
+# investigating a bug that migration 032 had fixed nine days earlier. A log with
+# no time boundary invites exactly that mistake, and the older it gets the more
+# confidently it misleads.
+#
+# copytruncate rather than a postrotate `pm2 reloadLogs`: pm2 holds the file
+# handle open, so a plain rename would leave it writing to a deleted inode, and
+# copytruncate does not depend on pm2 being on the PATH logrotate runs with.
+# The cost is that a line written during the copy can be lost, which is an
+# acceptable trade for diagnostic logs and not for anything else.
+/root/.pm2/logs/*.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su root root
+}
