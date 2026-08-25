@@ -53,6 +53,13 @@ import Landing from './pages/Landing';
 import { AuthProvider } from './context/AuthContext';
 
 /**
+ * Re-exported so the build step can write each public SPA route's <head> from
+ * the same table RouteMeta applies at runtime. Two hand-maintained copies of a
+ * canonical URL is how they end up disagreeing.
+ */
+export { PUBLIC_ROUTES, SITE_ORIGIN } from './seo/RouteMeta';
+
+/**
  * @returns {string} the markup for the inside of `<div id="root">`
  */
 export function render() {

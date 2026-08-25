@@ -49,7 +49,8 @@ export const PUBLIC_ROUTES = {
   },
   '/terms': {
     title: 'Terms of Service — TRENIKO',
-    description: 'The terms that apply to using TRENIKO.',
+    description:
+      'The terms that apply to using TRENIKO: what the service does, what you are responsible for as the trainer, and how either side can end the agreement.',
   },
 };
 
