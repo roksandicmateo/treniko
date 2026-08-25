@@ -128,7 +128,12 @@ strong { color: var(--ink); font-weight: 650; }
 main { padding: 44px 0 8px; }
 
 /* ── Breadcrumbs ──────────────────────────────────────────────────────────── */
-.crumbs { font-size: 14px; color: var(--muted); padding: 18px 0 0; }
+/* The horizontal padding is repeated from .wrap on purpose. This element
+   carries both classes, and a `padding` shorthand here overrides the whole
+   shorthand there — including the 20px sides — which left the breadcrumb
+   flush against the screen edge on mobile while the text beneath it was
+   correctly inset. Any change to .wrap's padding has to be made here too. */
+.crumbs { font-size: 14px; color: var(--muted); padding: 18px 20px 0; }
 .crumbs a { color: var(--muted); text-decoration: none; }
 .crumbs a:hover { text-decoration: underline; }
 
