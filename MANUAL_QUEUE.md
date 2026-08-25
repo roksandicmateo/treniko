@@ -269,6 +269,40 @@ training. Send the tracker as a gift with no ask attached. It is free, it has no
 email wall, and it is genuinely useful — which is the only version of this that
 works. Do not ask for a post in the first message.
 
+### O6 — Cloudflare blocks GPTBot. Decide whether you want that.
+**Status:** `TODO` — **a decision, not a task.**
+
+Measured 25 Aug 2026, by sending each crawler's user agent at a live page:
+
+| Crawler | Response |
+|---|---|
+| Googlebot | **200** ✅ |
+| bingbot | **200** ✅ |
+| DuckDuckBot | **200** ✅ |
+| facebookexternalhit (link previews) | **200** ✅ |
+| Twitterbot | **200** ✅ |
+| **GPTBot** (OpenAI) | **403** ❌ |
+
+Every crawler that matters for search and for link previews gets through, and
+Googlebot receives the full text — 1,334 words on a new guide, 1,731 on the
+prerendered homepage, correct canonical and title on both. Nothing is broken.
+
+GPTBot is blocked by a Cloudflare default, not by anything in this repository.
+That default exists to stop AI training scrapes, and it also means TRENIKO
+cannot be cited when someone asks ChatGPT what software a personal trainer
+should use. For a site whose entire strategy is being findable, that is a real
+cost — and it is genuinely your call, not mine, because the other side of it is
+your content being used as training data.
+
+If you want it allowed: Cloudflare dashboard → the treniko.com zone → **Security
+→ Bots** → turn off the AI-crawler block (the control is variously labelled
+*Block AI Scrapers and Crawlers* or *AI Labyrinth*). Re-test afterwards with:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}
+"   -A "Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)"   https://treniko.com/
+```
+
 ### O5 — Croatian startup directories
 **Status:** `NOT VERIFIED` · StartupBlink and the EU-Startups directory both
 returned HTTP 403 to an automated fetch, so their terms could not be checked.
