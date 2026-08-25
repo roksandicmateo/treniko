@@ -70,12 +70,42 @@ if (!shell.includes(ROOT_DIV)) {
 //
 // Deliberately scoped to app.html. index.html keeps its canonical, because for
 // the homepage it is true.
+//
+// The robots tag goes the same way, for a bigger reason.
+//
+// nginx serves app.html for *every* path it cannot find on disk. That is the
+// correct behaviour for `/dashboard` and it is also what happens for
+// `/GUIDES`, `/guides/typo`, and every URL a broken link or a scraper ever
+// invents. All of them returned 200 with `index, follow` in the head — an
+// unbounded space of indexable URLs all serving the same empty shell, which is
+// the textbook soft-404 pattern and the one that gets a young domain's crawl
+// budget spent on nothing.
+//
+// So app.html is `noindex, nofollow` by default, and RouteMeta upgrades the
+// two public SPA routes — /privacy and /terms — back to `index, follow` when
+// they actually render. That inverts the trust: a path has to be recognised to
+// be indexable, rather than merely existing.
+//
+// The cost is that a crawler which does not execute JavaScript now sees
+// /privacy and /terms as noindex. They are legal pages; that is a trade worth
+// making to close an unbounded URL space. `/` is unaffected — it is served
+// from index.html, which keeps its own head.
 const appShell = shell
   .replace(/\s*<link rel="canonical"[^>]*>/, '')
-  .replace(/\s*<meta property="og:url"[^>]*>/, '');
+  .replace(/\s*<meta property="og:url"[^>]*>/, '')
+  .replace(
+    /<meta name="robots" content="[^"]*"\s*\/?>/,
+    '<meta name="robots" content="noindex, nofollow" />'
+  );
 
 if (appShell.includes('rel="canonical"') || appShell.includes('og:url')) {
   fail('app.html still carries a canonical or og:url — the head template changed shape');
+}
+if (!appShell.includes('content="noindex, nofollow"')) {
+  fail('app.html is not noindex — the robots meta in index.html changed shape');
+}
+if (!shell.includes('content="index, follow"')) {
+  fail('index.html is no longer index,follow — the homepage would not be indexed');
 }
 
 writeFileSync(join(DIST, 'app.html'), appShell, 'utf8');
