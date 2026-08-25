@@ -841,6 +841,14 @@ export default function Landing() {
                 ['Do I need a credit card?', 'No. There is no payment processor in the product at all, so you are never asked for card details.'],
                 ['Can I use it on my phone?', 'Yes. TRENIKO is a responsive web app, so it runs in the browser on a phone, tablet or laptop with nothing to install.'],
                 ['Does it support multiple languages?', 'The interface is available in English, Croatian and German. This website is in English only.'],
+                // The two questions a trainer entering client data actually
+                // worries about, and TRENIKO can answer both concretely because
+                // both features exist and work today (routes/export.js and
+                // routes/deletion.js). Most competitors cannot answer this as
+                // directly, which makes it worth saying plainly rather than
+                // burying it in the privacy policy.
+                ['Can I get my data out, or delete it?', 'Yes, both, and you can do either without asking us. Export downloads everything you have entered — clients, sessions, packages, payments and progress. Account deletion removes your account and the client records that belong to it. Neither is a support request and neither costs anything.'],
+                ['Who is behind TRENIKO?', 'TRENIKO is built and run independently, in Croatia. It is early — there are no customer numbers or reviews anywhere on this site, because there are none worth quoting yet. If you have a question, info@treniko.com reaches a person who will answer it.'],
               ].map(([q, a]) => (
                 <details key={q} className="group rounded-2xl border border-gray-200 bg-white p-5 transition-colors open:bg-gray-50/70">
                   <summary className="cursor-pointer list-none text-sm font-bold text-gray-900 marker:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
