@@ -43,9 +43,11 @@ ranking.** There is no way to know, and stating one would be invention.
    `http`, `https`, `www` and every subdomain — which matters, because
    `www.treniko.com` and `http://` both 301 to the apex.
 
-3. Add the TXT record Google shows you at your DNS provider: type `TXT`, name
-   `@` (or blank — the provider decides), value exactly the
-   `google-site-verification=…` string.
+3. Add the TXT record Google shows you. **Your DNS is Cloudflare** —
+   nameservers are `perla.ns.cloudflare.com` and `rustam.ns.cloudflare.com` —
+   so: Cloudflare dashboard → `treniko.com` → **DNS → Records → Add record** →
+   type `TXT`, name `@`, content exactly the `google-site-verification=…`
+   string.
 
    ⚠️ **Add, do not replace.** The existing `v=spf1 include:zoho.eu ~all` record
    must stay. A domain holds several TXT records; overwriting the SPF one breaks
@@ -284,39 +286,73 @@ before submitting anything, and if it is paid, skip it.
 
 ---
 
-### O6 — Cloudflare blocks GPTBot. Decide whether you want that.
-**Status:** `TODO` — **a decision, not a task.**
+### O6 — Cloudflare is blocking more than GPTBot · ~5 minutes
 
-Measured 25 Aug 2026, by sending each crawler's user agent at a live page:
+**Status:** `TODO` — **a decision, and the framing in the last report was too
+narrow.**
 
-| Crawler | Response |
-|---|---|
-| Googlebot | **200** ✅ |
-| bingbot | **200** ✅ |
-| DuckDuckBot | **200** ✅ |
-| facebookexternalhit (link previews) | **200** ✅ |
-| Twitterbot | **200** ✅ |
-| **GPTBot** (OpenAI) | **403** ❌ |
+Measured today by sending each crawler's user agent at a live page, and
+confirmed against the origin directly: **every Google and Bing crawler passes
+(200), and the block is Cloudflare's edge, not ours** — the origin serves all of
+these 200, and `robots.txt` says nothing about any of them.
 
-Every crawler that matters for search and for link previews gets through, and
-Googlebot receives the full text — 1,334 words on a new guide, 1,731 on the
-prerendered homepage, correct canonical and title on both. Nothing is broken.
+| Crawler | Edge | Governs |
+|---|---|---|
+| Googlebot · Google-Extended · GoogleOther · bingbot | **200** ✅ | Search. **Unaffected** |
+| GPTBot · ClaudeBot | 403 | ChatGPT / Claude **training** |
+| PerplexityBot | 403 | Perplexity answers |
+| **OAI-SearchBot** | **403** | **ChatGPT Search results** |
+| **ChatGPT-User · Claude-User** | **403** | **A person asking the assistant to open a link** |
 
-GPTBot is blocked by a Cloudflare default, not by anything in this repository.
-That default exists to stop AI training scrapes, and it also means TRENIKO
-cannot be cited when someone asks ChatGPT what software a personal trainer
-should use. For a site whose entire strategy is being findable, that is a real
-cost — and it is genuinely your call, not mine, because the other side of it is
-your content being used as training data.
+The last three rows are the ones that matter and were previously lumped in with
+GPTBot. `ChatGPT-User` fires when a real prospective trainer pastes treniko.com
+into ChatGPT and asks whether it is any good — and gets *"I can't access that
+site."* There is no upside to that. `OAI-SearchBot` decides whether TRENIKO can
+be cited when someone asks an assistant what software a trainer should use,
+which is the exact question the twelve content pages answer.
 
-If you want it allowed: Cloudflare dashboard → the treniko.com zone → **Security
-→ Bots** → turn off the AI-crawler block (the control is variously labelled
-*Block AI Scrapers and Crawlers* or *AI Labyrinth*). Re-test afterwards with:
+**Recommendation: allow `ChatGPT-User`, `Claude-User`, `OAI-SearchBot` and
+`PerplexityBot`. Keep or drop `GPTBot` and `ClaudeBot` as you prefer** — those
+are pure training, nothing about discovery depends on them, and wanting your
+guides kept out of a model is a coherent position that costs you nothing in
+Google.
+
+Cloudflare → `treniko.com` → **Security → Bots** → turn off the blanket
+AI-crawler block, then block `GPTBot` and `ClaudeBot` specifically if you want
+to. Full reasoning in `marketing/DECISIONS_2026-08.md` § 1.
+
+Re-test afterwards rather than assuming:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}
-"   -A "Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)"   https://treniko.com/
+for ua in GPTBot OAI-SearchBot ChatGPT-User PerplexityBot Googlebot; do
+  printf "%-16s " "$ua"
+  curl -s -o /dev/null -w "%{http_code}
+"     -A "Mozilla/5.0 (compatible; $ua/1.0)" https://treniko.com/
+done
 ```
+
+---
+
+### O7 — Product screenshots for directory listings · ~30 minutes
+
+**Status:** `TODO` · The one asset the directory submissions need that I cannot
+produce.
+
+Capterra, GetApp, Software Advice, SaaSHub and AlternativeTo all ask for 3–5
+screenshots at roughly 1280×800. `og-image.png` exists but it is a share card,
+not a product screenshot.
+
+Take them from an account you own, with data you are happy to publish: the
+client list, one client record, the calendar, a package showing its countdown,
+and the payments view.
+
+⚠️ **Do not use invented client names that could belong to a real person**, and
+do not screenshot anything from a real trainer's account.
+
+Everything else those forms ask for is written and paste-ready in
+`marketing/DISTRIBUTION_EXECUTION_2026.md` § 5.
+
+---
 
 ## Done
 
@@ -359,3 +395,10 @@ needed you, so they were done instead:
 - Directory, community, backlink, social and first-users tables in
   `marketing/DISTRIBUTION_2026.md` — including paste-ready listing copy and two
   finished community posts
+- The execution list with verified free/paid columns in
+  `marketing/DISTRIBUTION_EXECUTION_2026.md`
+- The first-ten-users plan in `marketing/FIRST_10_USERS_2026.md`
+- Crawler, competitor and do-not-build decisions in
+  `marketing/DECISIONS_2026-08.md`
+- `marketing/SEARCH_CONSOLE_GROWTH_2026.md` — deliberately empty until U1 is
+  done, because inventing findings from no data is worse than having none
