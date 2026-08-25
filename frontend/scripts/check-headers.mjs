@@ -157,6 +157,91 @@ for (const path of ['/', '/guides', '/login']) {
     fail('www', `redirects to ${res.headers.get('location')}, expected the apex`);
 }
 
+/* ── The robots.txt that is actually SERVED ────────────────────────────────── */
+
+/**
+ * Not the one in the repository — the one a crawler receives.
+ *
+ * These are different documents. Cloudflare prepends a "Managed Content" block
+ * to robots.txt at the edge: a `Content-Signal` line, `User-agent: *` with
+ * `Allow: /`, and a list of AI training crawlers it disallows. None of that is
+ * in this repository and none of it appears in `check-seo.mjs`, which reads
+ * `public/robots.txt` off disk and therefore validates a file nobody is served.
+ *
+ * The consequence worth catching: the served file now contains TWO
+ * `User-agent: *` groups. RFC 9309 says records for the same user-agent are
+ * merged and the longest matching rule wins, so `Disallow: /dashboard` still
+ * beats Cloudflare's `Allow: /`. That is the correct reading, and it is exactly
+ * the kind of correctness that should be asserted rather than reasoned about
+ * once and forgotten — if a future edge feature injected a bare `Disallow: /`,
+ * the site would leave the index and nothing else here would notice.
+ */
+{
+  const res = await fetch(`${ORIGIN}/robots.txt?hdrcheck=${Date.now()}`);
+  const robots = await res.text();
+
+  if (res.status !== 200) fail('/robots.txt', `returned ${res.status}`);
+
+  // Split into groups, keeping the agent each one belongs to.
+  const groups = [];
+  let current = null;
+  for (const rawLine of robots.split(/\r?\n/)) {
+    const line = rawLine.replace(/#.*$/, '').trim();
+    if (!line) continue;
+    const [rawKey, ...rest] = line.split(':');
+    const key = rawKey.trim().toLowerCase();
+    const value = rest.join(':').trim();
+    if (key === 'user-agent') {
+      current = { agent: value, rules: [] };
+      groups.push(current);
+    } else if (current && (key === 'allow' || key === 'disallow')) {
+      current.rules.push({ type: key, path: value });
+    }
+  }
+
+  const wildcard = groups.filter((g) => g.agent === '*');
+  if (wildcard.length === 0) fail('/robots.txt', 'no `User-agent: *` group is served');
+
+  // Merged view, per RFC 9309.
+  const wildcardRules = wildcard.flatMap((g) => g.rules);
+
+  // The one that would take the whole site out of the index.
+  if (wildcardRules.some((r) => r.type === 'disallow' && r.path === '/'))
+    fail('/robots.txt', 'a `User-agent: *` group disallows the entire site');
+
+  // Private routes must still lose to nothing. Longest match wins, so an
+  // explicit Disallow beats a shorter Allow — assert the rule is present.
+  for (const path of ['/dashboard', '/admin', '/api/']) {
+    const disallowed = wildcardRules.some((r) => r.type === 'disallow' && path.startsWith(r.path) && r.path !== '/');
+    if (!disallowed) fail('/robots.txt', `${path} is not disallowed for *`);
+    const longerAllow = wildcardRules.some(
+      (r) => r.type === 'allow' && r.path.length > path.length && path.startsWith(r.path)
+    );
+    if (longerAllow) fail('/robots.txt', `an Allow rule out-specifies the disallow on ${path}`);
+  }
+
+  if (!/^Sitemap:\s*https:\/\/treniko\.com\/sitemap\.xml$/m.test(robots))
+    fail('/robots.txt', 'the sitemap line is missing from the served file');
+
+  // The agents that fetch because a person asked must NOT be disallowed. These
+  // are not training crawlers: blocking them means a trainer who asks an
+  // assistant to open treniko.com is told it cannot be reached.
+  for (const agent of ['ChatGPT-User', 'Claude-User', 'OAI-SearchBot']) {
+    const g = groups.find((x) => x.agent.toLowerCase() === agent.toLowerCase());
+    if (g && g.rules.some((r) => r.type === 'disallow' && r.path === '/'))
+      fail('/robots.txt', `${agent} is disallowed — that blocks user-initiated retrieval, not training`);
+  }
+
+  // Informational: say when the edge is rewriting the file, so a surprising
+  // diff between repo and production is explained rather than investigated.
+  if (/Cloudflare Managed content/i.test(robots)) {
+    notes.push(
+      'robots.txt is being extended at the edge by Cloudflare Managed Content '
+      + '(Content-Signal + AI training crawler blocks). The served file is not the repo file.'
+    );
+  }
+}
+
 /* ── Report ────────────────────────────────────────────────────────────────── */
 
 if (notes.length) for (const n of notes) console.log(`   · ${n}`);
