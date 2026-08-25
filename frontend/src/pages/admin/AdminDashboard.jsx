@@ -35,6 +35,18 @@ const AdminDashboard = () => {
    */
   const rate = (numerator, denominator) =>
     denominator >= minForRate ? `${Math.round((numerator / denominator) * 100)}%` : null;
+
+  /**
+   * Is any single source big enough to be compared against another?
+   *
+   * Withholding each individual percentage is not sufficient protection. A
+   * table of raw counts still invites the comparison — two visitors from
+   * Instagram, one of whom registers, sits next to forty from Google and reads
+   * as "Instagram converts better". It does not; it is one person. Until at
+   * least one source clears the threshold, the panel says so in a sentence
+   * rather than leaving the reader to work it out from missing percentages.
+   */
+  const comparableSource = funnel.some((r) => r.visits >= minForRate);
   const measuringSince = o?.acquisition?.views?.measuring_since ?? null;
 
   // The subscriptions endpoint returns one row per (plan, status) pair, so the
@@ -179,6 +191,18 @@ const AdminDashboard = () => {
                     “first client” by one.
                   </p>
                 </div>
+
+                {!comparableSource && (
+                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-amber-50/70 dark:bg-amber-900/15">
+                    <p className="text-sm text-amber-900 dark:text-amber-200">
+                      <span className="font-semibold">Not enough data yet to compare sources.</span>{' '}
+                      No source has reached {minForRate} visits, so the counts below say what
+                      happened but not which channel is working. One registration out of two visits
+                      is not a better channel than ten out of four hundred — it is one person.
+                      Read this table as a log until a source clears the threshold.
+                    </p>
+                  </div>
+                )}
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">

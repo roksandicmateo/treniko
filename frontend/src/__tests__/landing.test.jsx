@@ -322,8 +322,27 @@ describe('static SEO files', () => {
       expect(robots).toContain(`Disallow: ${path}`);
     }
     expect(robots).toContain('Sitemap: https://treniko.com/sitemap.xml');
+
     // A blanket disallow would take the landing page out of the index too.
-    expect(robots).not.toMatch(/^Disallow: \/$/m);
+    //
+    // Checked inside the `User-agent: *` group specifically, not across the
+    // whole file. `Disallow: /` is correct and intended in the AI-training
+    // crawler groups at the bottom — GPTBot, ClaudeBot, Google-Extended and
+    // friends — and a file-wide assertion would forbid the one place it
+    // belongs while still missing nothing it catches. Google-Extended in
+    // particular governs Gemini training only and has no effect on Googlebot.
+    const wildcardGroup = robots
+      .split(/^User-agent:/m)
+      .find((group) => group.trimStart().startsWith('*'));
+    expect(wildcardGroup).toBeDefined();
+    expect(wildcardGroup).not.toMatch(/^Disallow: \/$/m);
+
+    // And the agents that fetch because a person asked must NOT have a group of
+    // their own: a group containing only `Allow: /` would override the
+    // wildcard rules and hand them /dashboard and /api as well.
+    for (const agent of ['ChatGPT-User', 'Claude-User', 'OAI-SearchBot']) {
+      expect(robots).not.toMatch(new RegExp(`^User-agent:\s*${agent}\s*$`, 'm'));
+    }
   });
 
   test('every sitemap URL is genuinely indexable', () => {
