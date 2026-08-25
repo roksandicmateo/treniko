@@ -17,6 +17,7 @@ Allow: /terms
 # scripts/generate-content-pages.mjs and served straight off disk, so their text
 # is in the response body rather than behind a JavaScript render.
 Allow: /personal-trainer-software
+Allow: /personal-trainer-client-management-software
 Allow: /guides
 Allow: /free-personal-trainer-client-tracker
 Allow: /downloads/

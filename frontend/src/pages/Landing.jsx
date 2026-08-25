@@ -888,6 +888,70 @@ export default function Landing() {
             </div>
           </Reveal>
         </Section>
+
+        {/* ── Guides and free resources ──────────────────────────────────────
+            Deliberately below the final CTA, not above it: this is for the
+            visitor who has just decided not to sign up today. They came from a
+            search, they have a real problem, and a link to something useful is
+            worth more than a second attempt at the same button.
+
+            It is also the homepage's only editorial link into the content
+            cluster. Everything else pointing there lives in the footer, and a
+            footer link is worth close to nothing — to a reader because nobody
+            reads it, and to a crawler because it appears identically on every
+            page. Plain anchors, not router Links: these are static HTML pages
+            served off disk, so a client-side navigation would ask the router
+            for a route that does not exist. */}
+        <Section className="pb-20" labelledBy="learn-heading">
+          <Reveal>
+            <h2 id="learn-heading" className="text-xs font-bold uppercase tracking-widest text-gray-400">
+              Free to read, nothing to sign up for
+            </h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                [
+                  '/free-personal-trainer-client-tracker',
+                  'Free client & session tracker',
+                  'An Excel and Google Sheets template where the remaining-session count works itself out.',
+                ],
+                [
+                  '/guides/session-packages',
+                  'How to track packages and sessions left',
+                  'Why the count drifts, and the one rule that keeps it honest.',
+                ],
+                [
+                  '/guides/cancellation-policy',
+                  'Writing a cancellation policy that holds',
+                  'The four things it has to decide, and where the 24-hour rule breaks.',
+                ],
+                [
+                  '/guides/pricing-personal-training-packages',
+                  'Pricing personal training packages',
+                  'The unpaid hours to count first, and what a discount actually buys.',
+                ],
+                [
+                  '/guides/software-vs-spreadsheets',
+                  'Personal trainer software vs spreadsheets',
+                  'An honest comparison, including where the spreadsheet still wins.',
+                ],
+                [
+                  '/guides',
+                  'All guides',
+                  'The business side of personal training — clients, sessions, money, admin.',
+                ],
+              ].map(([href, title, blurb]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="rounded-2xl border border-gray-200 bg-white p-5 transition-colors hover:border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                >
+                  <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-600">{blurb}</p>
+                </a>
+              ))}
+            </div>
+          </Reveal>
+        </Section>
       </main>
 
       {/* ── Footer ── */}
@@ -943,6 +1007,14 @@ export default function Landing() {
               <li>
                 <a href="/personal-trainer-software" className="text-gray-600 hover:text-gray-900">
                   Personal trainer software
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/personal-trainer-client-management-software"
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  Client management software
                 </a>
               </li>
               <li>

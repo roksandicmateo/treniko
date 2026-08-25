@@ -8,10 +8,12 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr src/entry-prerender.jsx --outDir dist-ssr && node scripts/prerender.mjs",
+    "build": "node scripts/check-seo.mjs && vite build && vite build --ssr src/entry-prerender.jsx --outDir dist-ssr && node scripts/prerender.mjs",
     "build:client": "vite build",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "content": "node scripts/generate-content-pages.mjs && node scripts/generate-tracker.mjs && node scripts/check-seo.mjs",
+    "check:seo": "node scripts/check-seo.mjs"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.10",

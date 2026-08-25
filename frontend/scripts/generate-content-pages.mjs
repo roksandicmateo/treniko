@@ -58,6 +58,7 @@ const header = () => `  <header class="site">
       <nav>
         <a href="/personal-trainer-software">Software</a>
         <a href="/guides">Guides</a>
+        <a href="/free-personal-trainer-client-tracker">Free tracker</a>
         <a href="/">Product</a>
       </nav>
     </div>
@@ -68,7 +69,9 @@ const footer = () => `  <footer class="site">
       <div class="links">
         <a href="/">TRENIKO</a>
         <a href="/personal-trainer-software">Personal trainer software</a>
+        <a href="/personal-trainer-client-management-software">Client management software</a>
         <a href="/guides">Guides</a>
+        <a href="/free-personal-trainer-client-tracker">Free tracker</a>
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
       </div>
@@ -230,7 +233,7 @@ const PAGES = [];
 {
   const path = '/personal-trainer-software';
   const crumbs = [{ name: 'TRENIKO', path: '/' }, { name: 'Personal trainer software', path }];
-  const title = 'Personal Trainer Software: What It Does and What to Look For | TRENIKO';
+  const title = 'Personal Trainer Software: What to Look For | TRENIKO';
   const description =
     'What personal trainer software actually does, the six things worth checking before you pick one, and when a spreadsheet is still the right answer.';
 
@@ -292,8 +295,8 @@ const PAGES = [];
       <li><strong>Do payments sit next to the sessions they paid for?</strong> Separated, you are
         back to reconciling two lists.</li>
       <li><strong>Can you record what actually happened?</strong> Completed, cancelled and no-show
-        are different facts, and a system that only stores what was booked will always disagree
-        with reality.</li>
+        are <a href="/guides/no-show-clients">different facts with different consequences</a>, and a
+        system that only stores what was booked will always disagree with reality.</li>
       <li><strong>How long until your first client is in it?</strong> If it needs configuring
         before it does anything, you will not finish.</li>
       <li><strong>Can you get your data out?</strong> Export and account deletion are the questions
@@ -334,6 +337,11 @@ ${cta('Start with the clients you already have. Adding one and booking a session
         <h3>Tracking packages and remaining sessions</h3>
         <p>Why the count goes wrong, and the rule that keeps it right.</p>
       </a>
+      <a class="card" href="/personal-trainer-client-management-software">
+        <h3>Client management software for trainers</h3>
+        <p>The five questions it has to answer instantly, and why gym systems fail solo
+          trainers.</p>
+      </a>
     </div>`,
   });
 }
@@ -344,7 +352,7 @@ ${cta('Start with the clients you already have. Adding one and booking a session
   const crumbs = [{ name: 'TRENIKO', path: '/' }, { name: 'Guides', path }];
   const title = 'Guides for Personal Trainers Running Their Own Business | TRENIKO';
   const description =
-    'Practical guides on managing personal training clients, tracking session packages, and deciding when a spreadsheet stops being enough.';
+    'Practical guides on the business side of personal training: clients, session packages, pricing, cancellations, no-shows and onboarding. No sign-up to read.';
 
   PAGES.push({
     path,
@@ -369,19 +377,49 @@ ${cta('Start with the clients you already have. Adding one and booking a session
     body: `    <p class="eyebrow">Guides</p>
     <h1>Guides for trainers who also run the business</h1>
     <p class="lede">Short, practical write-ups on the operational side of personal training — the
-      part nobody certifies you in. No sign-up required to read any of them.</p>
+      part nobody certifies you in. Nothing here requires a sign-up, and several of them conclude
+      that you do not need software.</p>
 
+    <h2>Running the day to day</h2>
     <div class="cards">
       <a class="card" href="/guides/client-management">
         <h3>How to manage personal training clients</h3>
         <p>What to record per client, what to leave out, and the review habit that makes a
           check-in start from the record instead of from memory.</p>
       </a>
+      <a class="card" href="/guides/new-client-first-week">
+        <h3>A new client’s first week</h3>
+        <p>What to collect before session one, the baseline you cannot go back for, and what to
+          deliberately not ask.</p>
+      </a>
+    </div>
+
+    <h2>Sessions, packages and money</h2>
+    <div class="cards">
       <a class="card" href="/guides/session-packages">
-        <h3>Tracking training packages and remaining sessions</h3>
+        <h3>Tracking packages and remaining sessions</h3>
         <p>Why the session count drifts, what a package actually needs to store, and the rule that
           keeps it honest.</p>
       </a>
+      <a class="card" href="/guides/pricing-personal-training-packages">
+        <h3>Pricing personal training packages</h3>
+        <p>The unpaid hours to count first, what a discount actually buys, and how to set an
+          expiry that is not a trap.</p>
+      </a>
+      <a class="card" href="/guides/cancellation-policy">
+        <h3>Writing a cancellation policy that holds</h3>
+        <p>The four things it has to decide, where the 24-hour rule breaks, and how to enforce it
+          without the confrontation.</p>
+      </a>
+      <a class="card" href="/guides/no-show-clients">
+        <h3>When a client does not show up</h3>
+        <p>Why a no-show is a different fact from a cancellation, what to do the same day, and
+          what a second one means.</p>
+      </a>
+    </div>
+
+    <h2>Tools and software</h2>
+    <div class="cards">
       <a class="card" href="/guides/software-vs-spreadsheets">
         <h3>Personal trainer software vs spreadsheets</h3>
         <p>An honest comparison, including the cases where the spreadsheet wins and you should
@@ -392,10 +430,15 @@ ${cta('Start with the clients you already have. Adding one and booking a session
         <p>Six things worth checking before you pick one, and how to tell when you do not need
           one yet.</p>
       </a>
+      <a class="card" href="/personal-trainer-client-management-software">
+        <h3>Client management software for trainers</h3>
+        <p>The five questions it has to answer instantly, and why gym systems fail solo
+          trainers.</p>
+      </a>
       <a class="card" href="/free-personal-trainer-client-tracker">
         <h3>Free client &amp; session tracker</h3>
-        <p>A spreadsheet template where the remaining-session count works itself out. No
-          sign-up needed.</p>
+        <p>A spreadsheet where the remaining-session count works itself out. Excel or Google
+          Sheets, no sign-up.</p>
       </a>
     </div>`,
   });
@@ -409,7 +452,7 @@ ${cta('Start with the clients you already have. Adding one and booking a session
     { name: 'Guides', path: '/guides' },
     { name: 'Managing clients', path },
   ];
-  const title = 'How to Manage Personal Training Clients (Without a System That Rots) | TRENIKO';
+  const title = 'How to Manage Personal Training Clients | TRENIKO';
   const description =
     'What to track for each personal training client, what to deliberately leave out, and how to run a check-in from the record instead of from memory.';
 
@@ -515,6 +558,10 @@ ${cta('TRENIKO keeps this structure by default: one record per client with goals
         <h3>Software vs spreadsheets</h3>
         <p>When the spreadsheet is still the right answer.</p>
       </a>
+      <a class="card" href="/guides/new-client-first-week">
+        <h3>A new client’s first week</h3>
+        <p>What to collect before session one, and the baseline you cannot go back for.</p>
+      </a>
     </div>`,
   });
 }
@@ -527,7 +574,7 @@ ${cta('TRENIKO keeps this structure by default: one record per client with goals
     { name: 'Guides', path: '/guides' },
     { name: 'Session packages', path },
   ];
-  const title = 'Tracking Personal Training Packages and Remaining Sessions | TRENIKO';
+  const title = 'How to Track Training Packages and Sessions Left | TRENIKO';
   const description =
     'Why the remaining-session count on a training package drifts, what a package actually needs to record, and a rule that keeps it honest.';
 
@@ -564,8 +611,11 @@ ${cta('TRENIKO keeps this structure by default: one record per client with goals
     <h2>Why the count drifts</h2>
     <p>It is almost never a subtraction error. It is a disagreement about what counts:</p>
     <ul>
-      <li>A session cancelled four hours beforehand. Does it come off the block?</li>
-      <li>A no-show. Same question, different answer for most trainers.</li>
+      <li>A session cancelled four hours beforehand. Does it come off the block?
+        <a href="/guides/cancellation-policy">Write the policy once</a> and it stops being a
+        decision.</li>
+      <li>A <a href="/guides/no-show-clients">no-show</a>. Same question, different answer for
+        most trainers.</li>
       <li>A session you moved for your own reasons.</li>
       <li>A free one you threw in and then forgot you had.</li>
       <li>Two blocks bought before the first was finished.</li>
@@ -597,7 +647,8 @@ ${cta('TRENIKO keeps this structure by default: one record per client with goals
       <li><strong>Sessions bought</strong>, and what was paid for them.</li>
       <li><strong>Sessions used</strong>, derived from the session history rather than typed in.
         A number you maintain by hand is a number that drifts.</li>
-      <li><strong>An expiry, if there is one.</strong> "Ten sessions, within four months" is a
+      <li><strong>An <a href="/guides/pricing-personal-training-packages">expiry</a>, if there is
+        one.</strong> "Ten sessions, within four months" is a
         different product from "ten sessions" and needs saying up front.</li>
       <li><strong>Payment status</strong>, attached to this block and not floating loose.</li>
     </ul>
@@ -629,6 +680,10 @@ ${cta('In TRENIKO a package counts down as sessions are marked completed, and it
         <h3>How to manage personal training clients</h3>
         <p>What to track per client, and what to deliberately leave out.</p>
       </a>
+      <a class="card" href="/guides/pricing-personal-training-packages">
+        <h3>Pricing personal training packages</h3>
+        <p>What a discount actually buys, and how to set an expiry that is not a trap.</p>
+      </a>
     </div>`,
   });
 }
@@ -641,7 +696,7 @@ ${cta('In TRENIKO a package counts down as sessions are marked completed, and it
     { name: 'Guides', path: '/guides' },
     { name: 'Software vs spreadsheets', path },
   ];
-  const title = 'Personal Trainer Software vs Spreadsheets: An Honest Comparison | TRENIKO';
+  const title = 'Personal Trainer Software vs Spreadsheets | TRENIKO';
   const description =
     'Where a spreadsheet genuinely wins, the four things it cannot do for a coaching business, and how to tell which side of the line you are on.';
 
@@ -747,6 +802,10 @@ ${cta('TRENIKO is built for exactly this handover: no setup wizard, no configura
         <h3>How to manage personal training clients</h3>
         <p>A structure that survives a busy week.</p>
       </a>
+      <a class="card" href="/personal-trainer-client-management-software">
+        <h3>Client management software for trainers</h3>
+        <p>What it has to do before it is worth moving off the sheet.</p>
+      </a>
     </div>`,
   });
 }
@@ -758,10 +817,17 @@ ${cta('TRENIKO is built for exactly this handover: no setup wizard, no configura
     { name: 'TRENIKO', path: '/' },
     { name: 'Free client & session tracker', path },
   ];
-  const title = 'Free Personal Trainer Client & Session Tracker (Spreadsheet) | TRENIKO';
+  const title = 'Free Personal Trainer Client &amp; Session Tracker | TRENIKO';
   const description =
-    'A free spreadsheet template for personal trainers: clients, packages, sessions used and remaining, payments. Remaining sessions calculate themselves. No sign-up, no email required.';
-  const FILE = '/downloads/treniko-client-session-tracker.csv';
+    'A free Excel and Google Sheets template: clients, packages, sessions used and remaining, payments. The remaining count calculates itself. No sign-up needed.';
+  // Two formats, and the order is the point. Excel splits a .csv on the system
+  // list separator, which is `;` across most of continental Europe — including
+  // Croatia, the first market. A comma-delimited CSV opened there is one column
+  // of long strings with no working formulas, which is the template failing for
+  // exactly the trainer it was written for. The .xlsx has no separator to get
+  // wrong, so it leads; the CSV stays for importing elsewhere.
+  const XLSX = '/downloads/treniko-client-session-tracker.xlsx';
+  const CSV = '/downloads/treniko-client-session-tracker.csv';
 
   PAGES.push({
     path,
@@ -784,7 +850,7 @@ ${cta('TRENIKO is built for exactly this handover: no setup wizard, no configura
           totalTime: 'PT10M',
           supply: { '@type': 'HowToSupply', name: 'A spreadsheet application (Excel, Google Sheets, LibreOffice or Numbers)' },
           step: [
-            { '@type': 'HowToStep', name: 'Download and open the template', text: 'Download the CSV and open it in your spreadsheet application. No account or sign-up is needed.' },
+            { '@type': 'HowToStep', name: 'Download and open the template', text: 'Download the Excel file and open it in Excel, Google Sheets, LibreOffice or Numbers. No account or sign-up is needed.' },
             { '@type': 'HowToStep', name: 'Add one row per client', text: 'Fill in the client, the package they are on, how many sessions it contains and how many they have used.' },
             { '@type': 'HowToStep', name: 'Let the remaining count calculate itself', text: 'The remaining-sessions column is a formula. Never type over it — a hand-maintained count is the number that drifts.' },
             { '@type': 'HowToStep', name: 'Decide your cancellation policy once', text: 'Write down whether a late cancellation or a no-show uses a session, and tell the client before it first costs them one.' },
@@ -800,10 +866,14 @@ ${cta('TRENIKO is built for exactly this handover: no setup wizard, no configura
       count works itself out. No sign-up, no email address, nothing to buy.</p>
 
     <div class="cta-row">
-      <a class="btn" href="${FILE}" download>Download the template (CSV, 2 KB)</a>
+      <a class="btn" href="${XLSX}" download>Download the template (Excel, 4 KB)</a>
+      <a class="btn btn-ghost" href="${CSV}" download>Or download as CSV</a>
     </div>
-    <p style="font-size:14px;color:#6b7280">Opens in Excel, Google Sheets, LibreOffice and Numbers.
-      In Google Sheets: <em>File → Import → Upload</em>.</p>
+    <p style="font-size:14px;color:#6b7280">The Excel file opens directly in Excel, LibreOffice and
+      Numbers, and in Google Sheets via <em>File → Import → Upload</em>. Take the CSV instead if you
+      are importing it into something else — but note that on a European system locale Excel splits
+      a CSV on <code>;</code> rather than <code>,</code>, so the .xlsx is the one that will simply
+      open.</p>
 
     <h2>What is in it</h2>
     <div class="table-scroll">
@@ -827,7 +897,8 @@ ${cta('TRENIKO is built for exactly this handover: no setup wizard, no configura
       update — you and the client end up with different totals and both of you are being
       honest. A calculated column cannot disagree with the numbers it is calculated from.</p>
     <p>The other half of that problem is not arithmetic at all: it is that nobody wrote
-      down whether a late cancellation uses a session. Decide it once, put it in Notes,
+      down whether a late cancellation uses a session.
+      <a href="/guides/cancellation-policy">Decide it once</a>, put it in Notes,
       and say it when they buy. We go through the options in
       <a href="/guides/session-packages">tracking packages and remaining sessions</a>.</p>
 
@@ -862,6 +933,778 @@ ${cta('TRENIKO does what this template does, without the copying: packages count
       <a class="card" href="/personal-trainer-software">
         <h3>What to look for in personal trainer software</h3>
         <p>Six checks — and how to tell when you do not need any of it yet.</p>
+      </a>
+      <a class="card" href="/guides/cancellation-policy">
+        <h3>Writing a cancellation policy that holds</h3>
+        <p>The one column in this sheet that needs a decision behind it.</p>
+      </a>
+    </div>`,
+  });
+}
+
+/* 7 ── /guides/cancellation-policy ────────────────────────────────────────── */
+{
+  const path = '/guides/cancellation-policy';
+  const crumbs = [
+    { name: 'TRENIKO', path: '/' },
+    { name: 'Guides', path: '/guides' },
+    { name: 'Cancellation policy', path },
+  ];
+  const title = 'Personal Trainer Cancellation Policy | TRENIKO';
+  const description =
+    'A policy is only worth having if you apply it the same way every time. The four things yours has to decide, and where the 24-hour rule quietly breaks.';
+
+  PAGES.push({
+    path,
+    title,
+    description,
+    crumbs,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        breadcrumb(crumbs),
+        ORG,
+        {
+          '@type': 'Article',
+          '@id': `${ORIGIN}${path}#article`,
+          headline: 'How to write a personal trainer cancellation policy that holds',
+          description,
+          url: `${ORIGIN}${path}`,
+          inLanguage: 'en',
+          publisher: { '@id': `${ORIGIN}/#organization` },
+          isPartOf: { '@id': `${ORIGIN}/#website` },
+        },
+      ],
+    },
+    body: `    <p class="eyebrow">Guides</p>
+    <h1>How to write a cancellation policy that actually holds</h1>
+    <p class="lede">Most trainers have a cancellation policy. Far fewer have one they apply the
+      same way twice, and that is the whole problem — an unevenly enforced policy is worse than no
+      policy, because it teaches every client that the rule is negotiable and that negotiating is
+      how you get out of it.</p>
+
+    <h2>The problem is not the policy. It is the second exception.</h2>
+    <p>Nobody struggles with the first cancellation. A client's child is ill on a Tuesday, you
+      waive the session, and that is obviously right.</p>
+    <p>The difficulty starts at the second one, for a less sympathetic reason, from a client you
+      like. You now have to either apply a rule you did not apply last time, or waive again and
+      accept that the rule does not exist. Both feel bad, which is why most trainers do neither
+      and simply avoid the conversation.</p>
+    <p>A policy is not there to extract money from people. It is there so that you have already
+      made this decision once, calmly, in advance — instead of making it badly, forty times, under
+      social pressure, in a doorway.</p>
+
+    <h2>The four things a policy has to decide</h2>
+    <p>Everything else is wording. These four are the substance.</p>
+    <ol>
+      <li><strong>The notice period.</strong> How much warning counts as a cancellation rather
+        than a late cancellation. Twenty-four hours is the convention.</li>
+      <li><strong>What happens to the session.</strong> This is the one people leave vague. Inside
+        the notice period: is the session returned to the package, or is it used? Say which.</li>
+      <li><strong>What the exceptions are.</strong> Illness, bereavement, an injury you asked them
+        to rest. Naming them in advance is what makes the rest of the policy enforceable, because
+        it turns "you are being harsh" into "this is not one of the listed cases".</li>
+      <li><strong>How many exceptions.</strong> The unpopular one. "Illness is always waived" is
+        not a policy — it is an instruction on what to say. A number ("two waived cancellations
+        per package") is a policy.</li>
+    </ol>
+
+    <h2>Where the 24-hour rule quietly breaks</h2>
+    <p>Twenty-four hours is a sensible default and it fails in three specific places. All three are
+      predictable, so decide them now rather than at 06:40 on a Monday.</p>
+    <ul>
+      <li><strong>The early-morning session.</strong> A 07:00 Tuesday slot has to be cancelled by
+        07:00 Monday — which is before most people know they are ill. If half your book is early
+        mornings, an evening deadline ("by 20:00 the night before") is more honest and easier to
+        hold.</li>
+      <li><strong>The Monday session.</strong> Twenty-four hours' notice means cancelling on a
+        Sunday, which is exactly when you are least likely to see the message and most likely to
+        be annoyed by it. Decide whether your notice window even runs on the weekend.</li>
+      <li><strong>The client who cancels at 25 hours, every time.</strong> Technically compliant,
+        and it still empties your week. This is not a policy problem — it is a schedule problem,
+        and the fix is the standing-slot conversation, not a stricter rule.</li>
+    </ul>
+
+    <h2>Three policies that actually work</h2>
+    <p>These are the three shapes worth choosing between. There is no universally correct one; the
+      right answer depends on whether your calendar is full.</p>
+    <h3>Strict — the session is used</h3>
+    <p>Inside the notice period, the session is deducted from the package. Simple, unambiguous, and
+      the only one that genuinely protects your income when a full calendar means you had to turn
+      someone away for that slot.</p>
+    <p><em>Costs you:</em> it is the hardest to say out loud, and it will occasionally cost you a
+      client who was on the fence anyway.</p>
+    <h3>Moderate — one rescheduled, then used</h3>
+    <p>The first late cancellation in a package can be moved to another slot that same week. After
+      that, the session is used. This is the policy most independent trainers converge on, because
+      it forgives genuine life events without becoming a standing option.</p>
+    <p><em>Costs you:</em> more admin. You have to actually track which client has used their
+      reschedule, which is a small thing to track and an easy one to lose.</p>
+    <h3>Relational — waived, but counted and discussed</h3>
+    <p>Late cancellations are waived, and recorded. When the record shows three in a block of ten,
+      you have a conversation about whether the time slot is right — not about money.</p>
+    <p><em>Costs you:</em> real money if your calendar is full, and it only works at all if you
+      genuinely keep the record. Waiving without counting is not this policy; it is not having one.</p>
+
+    <h2>Say it once, in writing, before it is needed</h2>
+    <p>The policy has to reach the client at the moment they buy the package, not at the moment
+      they break it. A rule that first appears in an argument reads as invented on the spot, even
+      when it is not.</p>
+    <p>In practice that means it goes in the same message as the package price, in plain words,
+      and it stays somewhere the client can look it up. Three sentences is enough:</p>
+    <div class="note">
+      <span class="label">Example</span>
+      <p>Sessions cancelled with more than 24 hours' notice go back into your package and we
+        rebook them. Inside 24 hours, the first one in each block I will move if we can find a slot
+        that week; after that the session is used. Illness and injury are always waived —
+        just tell me.</p>
+    </div>
+    <p>That is a complete policy. It decides the notice period, what happens to the session, the
+      exception, and the limit on the exception.</p>
+
+    <h2>Enforcing it without becoming the villain</h2>
+    <p>The reason enforcement feels confrontational is that it usually happens as a reaction. It
+      does not have to. Two habits remove almost all of the friction:</p>
+    <ul>
+      <li><strong>State the outcome, not the judgement.</strong> "That one comes out of the block,
+        so you have four left" is a fact about a number. "You cancelled too late" is a verdict
+        about a person. Same decision, entirely different conversation.</li>
+      <li><strong>Send it in writing, the same day, every time.</strong> Not as evidence — as
+        arithmetic. The dispute you are avoiding is not about the policy; it is about the count
+        three weeks later, when nobody remembers which sessions happened.</li>
+    </ul>
+
+    <h2>Record the cancellation as a cancellation</h2>
+    <p>This is where a policy usually leaks. The session did not happen, so it gets deleted from
+      the calendar — and now the record shows a client who trained nine times when they were
+      billed for ten, with nothing anywhere explaining the difference.</p>
+    <p>A cancelled session is a fact worth keeping. Keep three states, not two: <strong>completed</strong>,
+      <strong>cancelled</strong> and <strong>no-show</strong>. They have different consequences for
+      the package and they mean different things about the client. A system that only stores what
+      was booked will always disagree with what happened. That is the same argument, at more
+      length, in <a href="/guides/session-packages">tracking packages and remaining sessions</a>.</p>
+    <p>A no-show is not a late cancellation and should not be handled as one —
+      <a href="/guides/no-show-clients">what to do when a client does not turn up</a> covers that
+      case on its own.</p>
+${cta('TRENIKO records each session as completed, cancelled or no-show, and the package count follows from that rather than from memory — so applying your policy is a choice you make once, not arithmetic you redo later.')}
+
+    <h2>Read next</h2>
+    <div class="cards">
+      <a class="card" href="/guides/no-show-clients">
+        <h3>When a client does not show up</h3>
+        <p>Why a no-show is a different fact from a cancellation, and what to do the same day.</p>
+      </a>
+      <a class="card" href="/guides/session-packages">
+        <h3>Tracking packages and remaining sessions</h3>
+        <p>Why the count drifts, and the rule that keeps it honest.</p>
+      </a>
+      <a class="card" href="/free-personal-trainer-client-tracker">
+        <h3>Free client &amp; session tracker</h3>
+        <p>A spreadsheet with cancellations and no-shows already in the model. No sign-up.</p>
+      </a>
+    </div>`,
+  });
+}
+
+/* 8 ── /guides/no-show-clients ────────────────────────────────────────────── */
+{
+  const path = '/guides/no-show-clients';
+  const crumbs = [
+    { name: 'TRENIKO', path: '/' },
+    { name: 'Guides', path: '/guides' },
+    { name: 'No-shows', path },
+  ];
+  const title = 'When a Personal Training Client Does Not Show Up | TRENIKO';
+  const description =
+    'A no-show is a different fact from a cancellation, and recording them alike is what makes your session count wrong. What to do, and what a second one means.';
+
+  PAGES.push({
+    path,
+    title,
+    description,
+    crumbs,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        breadcrumb(crumbs),
+        ORG,
+        {
+          '@type': 'Article',
+          '@id': `${ORIGIN}${path}#article`,
+          headline: 'What to do when a personal training client does not show up',
+          description,
+          url: `${ORIGIN}${path}`,
+          inLanguage: 'en',
+          publisher: { '@id': `${ORIGIN}/#organization` },
+          isPartOf: { '@id': `${ORIGIN}/#website` },
+        },
+      ],
+    },
+    body: `    <p class="eyebrow">Guides</p>
+    <h1>When a client does not show up</h1>
+    <p class="lede">You are in the gym, the slot has started, and nobody has arrived or sent
+      anything. There are three separate decisions inside the next hour, and most of the damage
+      comes from making the third one — what the record says — without thinking about it at all.</p>
+
+    <h2>A no-show is not a late cancellation</h2>
+    <p>These get treated as the same event because they have the same immediate effect: an empty
+      hour. They are not the same fact, and collapsing them is what makes your numbers wrong later.</p>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Event</th><th>What happened</th><th>What it tells you</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Cancellation</strong></td>
+          <td>Client gave notice, inside your window or outside it</td>
+          <td>Something came up. Usually nothing</td>
+        </tr>
+        <tr>
+          <td><strong>Late cancellation</strong></td>
+          <td>Notice arrived, too late to fill the slot</td>
+          <td>Usually nothing. Repeatedly: the slot is wrong</td>
+        </tr>
+        <tr>
+          <td><strong>No-show</strong></td>
+          <td>No notice at all</td>
+          <td>Something else. This one is a signal</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p>A late cancellation is a scheduling failure. A no-show is usually a <em>relationship</em>
+      failure — the client did not feel able to tell you, or had already privately stopped. Those
+      need different responses, and you cannot give different responses to two things you recorded
+      identically.</p>
+
+    <h2>The first fifteen minutes</h2>
+    <p>Keep this boring and identical every time, so it never reads as annoyance.</p>
+    <ol>
+      <li><strong>Wait ten to fifteen minutes.</strong> Decide the number once and stick to it. A
+        client stuck in traffic who arrives at minute twelve to find you gone is a much bigger
+        problem than a wasted quarter of an hour.</li>
+      <li><strong>Send one short message.</strong> "Hey — we were down for 18:00 today, everything
+        okay?" That is it. No mention of the policy, no invoice, nothing that requires them to
+        defend themselves before you know what happened.</li>
+      <li><strong>Then leave.</strong> Do not sit on it for the full hour. The slot is gone.</li>
+    </ol>
+    <p>The message is doing real work: roughly half the time the answer is a genuine emergency or
+      a diary mistake, and asking first is the difference between a client who apologises and a
+      client who is embarrassed and quietly stops booking.</p>
+
+    <h2>Does it use a session?</h2>
+    <p>In almost every workable policy, <strong>yes</strong> — and this is the case where being
+      strict is easiest to justify, because the trainer showed up and the time cannot be recovered.</p>
+    <p>Two qualifications worth building in from the start:</p>
+    <ul>
+      <li><strong>Charge it, then decide whether to waive it.</strong> Deduct the session as a
+        matter of routine, and waive it deliberately when the reason warrants. That ordering
+        matters: the default has to be the rule, or the rule is the exception.</li>
+      <li><strong>A first no-show from a long-standing client is usually a mistake, not a pattern.</strong>
+        Waiving it costs you one session and buys a lot of goodwill. Waiving the third costs you a
+        client, slowly, because it tells them the appointment is not real.</li>
+    </ul>
+    <p>Where this fits into the wider set of rules is in
+      <a href="/guides/cancellation-policy">writing a cancellation policy that holds</a> — a
+      no-show clause belongs in the same three sentences as everything else.</p>
+
+    <h2>The second no-show is the one that matters</h2>
+    <p>One is noise. Two from the same client, within a block, is information, and it is almost
+      never about you. The usual causes, in rough order of how often they turn out to be the
+      answer:</p>
+    <ul>
+      <li><strong>The time slot stopped working</strong> and they have not wanted to ask to move
+        it. This is the most common and the easiest to fix.</li>
+      <li><strong>The sessions have stopped feeling worth it</strong> — often after a plateau, or
+        after a goal was quietly reached and never replaced.</li>
+      <li><strong>Money.</strong> The next package is due and they cannot say so.</li>
+      <li><strong>They have decided to stop</strong> and are avoiding the conversation.</li>
+    </ul>
+    <p>All four are recoverable, and none of them are recoverable by sending a firmer reminder. The
+      conversation that works is a direct, unbothered one: <em>"I have noticed the last couple have
+      not happened — is this slot still the right one for you?"</em> It offers them a way to say
+      the real thing.</p>
+    <p>The reason to keep a per-client record at all is that you will not spot the second one
+      otherwise. Across fifteen clients, two missed sessions six weeks apart do not feel like a
+      pattern — they feel like two ordinary weeks. What to keep, and what not to bother with, is
+      in <a href="/guides/client-management">managing personal training clients</a>.</p>
+
+    <h2>Record it as a no-show, not as a deletion</h2>
+    <p>The instinct is to delete the session from the calendar, because it did not happen. Do not.
+      Once it is deleted, three facts are gone at once: that you were there, that the session was
+      deducted, and that this client has now missed two.</p>
+    <p>Keep the session, mark its outcome. The count and the pattern both come out of that record
+      for free, and neither can be reconstructed later from memory.</p>
+
+    <h2>Reducing them, honestly</h2>
+    <p>Most advice here overpromises. Three things genuinely help, and none of them are software:</p>
+    <ul>
+      <li><strong>A standing slot.</strong> Same time, same days, every week. Sessions that are
+        rebooked ad hoc are the ones that get forgotten, because they never became a habit.</li>
+      <li><strong>Booking the next one before they leave.</strong> The end of the session is the
+        only moment when the client is definitely thinking about training.</li>
+      <li><strong>One reminder, the evening before.</strong> Enough to catch a diary mistake, not
+        so much that it becomes something they stop reading.</li>
+    </ul>
+    <p>What does not help: escalating penalties, longer notice periods, or a more detailed policy.
+      Those address a compliance problem, and no-shows are usually not one.</p>
+${cta('TRENIKO stores completed, cancelled and no-show as distinct outcomes on the session — so the package count is right without you doing arithmetic, and a second miss is visible on the client record rather than in your memory.')}
+
+    <h2>Read next</h2>
+    <div class="cards">
+      <a class="card" href="/guides/cancellation-policy">
+        <h3>Writing a cancellation policy that holds</h3>
+        <p>The four things it has to decide, and where the 24-hour rule breaks.</p>
+      </a>
+      <a class="card" href="/guides/client-management">
+        <h3>Managing personal training clients</h3>
+        <p>What to record per client, and the review habit that surfaces patterns early.</p>
+      </a>
+      <a class="card" href="/guides/session-packages">
+        <h3>Tracking packages and remaining sessions</h3>
+        <p>Why the count drifts, and what a package actually needs to store.</p>
+      </a>
+    </div>`,
+  });
+}
+
+/* 9 ── /guides/pricing-personal-training-packages ─────────────────────────── */
+{
+  const path = '/guides/pricing-personal-training-packages';
+  const crumbs = [
+    { name: 'TRENIKO', path: '/' },
+    { name: 'Guides', path: '/guides' },
+    { name: 'Pricing packages', path },
+  ];
+  const title = 'How to Price Personal Training Packages | TRENIKO';
+  const description =
+    'Going from an hourly rate to a package price without discounting yourself into a worse business. The unpaid hours to count, and what a discount really buys.';
+
+  PAGES.push({
+    path,
+    title,
+    description,
+    crumbs,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        breadcrumb(crumbs),
+        ORG,
+        {
+          '@type': 'Article',
+          '@id': `${ORIGIN}${path}#article`,
+          headline: 'How to price personal training packages',
+          description,
+          url: `${ORIGIN}${path}`,
+          inLanguage: 'en',
+          publisher: { '@id': `${ORIGIN}/#organization` },
+          isPartOf: { '@id': `${ORIGIN}/#website` },
+        },
+      ],
+    },
+    body: `    <p class="eyebrow">Guides</p>
+    <h1>How to price personal training packages</h1>
+    <p class="lede">This page contains no recommended prices. What a session is worth depends on
+      your city, your market and your experience, and any article that gives you a number is
+      guessing about all three. What it does contain is the arithmetic — because the mistake that
+      costs trainers the most money is not pricing too low, it is not knowing what the current
+      price already is.</p>
+
+    <h2>First: an hour of training is not an hour of work</h2>
+    <p>Almost every package is priced off a session rate, and almost every session rate is set as
+      though the session is the whole job. Before you discount anything, count what one session
+      actually consumes:</p>
+    <ul>
+      <li>The session itself.</li>
+      <li>Programming and adjusting it, whether that is ten minutes or thirty.</li>
+      <li>Travel and setup, if you move between gyms or go to clients.</li>
+      <li>The messages. Every trainer underestimates this one, and it is not optional work — it is
+        a large part of what the client is actually buying.</li>
+      <li>The share of admin, invoicing and chasing that this client causes.</li>
+    </ul>
+    <p>Add those up honestly for one client for one week and divide by the sessions delivered.
+      That number — not your headline rate — is what you are really being paid per hour of work,
+      and it is the number a package discount comes out of.</p>
+    <p>Do this before anything else on this page. Everything after it is a decision about that
+      figure, and you cannot make those decisions without it.</p>
+
+    <h2>What a package discount actually buys</h2>
+    <p>A package is a discount in exchange for something. If you cannot name the something, you
+      have not made a pricing decision — you have lowered your price. There are three things worth
+      buying, and they are not equally valuable:</p>
+    <ol>
+      <li><strong>Cash up front.</strong> Genuinely valuable and the most commonly undervalued.
+        Ten sessions paid today is your rent covered and no chasing. This alone justifies a
+        discount.</li>
+      <li><strong>Commitment.</strong> Somewhat real. A client who has paid for ten shows up more
+        reliably than one paying per session — but the effect fades as the block runs down.</li>
+      <li><strong>Less admin.</strong> Real, and small. One payment instead of ten is perhaps
+        twenty minutes saved.</li>
+    </ol>
+    <p>Now the uncomfortable version of the same point: <strong>if a client would have booked ten
+      sessions anyway, one at a time, the discount bought you nothing except the cash-flow benefit.</strong>
+      That is why blanket "10% off everything over ten sessions" pricing quietly leaks money — it
+      pays a discount to your most committed clients, who were the ones least in need of
+      persuading.</p>
+
+    <h2>Three structures, and what each is actually for</h2>
+    <h3>Blocks of sessions</h3>
+    <p>Buy ten, use them as you like. The default, and the easiest for a client to understand.</p>
+    <p><em>The catch:</em> without an expiry, a block is an open-ended liability. A client who buys
+      ten in March and has four left in November is holding sessions priced at last year's rate,
+      and you have already spent the money.</p>
+    <h3>Monthly — a fixed number of sessions per month</h3>
+    <p>Eight sessions a month, charged monthly, recurring. Predictable income, no repeated selling,
+      no expiry problem because the month is the expiry.</p>
+    <p><em>The catch:</em> you have to decide what happens to unused sessions at month end before
+      the first month ends. Roll over one month only, or none — but decide it in advance, in
+      writing, because deciding it retrospectively always looks like a rule you invented.</p>
+    <h3>Hybrid — a monthly base with extras at a session rate</h3>
+    <p>Four sessions a month included, additional ones at the standard rate. Suits clients whose
+      availability genuinely varies.</p>
+    <p><em>The catch:</em> it is the hardest to track and the easiest to get wrong. If you cannot
+      answer "how many has she used this month?" instantly, this structure will cost you more in
+      errors than it earns in flexibility.</p>
+
+    <h2>Expiry dates: necessary, and easy to do unfairly</h2>
+    <p>An expiry is not a trick to void sessions. It exists so that a price stays attached to a
+      time period, and so that a package does not become an indefinite obligation at an old rate.
+      Two rules keep it fair:</p>
+    <ul>
+      <li><strong>Set it from the training frequency, not from the calendar.</strong> Ten sessions
+        for a client training twice a week is about five weeks of work — a three-month expiry is
+        generous. The same ten for someone training fortnightly is five months, and a three-month
+        expiry is a trap.</li>
+      <li><strong>Say it at the point of sale, in the same message as the price.</strong> An expiry
+        the client learns about when it expires will cost you the client, and it should.</li>
+    </ul>
+    <p>Then actually track it. An expiry you do not enforce is not a policy, and an expiry you
+      enforce inconsistently is worse than none — the same argument as in
+      <a href="/guides/cancellation-policy">writing a cancellation policy</a>.</p>
+
+    <h2>Three mistakes worth naming</h2>
+    <ol>
+      <li><strong>Discounting to close a client who was already sold.</strong> If the discount
+        appears after they have said yes, you paid for nothing.</li>
+      <li><strong>Selling a bigger block than the client can realistically use.</strong> Twenty
+        sessions to someone training once a week is nine months of obligation and a near-certain
+        expiry argument. A block should be finishable.</li>
+      <li><strong>Never raising the price.</strong> Not a pricing decision so much as an avoided
+        conversation. The workable version: new clients get the new rate immediately, existing
+        clients keep the old rate to the end of their current package and are told, once, in
+        advance, what the next one costs.</li>
+    </ol>
+
+    <h2>The number you need before any of this</h2>
+    <p>Every decision on this page needs one fact you can get to instantly: <strong>how many
+      sessions each client has left, and whether those sessions are paid for.</strong> Without it,
+      you cannot see which packages are about to run out, cannot time a renewal conversation, and
+      cannot tell whether a discount is working.</p>
+    <p>That is a tracking problem before it is a pricing problem, and it is covered properly in
+      <a href="/guides/session-packages">tracking packages and remaining sessions</a>.</p>
+${cta('TRENIKO holds each package with its price, its session count and its expiry, counts down as sessions are completed, and flags a package before it runs out — which is when the renewal conversation is worth having rather than after.')}
+
+    <h2>Read next</h2>
+    <div class="cards">
+      <a class="card" href="/guides/session-packages">
+        <h3>Tracking packages and remaining sessions</h3>
+        <p>What a package needs to store, and why the count drifts.</p>
+      </a>
+      <a class="card" href="/guides/cancellation-policy">
+        <h3>Writing a cancellation policy that holds</h3>
+        <p>The four decisions, and how to enforce them without the confrontation.</p>
+      </a>
+      <a class="card" href="/free-personal-trainer-client-tracker">
+        <h3>Free client &amp; session tracker</h3>
+        <p>Package price, sessions used and sessions left, in one sheet. No sign-up.</p>
+      </a>
+    </div>`,
+  });
+}
+
+/* 10 ── /guides/new-client-first-week ─────────────────────────────────────── */
+{
+  const path = '/guides/new-client-first-week';
+  const crumbs = [
+    { name: 'TRENIKO', path: '/' },
+    { name: 'Guides', path: '/guides' },
+    { name: 'A new client’s first week', path },
+  ];
+  const title = 'A New Personal Training Client’s First Week | TRENIKO';
+  const description =
+    'An onboarding order that stops you chasing paperwork in week four: what to have before session one, and the baseline you cannot go back and record later.';
+
+  PAGES.push({
+    path,
+    title,
+    description,
+    crumbs,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        breadcrumb(crumbs),
+        ORG,
+        {
+          '@type': 'Article',
+          '@id': `${ORIGIN}${path}#article`,
+          headline: 'A new personal training client’s first week',
+          description,
+          url: `${ORIGIN}${path}`,
+          inLanguage: 'en',
+          publisher: { '@id': `${ORIGIN}/#organization` },
+          isPartOf: { '@id': `${ORIGIN}/#website` },
+        },
+      ],
+    },
+    body: `    <p class="eyebrow">Guides</p>
+    <h1>A new client’s first week</h1>
+    <p class="lede">Onboarding a client is not a form. It is a small number of facts, collected in
+      an order that matters — because anything not captured in the first week is something you will
+      be chasing in week four, when asking looks like disorganisation rather than diligence.</p>
+    <p>This is deliberately short. A long onboarding process is one you will abandon by the third
+      client.</p>
+
+    <h2>Before session one</h2>
+    <p>Four things, and none of them take place in the gym.</p>
+    <ol>
+      <li><strong>Health screening.</strong> Whatever your certifying body requires — a PAR-Q or
+        equivalent — plus current injuries, medications relevant to exercise, and anything a
+        doctor has told them to avoid. This is not administrative. It changes what you are allowed
+        to program in the session you are about to run, so it cannot happen afterwards.</li>
+      <li><strong>The goal, in their words.</strong> Write down the sentence they said, not your
+        translation of it. "I want to not be out of breath on the stairs at work" is a usable goal
+        with a built-in test. "Improve cardiovascular fitness" is your paraphrase, and it has
+        quietly discarded the only part you could check in eight weeks.</li>
+      <li><strong>What they have already tried.</strong> One line. A client who has done six months
+        of a bootcamp and stopped is a different starting point from one who has never trained, and
+        the thing that made them stop is usually the thing that will make them stop again.</li>
+      <li><strong>The commercial part, agreed in writing.</strong> Price, package size, expiry if
+        there is one, and the cancellation policy. All in the same message. Sorting this out before
+        the first session takes two minutes; after it, it is a conversation about money with
+        someone you have just trained.</li>
+    </ol>
+
+    <h2>Session one: capture the baseline you cannot go back for</h2>
+    <p>Session one is the only session where you can record a genuine "before". Miss it and it is
+      gone — three weeks later they have already improved, and you will never know by how much.</p>
+    <ul>
+      <li><strong>Two or three measurements, chosen because you will repeat them.</strong> Not
+        every metric you know how to take. Whatever you record here, you are committing to
+        recording every six to eight weeks; five measurements you keep beat twelve you do once.</li>
+      <li><strong>A movement baseline.</strong> How they squat, hinge, push and pull today, in a
+        sentence each. This is what makes progress visible for the many clients whose weight will
+        not move much and who need something honest to look at.</li>
+      <li><strong>A starting load or time on two or three lifts.</strong> The most motivating record
+        you will ever show a client, and it costs nothing to write down.</li>
+    </ul>
+    <p>Which measurements are worth keeping — and which are simply data you will never look at —
+      is covered in <a href="/guides/client-management">managing personal training clients</a>.</p>
+
+    <h2>By the end of the first week</h2>
+    <ul>
+      <li><strong>The standing slot is agreed.</strong> Same time, same days. Clients whose
+        sessions are rebooked one at a time are the ones who quietly drift, and the drift shows up
+        first as a <a href="/guides/no-show-clients">missed session</a>.</li>
+      <li><strong>The package is recorded, with what has been paid against it.</strong> Not "she
+        bought ten" in your head. Ten sessions, this price, paid on this date, this many used —
+        because week one is the only time this is effortless to record correctly.</li>
+      <li><strong>A review date is in the diary.</strong> Six to eight weeks out, booked now. A
+        review that is scheduled at the start is a normal part of the service; one arranged later,
+        after things have gone quiet, reads as a rescue attempt.</li>
+    </ul>
+
+    <h2>What not to collect</h2>
+    <p>Onboarding processes fail by being too long, so it is worth being explicit about what to
+      leave out:</p>
+    <ul>
+      <li><strong>Anything you will not act on.</strong> A detailed nutrition history you have no
+        intention of coaching on is an intrusive question with no purpose.</li>
+      <li><strong>Personal data you have no reason to hold.</strong> Under GDPR you need a reason
+        for each field, and "it was on the template" is not one. Less stored is less to protect,
+        less to explain, and less to delete when they ask.</li>
+      <li><strong>A twelve-week plan written in advance.</strong> You do not yet know how they
+        respond to training. Write week one properly and decide week two afterwards.</li>
+    </ul>
+
+    <h2>Why the order is the whole point</h2>
+    <p>Every item above is one you would eventually collect anyway. The difference is that in week
+      one the client expects to be asked and answers immediately, whereas in week four the same
+      question makes you look like you lost something — and by week eight the honest answer is that
+      you did.</p>
+    <p>None of this needs software. It needs one place per client where those facts live, so the
+      next session starts from the record instead of from memory. A spreadsheet does this perfectly
+      well until the counting starts —
+      <a href="/guides/software-vs-spreadsheets">software vs spreadsheets</a> is the honest version
+      of where that line falls.</p>
+${cta('In TRENIKO a client record holds the goal, the notes, the measurements, the sessions and the package together — so the first week is entered once and the eighth week starts from it.')}
+
+    <h2>Read next</h2>
+    <div class="cards">
+      <a class="card" href="/guides/client-management">
+        <h3>Managing personal training clients</h3>
+        <p>What to record per client, what to leave out, and the review habit.</p>
+      </a>
+      <a class="card" href="/guides/pricing-personal-training-packages">
+        <h3>Pricing personal training packages</h3>
+        <p>The unpaid hours to count first, and what a discount actually buys.</p>
+      </a>
+      <a class="card" href="/guides/cancellation-policy">
+        <h3>Writing a cancellation policy that holds</h3>
+        <p>Agree it in week one, in the same message as the price.</p>
+      </a>
+    </div>`,
+  });
+}
+
+/* 11 ── /personal-trainer-client-management-software ──────────────────────── */
+{
+  const path = '/personal-trainer-client-management-software';
+  const crumbs = [
+    { name: 'TRENIKO', path: '/' },
+    { name: 'Client management software', path },
+  ];
+  const title = 'Client Management Software for Personal Trainers | TRENIKO';
+  const description =
+    'Judged by the five questions it has to answer instantly: why gym systems fail solo trainers, and what to check before you commit your clients to one.';
+
+  PAGES.push({
+    path,
+    title,
+    description,
+    crumbs,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        breadcrumb(crumbs),
+        ORG,
+        {
+          '@type': 'WebPage',
+          '@id': `${ORIGIN}${path}#webpage`,
+          url: `${ORIGIN}${path}`,
+          name: title,
+          description,
+          isPartOf: { '@id': `${ORIGIN}/#website` },
+          about: { '@id': `${ORIGIN}/#software` },
+          inLanguage: 'en',
+        },
+      ],
+    },
+    body: `    <p class="eyebrow">Client management software</p>
+    <h1>Personal trainer client management software: what it has to do</h1>
+    <p class="lede">"Client management" is a phrase borrowed from sales software, and the borrowing
+      causes the confusion. A sales CRM is built to move strangers toward a purchase. A personal
+      trainer already knows their clients, has already sold to them, and needs something quite
+      different: a place where the operational truth about each person is current and in one piece.</p>
+
+    <h2>What a trainer means by client management</h2>
+    <p>Not a pipeline. Not lead scoring. One record per client that holds, without you
+      reconstructing it:</p>
+    <ul>
+      <li>Who they are, and how to reach them.</li>
+      <li>What they are training for, in their own words, and what they have already tried.</li>
+      <li>Health information that constrains what you can program.</li>
+      <li>Every session — including the ones that did not happen, and why.</li>
+      <li>What they bought, what they paid, and how much of it is left.</li>
+      <li>What has measurably changed since they started.</li>
+    </ul>
+    <p>That list is not ambitious. You already hold all of it. The difference software makes is
+      that it stops being six records in six places that only you know how to reconcile.</p>
+
+    <h2>The five questions it has to answer instantly</h2>
+    <p>This is a more useful test than any feature list, because it is what you are actually
+      interrupted with during a working day. If a system cannot answer these in seconds, it is
+      storage, not management.</p>
+    <ol>
+      <li><strong>How many sessions has this client got left?</strong> The single most-asked
+        question in the business, and the one most often answered by counting backwards through a
+        calendar.</li>
+      <li><strong>Has she paid for them?</strong> A different question from the first, and the two
+        disagree more often than anyone expects.</li>
+      <li><strong>Whose package runs out in the next two weeks?</strong> Nobody can answer this
+        client-by-client. It has to be a list the system produces, or the renewal conversation
+        happens too late.</li>
+      <li><strong>Who has not trained in three weeks?</strong> The earliest reliable signal that
+        you are about to lose someone, and the one that is invisible unless something is watching
+        for it.</li>
+      <li><strong>What did we do last time, and what did she say about it?</strong> The question
+        that makes a session start from the record instead of from memory.</li>
+    </ol>
+    <p>Questions 3 and 4 are the ones that separate real management software from a tidy list. Both
+      require the system to tell you something you did not ask for.</p>
+
+    <h2>Why gym software usually fails a solo trainer</h2>
+    <p>Most fitness software was built for facilities, then sold to individuals. That origin shows
+      up as work you have to do before you get any value:</p>
+    <ul>
+      <li><strong>Membership billing you do not need.</strong> Recurring dues, freezes, pro-rata
+        joining fees — a model for a facility, not for someone selling blocks of ten.</li>
+      <li><strong>Staff, rooms and resources</strong> to configure when the staff is you and the
+        room is a corner of somebody else's gym.</li>
+      <li><strong>A class-booking portal</strong> that has to be branded and set up before it does
+        anything, for classes you may not run.</li>
+      <li><strong>Setup measured in evenings.</strong> The genuine cost of most of this category is
+        not the monthly fee, it is that you never finish the configuration and so never get the
+        benefit.</li>
+    </ul>
+    <p>The opposite failure is just as common: a workout-programming app that builds excellent
+      training plans and has no idea what anyone paid.</p>
+
+    <h2>What to check before you commit your data</h2>
+    <p>Six checks, in the order they matter — the fuller version is in
+      <a href="/personal-trainer-software">what to look for in personal trainer software</a>.</p>
+    <ol>
+      <li><strong>Time to first client.</strong> If you cannot add a real client and book a real
+        session in the first ten minutes, the odds you finish setting it up are poor.</li>
+      <li><strong>Does the package count down by itself?</strong> If you still tally by hand, the
+        most error-prone job in the business is unchanged and you have added a second place to
+        keep it.</li>
+      <li><strong>Does it warn you before a package runs out?</strong> Being told is the whole
+        value. Being able to look it up is not the same feature.</li>
+      <li><strong>Are payments attached to the sessions they cover?</strong> Separated, you are
+        reconciling two lists again.</li>
+      <li><strong>Can it record what happened, not only what was booked?</strong> Completed,
+        cancelled and no-show are different facts with different consequences — see
+        <a href="/guides/no-show-clients">when a client does not show up</a>.</li>
+      <li><strong>Can you export everything, and delete the account?</strong> Ask on day one. The
+        day you want to leave is the wrong day to find out.</li>
+    </ol>
+
+    <h2>For solo and independent trainers specifically</h2>
+    <p>If you are the coach, the receptionist and the bookkeeper, two constraints dominate every
+      other consideration. <strong>Nothing may require configuration before it is useful</strong>,
+      because there is no admin day in your week to do it on. And <strong>the system has to be
+      usable standing up, on a phone, between sessions</strong> — anything that only works properly
+      at a desk in the evening will be updated in batches, and a record updated in batches is out
+      of date exactly when you need it.</p>
+    <p>Those two constraints are why "smaller version of gym software" rarely works, and why the
+      honest alternative for many trainers is a spreadsheet.
+      <a href="/guides/software-vs-spreadsheets">Software vs spreadsheets</a> covers where that
+      line genuinely falls, including the cases where the spreadsheet wins.</p>
+
+    <h2>Where TRENIKO fits, and where it does not</h2>
+    <p>TRENIKO is built for the trainer who is also the business. One record per client with goals,
+      notes and history. Sessions recorded as completed, cancelled or no-show. Packages that count
+      down as sessions happen and flag before they run out. Payments held against the sessions they
+      cover. Progress measurements over time. Training plans from your own exercise library.</p>
+    <p>It is not for gyms. There is no membership billing, no front desk, no room booking and no
+      class portal — not as a roadmap item, as a decision. If you need those, a facility system is
+      the right answer and TRENIKO will frustrate you.</p>
+    <p>It is early, and this site says so rather than quoting customer numbers that do not exist
+      yet.</p>
+${cta('The fastest way to judge it is with a client you actually have. Adding one, booking a session and recording a package takes a few minutes — enough to tell whether it matches how you work.')}
+
+    <h2>Read next</h2>
+    <div class="cards">
+      <a class="card" href="/personal-trainer-software">
+        <h3>What to look for in personal trainer software</h3>
+        <p>The six checks in full, and how to tell when you do not need any of it yet.</p>
+      </a>
+      <a class="card" href="/guides/client-management">
+        <h3>Managing personal training clients</h3>
+        <p>What to record per client, independent of any tool.</p>
+      </a>
+      <a class="card" href="/free-personal-trainer-client-tracker">
+        <h3>Free client &amp; session tracker</h3>
+        <p>Start with a spreadsheet that already counts sessions down. No sign-up.</p>
       </a>
     </div>`,
   });

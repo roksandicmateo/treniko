@@ -66,6 +66,11 @@ header.site .bar {
   align-items: center;
   gap: 16px;
   padding: 14px 0;
+  /* The nav carries four links now, which overflows a 360px phone on one line.
+     Wrapping is the fix rather than hiding a link behind a menu button — four
+     items do not need a menu, and a hidden link is a link crawlers still see
+     but readers do not. */
+  flex-wrap: wrap;
 }
 .brand {
   display: inline-flex;
@@ -78,7 +83,11 @@ header.site .bar {
   font-size: 17px;
 }
 .brand svg { width: 30px; height: 30px; flex: 0 0 auto; }
-header.site nav { margin-left: auto; display: flex; gap: 18px; align-items: center; }
+header.site nav { margin-left: auto; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 620px) {
+  header.site nav { margin-left: 0; gap: 14px; width: 100%; }
+  header.site nav a { font-size: 14px; }
+}
 header.site nav a { color: var(--body); text-decoration: none; font-size: 15px; font-weight: 500; }
 header.site nav a:hover { color: var(--ink); }
 
