@@ -113,7 +113,8 @@
     "verificationLinkSentTo": "Wir haben einen Bestätigungslink gesendet an",
     "verificationLinkHint": "Klicken Sie auf den Link in der E-Mail, um Ihr Konto zu aktivieren. Prüfen Sie auch Ihren Spam-Ordner.",
     "showPassword": "Passwort anzeigen",
-    "hidePassword": "Passwort verbergen"
+    "hidePassword": "Passwort verbergen",
+    "freeReassurance": "Kostenlos — bis zu 5 Kunden und 20 Einheiten pro Monat. Keine Kreditkarte: TRENIKO hat keinen Zahlungsanbieter. Sie erhalten eine E-Mail zur Bestätigung."
   },
   "dashboard": {
     "greeting_morning": "Guten Morgen",

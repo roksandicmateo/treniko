@@ -113,7 +113,8 @@
     "verificationLinkSentTo": "Poslali smo poveznicu za potvrdu na",
     "verificationLinkHint": "Kliknite poveznicu u e-mailu za aktivaciju računa. Provjerite mapu neželjene pošte ako je ne vidite.",
     "showPassword": "Prikaži lozinku",
-    "hidePassword": "Sakrij lozinku"
+    "hidePassword": "Sakrij lozinku",
+    "freeReassurance": "Besplatno — do 5 klijenata i 20 treninga mjesečno. Bez kreditne kartice: TRENIKO nema sustav naplate. Poslat ćemo jedan e-mail za potvrdu adrese."
   },
   "dashboard": {
     "greeting_morning": "Dobro jutro",

@@ -113,7 +113,8 @@
     "verificationLinkSentTo": "We sent a verification link to",
     "verificationLinkHint": "Click the link in the email to activate your account. Check your spam folder if you don't see it.",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "freeReassurance": "Free — up to 5 clients and 20 sessions a month. No credit card: there is no payment processor in TRENIKO. You will get one email to confirm your address."
   },
   "dashboard": {
     "greeting_morning": "Good morning",

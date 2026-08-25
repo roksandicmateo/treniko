@@ -71,6 +71,13 @@ const Register = () => {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-primary-600 mb-2">TRENIKO</h1>
           <p className="text-gray-600">{t('auth.createAccount')}</p>
+          {/* The guides and the landing page both promise "free, up to 5
+              clients, no credit card". This screen repeated none of it, so the
+              reassurance vanished at exactly the moment of commitment — the
+              form asks for six fields and, until now, said nothing about what
+              it costs or what happens next. Restating it here is not marketing
+              copy; it is carrying a promise across a page boundary. */}
+          <p className="mt-3 text-sm text-gray-500">{t('auth.freeReassurance')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
