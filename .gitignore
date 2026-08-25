@@ -36,3 +36,18 @@ dist-ssr/
 
 # Claude Code — personal, machine-local overrides (permission mode etc.)
 .claude/settings.local.json
+
+# Rendered social assets — the slide PNGs, story frames and Reel MP4s under
+# marketing/social/30-day/. Around 18 MB, and all of it is output: the scripts
+# in _tooling/ regenerate every frame from the copy in the calendar markdown,
+# which is what actually needs reviewing and versioning. Committing the renders
+# would put 18 MB of derived binaries into the history permanently, and they
+# would be re-committed on every tweak to a font size.
+#
+# The brand assets in marketing/brand/ are NOT ignored: those are source of a
+# different kind — a logo is not regenerated from anything.
+marketing/social/30-day/posts/
+marketing/social/30-day/stories/
+marketing/social/30-day/reels/
+marketing/social/30-day/facebook/
+marketing/social/30-day/highlights/
