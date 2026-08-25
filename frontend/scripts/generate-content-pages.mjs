@@ -40,13 +40,48 @@
  *    TRENIKO copy.
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(HERE, '..', 'public');
 const ORIGIN = 'https://treniko.com';
+
+/* ── The stylesheet, content-hashed ────────────────────────────────────────── */
+
+/**
+ * These pages used to link `/assets-static/content.css` — a fixed filename
+ * served with `Cache-Control: max-age=14400`. That combination is a deployment
+ * bug, and it was caught in production: a stylesheet change deployed
+ * successfully to the server, and Cloudflare kept serving the previous file
+ * from its edge cache for the next four hours. `cf-cache-status: HIT`,
+ * `Age: 3593`, and a mobile nav that had been fixed but did not look fixed.
+ *
+ * Vite already solved this for the application bundle by putting a content hash
+ * in the filename, which is what makes `immutable` safe there. The static pages
+ * did not get that treatment because nothing was building them.
+ *
+ * So the generator does it: the emitted filename carries a hash of the file's
+ * own bytes. Change the CSS and the URL changes, so no cache anywhere can serve
+ * the old one; leave it alone and the URL is stable, so every cache keeps
+ * working. `content.css` remains the hand-edited source.
+ */
+const CSS_SOURCE = join(PUBLIC, 'assets-static', 'content.css');
+const cssBytes = readFileSync(CSS_SOURCE);
+const cssHash = createHash('sha256').update(cssBytes).digest('hex').slice(0, 10);
+const CSS_HREF = `/assets-static/content.${cssHash}.css`;
+
+writeFileSync(join(PUBLIC, 'assets-static', `content.${cssHash}.css`), cssBytes);
+
+// Previous hashes would otherwise accumulate in the repository forever, one per
+// stylesheet edit, all of them unreferenced.
+for (const f of readdirSync(join(PUBLIC, 'assets-static'))) {
+  if (/^content\.[0-9a-f]{10}\.css$/.test(f) && f !== `content.${cssHash}.css`) {
+    unlinkSync(join(PUBLIC, 'assets-static', f));
+  }
+}
 
 /* ── Shared chrome ─────────────────────────────────────────────────────────── */
 
@@ -177,7 +212,7 @@ function page({ path, title, description, crumbs, jsonld, body }) {
 <meta name="twitter:description" content="${description}">
 <meta name="twitter:image" content="${ORIGIN}/og-image.png">
 
-<link rel="stylesheet" href="/assets-static/content.css">
+<link rel="stylesheet" href="${CSS_HREF}">
 <script type="application/ld+json">
 ${JSON.stringify(jsonld, null, 2)}
 </script>
