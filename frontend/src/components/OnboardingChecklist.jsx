@@ -3,18 +3,51 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+import { useAuth } from '../context/AuthContext';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-const DISMISSED_KEY = 'treniko_onboarding_dismissed';
+
+/**
+ * The dismissal flag, scoped to one account.
+ *
+ * It used to be the bare key `treniko_onboarding_dismissed`, which is stored
+ * per BROWSER — so the first account to finish onboarding on a device set it
+ * for every account that would ever sign in on that device afterwards. A
+ * brand-new trainer then landed on a dashboard showing four zeroes, "All
+ * packages are healthy", and a single CTA — "Schedule a session" — that cannot
+ * work before a client exists.
+ *
+ * Found by registering a new account in a browser that had used TRENIKO
+ * before: the checklist never appeared, and the component gives no sign of it
+ * because a missing checklist looks identical to a completed one.
+ *
+ * It matters most in exactly the situation TRENIKO needs to go well — the
+ * founder demonstrating it on their own laptop, or a second trainer signing up
+ * on a device someone else already used.
+ *
+ * Keyed by tenant rather than user so the two trainers of one small studio
+ * share onboarding state, which is what "this business is set up" means.
+ */
+const dismissedKey = (tenantId) =>
+  tenantId ? `treniko_onboarding_dismissed:${tenantId}` : null;
 
 export default function OnboardingChecklist() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId ?? null;
   const [steps, setSteps]         = useState(null);
   const [dismissed, setDismissed] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem(DISMISSED_KEY) === 'true') {
+    // Wait for the tenant before reading or writing anything: keying the flag
+    // on `undefined` would recreate the shared-across-accounts bug under a
+    // different name.
+    const key = dismissedKey(tenantId);
+    if (!key) return;
+
+    if (localStorage.getItem(key) === 'true') {
       setDismissed(true);
       return;
     }
@@ -61,14 +94,17 @@ export default function OnboardingChecklist() {
       ];
       setSteps(newSteps);
       if (newSteps.every(s => s.done)) {
-        localStorage.setItem(DISMISSED_KEY, 'true');
+        localStorage.setItem(key, 'true');
         setDismissed(true);
       }
     }).catch(() => {});
-  }, []);
+    // Re-runs when the tenant resolves, which on a fresh load is after the
+    // first render.
+  }, [tenantId]);
 
   const handleDismiss = () => {
-    localStorage.setItem(DISMISSED_KEY, 'true');
+    const key = dismissedKey(tenantId);
+    if (key) localStorage.setItem(key, 'true');
     setDismissed(true);
   };
 
