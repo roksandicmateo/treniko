@@ -21,6 +21,20 @@ const AdminDashboard = () => {
   const channels = o?.acquisition?.views?.byChannel ?? [];
   const pages = o?.acquisition?.views?.byPath ?? [];
   const referrers = o?.acquisition?.views?.byReferrer ?? [];
+  const funnel = o?.funnel?.bySource ?? [];
+  const funnelCampaigns = o?.funnel?.byCampaign ?? [];
+  const minForRate = o?.funnel?.minimumForRate ?? 30;
+
+  /**
+   * A stage-to-stage percentage, or the words instead.
+   *
+   * Mirrors utils/acquisitionFunnel.js on the server: below the threshold there
+   * is no number, because a rate off four accounts is a claim nobody can
+   * support and it is the kind of figure that gets quoted back months later as
+   * though it were measured.
+   */
+  const rate = (numerator, denominator) =>
+    denominator >= minForRate ? `${Math.round((numerator / denominator) * 100)}%` : null;
   const measuringSince = o?.acquisition?.views?.measuring_since ?? null;
 
   // The subscriptions endpoint returns one row per (plan, status) pair, so the
@@ -143,6 +157,124 @@ const AdminDashboard = () => {
                 )}
               </div>
             </div>
+
+            {/* ── The funnel, by source ─────────────────────────────────────
+                The join everything else was missing. Acquisition says where
+                visitors came from; activation says whether anyone became a
+                user; this says WHICH SOURCE produced the ones who did, which
+                is the only version of the question worth acting on.
+
+                Percentages are withheld below `minimumForRate` rather than
+                rendered small. A conversion rate computed from four accounts
+                is not a cautious number, it is a wrong one. */}
+            {funnel.length > 0 && (
+              <div className="card overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                  <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+                    Funnel by source
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Visit → registration → verified → first client → first package → first booking.
+                    Each account counts once per stage, so a trainer with five clients advances
+                    “first client” by one.
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                        <th className="px-6 py-3">Source</th>
+                        <th className="px-6 py-3 text-right">Visits</th>
+                        <th className="px-6 py-3 text-right">Registered</th>
+                        <th className="px-6 py-3 text-right">Verified</th>
+                        <th className="px-6 py-3 text-right">First client</th>
+                        <th className="px-6 py-3 text-right">First package</th>
+                        <th className="px-6 py-3 text-right">First booking</th>
+                        <th className="px-6 py-3 text-right">Visit → reg.</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                      {funnel.map((r) => (
+                        <tr key={r.source}>
+                          <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100 break-all">
+                            {r.source}
+                          </td>
+                          <td className="px-6 py-3 text-right tabular-nums">{r.visits}</td>
+                          <td className="px-6 py-3 text-right tabular-nums">{r.registrations}</td>
+                          <td className="px-6 py-3 text-right tabular-nums">{r.verified}</td>
+                          <td className="px-6 py-3 text-right tabular-nums font-semibold text-gray-900 dark:text-gray-100">
+                            {r.first_client}
+                          </td>
+                          <td className="px-6 py-3 text-right tabular-nums">{r.first_package}</td>
+                          <td className="px-6 py-3 text-right tabular-nums">{r.first_booking}</td>
+                          <td className="px-6 py-3 text-right tabular-nums text-gray-500">
+                            {rate(r.registrations, r.visits) ?? (
+                              <span className="text-xs">Not enough data yet</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/30">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">(direct)</span> means measured, with no source —
+                    someone typed the address or the referrer was withheld.{' '}
+                    <span className="font-medium">(unattributed)</span> means an account created
+                    before attribution existed, so it was never measured at all. The two are kept
+                    apart on purpose: collapsing them would make development accounts read as
+                    measured direct signups. Rates appear once a source has at least {minForRate}{' '}
+                    visits.
+                  </p>
+                </div>
+
+                {funnelCampaigns.length > 0 && (
+                  <div className="border-t border-gray-100 dark:border-gray-800">
+                    <div className="px-6 pt-5 pb-2">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        By campaign
+                      </h3>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Accounts that arrived with UTM tags, split by medium, campaign and content.
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                            <th className="px-6 py-3">Source</th>
+                            <th className="px-6 py-3">Medium</th>
+                            <th className="px-6 py-3">Campaign</th>
+                            <th className="px-6 py-3">Content</th>
+                            <th className="px-6 py-3 text-right">Registered</th>
+                            <th className="px-6 py-3 text-right">First client</th>
+                            <th className="px-6 py-3 text-right">First booking</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                          {funnelCampaigns.map((r) => (
+                            <tr key={`${r.utm_source}-${r.utm_medium}-${r.utm_campaign}-${r.utm_content}`}>
+                              <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100">{r.utm_source}</td>
+                              <td className="px-6 py-3 text-gray-500">{r.utm_medium}</td>
+                              <td className="px-6 py-3 text-gray-500">{r.utm_campaign}</td>
+                              <td className="px-6 py-3 text-gray-500 break-all">{r.utm_content}</td>
+                              <td className="px-6 py-3 text-right tabular-nums">{r.registrations}</td>
+                              <td className="px-6 py-3 text-right tabular-nums font-semibold text-gray-900 dark:text-gray-100">
+                                {r.first_client}
+                              </td>
+                              <td className="px-6 py-3 text-right tabular-nums">{r.first_booking}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Activation ────────────────────────────────────────────────
                 Deliberately ABOVE acquisition. Acquisition answers where people

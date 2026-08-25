@@ -28,6 +28,11 @@
  */
 
 const bcrypt = require('bcryptjs');
+const {
+  FUNNEL_BY_SOURCE_SQL,
+  FUNNEL_BY_CAMPAIGN_SQL,
+  MINIMUM_FOR_RATE,
+} = require('../utils/acquisitionFunnel');
 const { pool } = require('../config/database');
 const { sendDbClientError } = require('../utils/dbErrors');
 const {
@@ -253,7 +258,7 @@ const me = async (req, res) => res.json({ success: true, admin: req.admin });
  */
 const getOverview = async (req, res) => {
   try {
-    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource, viewsByPath, viewsByReferrer, activation] = await Promise.all([
+    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource, viewsByPath, viewsByReferrer, activation, funnelBySource, funnelByCampaign] = await Promise.all([
       pool.query(`
         SELECT COUNT(*)::int AS total,
                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int  AS last_7_days,
@@ -438,12 +443,31 @@ const getOverview = async (req, res) => {
           (SELECT COUNT(*)::int FROM account) AS accounts,
           (SELECT COUNT(*)::int FROM account a
             WHERE EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = a.id AND u.email_verified)) AS verified,
+          -- Migration 036. These three read through app_activation_by_tenant()
+          -- because clients, packages and the session tables are under RLS and
+          -- an admin request has no tenant context: querying them directly
+          -- returned 0 for every account no matter how many trainers were
+          -- using the product, which made the one number this panel exists for
+          -- permanently and silently wrong.
           (SELECT COUNT(*)::int FROM account a
-            WHERE EXISTS (SELECT 1 FROM clients c WHERE c.tenant_id = a.id)) AS with_client,
+             JOIN app_activation_by_tenant() v ON v.tenant_id = a.id
+            WHERE v.has_client) AS with_client,
           (SELECT COUNT(*)::int FROM account a
-            WHERE EXISTS (SELECT 1 FROM trainings s WHERE s.tenant_id = a.id)) AS with_training,
+             JOIN app_activation_by_tenant() v ON v.tenant_id = a.id
+            WHERE v.has_booking) AS with_training,
           (SELECT COUNT(*)::int FROM account a
-            WHERE EXISTS (SELECT 1 FROM packages p WHERE p.tenant_id = a.id)) AS with_package`),
+             JOIN app_activation_by_tenant() v ON v.tenant_id = a.id
+            WHERE v.has_package) AS with_package`),
+
+      // Visit -> Registration -> Verified -> First client -> First package ->
+      // First booking, by acquisition source. The SQL lives in
+      // utils/acquisitionFunnel.js so the test suite runs the query that ships
+      // rather than a retyped copy of it; the reasoning behind the source key,
+      // the (unattributed) label and the count-once semantics is there too.
+      pool.query(FUNNEL_BY_SOURCE_SQL),
+
+      // The same funnel one level deeper, for accounts carrying a campaign.
+      pool.query(FUNNEL_BY_CAMPAIGN_SQL),
     ]);
 
     return res.json({
@@ -472,6 +496,18 @@ const getOverview = async (req, res) => {
         // acquisition ends at the signup; this is what happens afterwards, and
         // it is the half that decides whether any of the acquisition mattered.
         activation: activation.rows[0],
+
+        // Visit -> Registration -> Verified -> First client -> First package ->
+        // First booking, by source. `minimumForRate` is the denominator below
+        // which the UI prints "Not enough data yet" instead of a percentage:
+        // two signups out of forty visits is not a 5% conversion rate, it is
+        // two signups, and a rate computed from it is a number somebody quotes
+        // back six months later as though it meant something.
+        funnel: {
+          bySource: funnelBySource.rows,
+          byCampaign: funnelByCampaign.rows,
+          minimumForRate: MINIMUM_FOR_RATE,
+        },
 
         acquisition: {
           ...attribution.rows[0],
