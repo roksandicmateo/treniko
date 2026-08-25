@@ -69,7 +69,7 @@ anything.
 useful member of a room where trainers already are.
 
 Ranked by probability of producing a real user. Croatian channels are
-researched in detail in `marketing/CROATIA_CHANNELS_2026.md`, including a public
+researched in detail in `marketing/CROATIA_ACQUISITION_2026.md`, including a public
 directory of ~150 independent Croatian trainers and how to recognise the target
 profile from a public Instagram bio.
 

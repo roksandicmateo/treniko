@@ -166,7 +166,7 @@ inventing one is the kind of detail that gets a Page restricted.
 
 ## W3 · Reddit — account, and comments only · ~20 minutes
 
-**Read `marketing/REDDIT_2026.md` first.** The headline finding changes the plan:
+**Read `marketing/REDDIT_DISTRIBUTION_2026.md` first.** The headline finding changes the plan:
 
 > **r/personaltraining (94,865 members) forbids TRENIKO entirely.** Rule 2 bans
 > soliciting feedback, market research and recruiting testers for software.
@@ -181,7 +181,7 @@ thread), `r/EntrepreneurRideAlong`, `r/SaaS` (1 mention per 60 days, disclosed),
 
 **This week:** use an existing account if you have one with history. Comment a
 few times in r/Croatia on anything you genuinely have something to say about.
-**Post nothing yet.** Content is written and ready in `REDDIT_2026.md` § 4.
+**Post nothing yet.** Content is written and ready in `REDDIT_DISTRIBUTION_2026.md` § 4.
 
 ---
 
@@ -218,7 +218,7 @@ not screenshot a real trainer's account.
 | **L1** | **SaaSHub** submission — verified free, account required | Lower intent than W4 |
 | **L2** | **AlternativeTo** listing | Believed free; login-gated, so unverified |
 | **L3** | **Cloudflare AI crawlers** — allow `ChatGPT-User`, `Claude-User`, `OAI-SearchBot`; keep `GPTBot`/`ClaudeBot` blocked if you want training excluded. Security → Bots. Reasoning: `DECISIONS_2026-08.md` § 1 | robots.txt now makes the flip safe, so this is no longer urgent |
-| **L4** | **Reddit posts** from `REDDIT_2026.md` § 4 | Only after W3 gives the account history |
+| **L4** | **Reddit posts** from `REDDIT_DISTRIBUTION_2026.md` § 4 | Only after W3 gives the account history |
 | **L5** | **Crunchbase** free tier | Entity signal only. Minimal traffic |
 | **L6** | **thePTDC** contribution pitch | Months to land, high value if it does |
 
@@ -305,7 +305,7 @@ Because none of it needed you:
 - Twelve content pages, the tracker, the calculator, sitemap, robots, internal linking
 - All analytics, attribution and funnel work
 - `check-seo.mjs` and `check-headers.mjs`, both gating the build
-- Research: `REDDIT_2026.md`, `CROATIA_CHANNELS_2026.md`,
+- Research: `REDDIT_DISTRIBUTION_2026.md`, `CROATIA_ACQUISITION_2026.md`,
   `DISTRIBUTION_EXECUTION_2026.md`, `FIRST_10_USERS_EXECUTION_2026.md`,
   `DECISIONS_2026-08.md`
 - `SEARCH_CONSOLE_GROWTH_2026.md` — deliberately empty until U2 is done
