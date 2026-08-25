@@ -253,7 +253,7 @@ const me = async (req, res) => res.json({ success: true, admin: req.admin });
  */
 const getOverview = async (req, res) => {
   try {
-    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource, viewsByPath, viewsByReferrer] = await Promise.all([
+    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource, viewsByPath, viewsByReferrer, activation] = await Promise.all([
       pool.query(`
         SELECT COUNT(*)::int AS total,
                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int  AS last_7_days,
@@ -406,6 +406,44 @@ const getOverview = async (req, res) => {
          GROUP BY referrer_host
          ORDER BY views DESC, most_recent DESC
          LIMIT 25`),
+
+      // The activation funnel — the only part of this dashboard that answers
+      // "do we have a real user yet".
+      //
+      // Two things it corrects.
+      //
+      // First, `tenants` is not the signup count. A tenant row can outlive the
+      // account it belonged to: account deletion before the fix in
+      // jobs/deletionJob.js removed the trainer and left the shell, and there
+      // are five such shells in production against four real accounts. Counting
+      // rows therefore overstates signups by 125% today, and any figure derived
+      // from it — conversion rate above all — is wrong by the same margin. An
+      // account is a tenant that still has a user.
+      //
+      // Second, a signup is not a user. Someone who registers, verifies their
+      // email and never adds a client has not adopted anything; the product has
+      // not been used. `with_client` is the real activation event, because
+      // adding a client is the first action that only a working trainer takes,
+      // and it is the number that has never once been above zero.
+      //
+      // Counts of rows only. No names, no emails, nothing tenant-scoped is read.
+      pool.query(`
+        WITH account AS (
+          SELECT t.id
+            FROM tenants t
+           WHERE EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = t.id)
+        )
+        SELECT
+          (SELECT COUNT(*)::int FROM tenants) AS tenant_rows,
+          (SELECT COUNT(*)::int FROM account) AS accounts,
+          (SELECT COUNT(*)::int FROM account a
+            WHERE EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = a.id AND u.email_verified)) AS verified,
+          (SELECT COUNT(*)::int FROM account a
+            WHERE EXISTS (SELECT 1 FROM clients c WHERE c.tenant_id = a.id)) AS with_client,
+          (SELECT COUNT(*)::int FROM account a
+            WHERE EXISTS (SELECT 1 FROM trainings s WHERE s.tenant_id = a.id)) AS with_training,
+          (SELECT COUNT(*)::int FROM account a
+            WHERE EXISTS (SELECT 1 FROM packages p WHERE p.tenant_id = a.id)) AS with_package`),
     ]);
 
     return res.json({
@@ -429,6 +467,12 @@ const getOverview = async (req, res) => {
         // What still cannot be produced is listed in `notMeasured` with the
         // reason for each, rather than omitted — an absent metric reads as a
         // zero, and a zero here would be a lie.
+        // Registration → verification → first client → first session → first
+        // package. Placed alongside acquisition rather than inside it because
+        // acquisition ends at the signup; this is what happens afterwards, and
+        // it is the half that decides whether any of the acquisition mattered.
+        activation: activation.rows[0],
+
         acquisition: {
           ...attribution.rows[0],
           bySource: attributionSources.rows,

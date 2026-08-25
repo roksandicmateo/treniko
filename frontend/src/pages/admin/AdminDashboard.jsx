@@ -54,7 +54,10 @@ const AdminDashboard = () => {
         {o && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              <StatCard label="Tenants" value={o.tenants.total} hint={`${o.tenants.last_7_days} in the last 7 days`} />
+              {/* Raw row count, kept because it is the truth about the table —
+                  but labelled so it is not read as the signup count. Accounts
+                  live in the Activation panel below. */}
+              <StatCard label="Tenant rows" value={o.tenants.total} hint={`${o.tenants.last_7_days} in the last 7 days · see Activation for accounts`} />
               <StatCard label="Trainers" value={o.trainers.total} hint={`${o.trainers.verified} email-verified`} />
               <StatCard label="Clients" value={o.usage.clients_total} hint="across all tenants" />
               <StatCard label="Sessions" value={o.usage.sessions_this_period} hint="current billing period" />
@@ -140,6 +143,66 @@ const AdminDashboard = () => {
                 )}
               </div>
             </div>
+
+            {/* ── Activation ────────────────────────────────────────────────
+                Deliberately ABOVE acquisition. Acquisition answers where people
+                came from; this answers whether any of them became a user, and
+                if the answer is none then no acquisition number below it means
+                anything yet.
+
+                `Accounts` is not the tenant row count. A tenant can outlive the
+                account it belonged to — deletion before the fix in
+                jobs/deletionJob.js left the shell behind — so the raw row count
+                overstates signups, and every rate derived from it by the same
+                margin. The discrepancy is shown rather than hidden, because a
+                number that quietly disagrees with the database is worse than a
+                number with a footnote. */}
+            {o.activation && (
+              <div className="card overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                  <h2 className="font-semibold text-gray-900 dark:text-gray-100">Activation</h2>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Registering is not adopting. Adding a first client is the earliest action only a
+                    working trainer takes — it is the number that decides whether TRENIKO has a real
+                    user.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 xl:grid-cols-5 gap-4 p-6">
+                  <StatCard label="Accounts" value={o.activation.accounts ?? 0}
+                    hint="Tenants that still have a user" />
+                  <StatCard label="Email verified" value={o.activation.verified ?? 0} />
+                  <StatCard label="Added a client" value={o.activation.with_client ?? 0}
+                    hint="The activation event" />
+                  <StatCard label="Booked a session" value={o.activation.with_training ?? 0} />
+                  <StatCard label="Created a package" value={o.activation.with_package ?? 0} />
+                </div>
+
+                {o.activation.with_client === 0 && o.activation.accounts > 0 && (
+                  <div className="px-6 pb-5 -mt-2">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        No account has ever added a client.
+                      </span>{' '}
+                      Every account so far registered and stopped. Until this is above zero the
+                      product has not been used by anyone, and no traffic or conversion figure below
+                      is worth optimising.
+                    </p>
+                  </div>
+                )}
+
+                {o.activation.tenant_rows > o.activation.accounts && (
+                  <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/30">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {o.activation.tenant_rows} tenant rows exist against {o.activation.accounts}{' '}
+                      accounts. The difference is empty shells left by account deletions that ran
+                      before <code>jobs/deletionJob.js</code> removed the tenant too. They carry no
+                      personal data. Counting rows instead of accounts would overstate signups.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Acquisition ───────────────────────────────────────────────
                 Signups by channel. Every number here counts an ACCOUNT, never
