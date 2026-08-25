@@ -20,6 +20,7 @@ const AdminDashboard = () => {
   // JOIN, so a channel appears whether it has one, the other, or both.
   const channels = o?.acquisition?.views?.byChannel ?? [];
   const pages = o?.acquisition?.views?.byPath ?? [];
+  const referrers = o?.acquisition?.views?.byReferrer ?? [];
   const measuringSince = o?.acquisition?.views?.measuring_since ?? null;
 
   // The subscriptions endpoint returns one row per (plan, status) pair, so the
@@ -232,6 +233,54 @@ const AdminDashboard = () => {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {/* ── Where untagged traffic came from ─────────────────────
+                    The campaign table above can only see visits that carried a
+                    UTM. Nobody tags an organic search result, so every visitor
+                    who found TRENIKO through Google was landing in `(direct)`
+                    next to people who typed the address in — which for a
+                    programme whose whole purpose is organic search made the one
+                    number that matters invisible. This splits them by referrer
+                    host. Rows that DO carry a utm_source are excluded, so the
+                    two tables do not double-count the same visit. */}
+                {referrers.length > 0 && (
+                  <div className="border-t border-gray-100 dark:border-gray-800">
+                    <div className="px-6 pt-5 pb-2">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        Untagged traffic, by referrer
+                      </h3>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Visits with no UTM tags. A search engine here is organic search.
+                        <span className="font-medium"> (none)</span> is a direct visit or a referrer
+                        the browser withheld — the two cannot be told apart, so they are not split.
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                            <th className="px-6 py-3">Referrer</th>
+                            <th className="px-6 py-3 text-right">Views</th>
+                            <th className="px-6 py-3 text-right">Last 7 days</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                          {referrers.map((r) => (
+                            <tr key={r.referrer_host}>
+                              <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100 break-all">
+                                {r.referrer_host}
+                              </td>
+                              <td className="px-6 py-3 text-right tabular-nums">{r.views}</td>
+                              <td className="px-6 py-3 text-right tabular-nums text-gray-500">
+                                {r.last_7_days}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 

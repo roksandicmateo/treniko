@@ -253,7 +253,7 @@ const me = async (req, res) => res.json({ success: true, admin: req.admin });
  */
 const getOverview = async (req, res) => {
   try {
-    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource, viewsByPath] = await Promise.all([
+    const [tenants, trainers, plans, usage, deletions, recent, attribution, attributionSources, views, viewsBySource, viewsByPath, viewsByReferrer] = await Promise.all([
       pool.query(`
         SELECT COUNT(*)::int AS total,
                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int  AS last_7_days,
@@ -380,6 +380,32 @@ const getOverview = async (req, res) => {
          GROUP BY path
          ORDER BY views DESC, most_recent DESC
          LIMIT 30`),
+
+      // Where the visit came from when nothing tagged it.
+      //
+      // This is the gap that mattered most for an SEO programme. A visitor
+      // arriving from a Google search carries no UTM parameters — nobody tags
+      // an organic result — so every one of them was being counted under
+      // `(direct)` alongside people who typed the address in. The two are not
+      // the same thing, and the first is the entire point of the content work.
+      //
+      // referrer_host has been collected since migration 035 and nothing read
+      // it. Host only, never the full referrer: a full URL can carry someone
+      // else's query string.
+      //
+      // Rows WITH a utm_source are excluded rather than shown twice — those are
+      // already attributed by campaign in the table above, and counting them in
+      // both places makes the totals disagree with each other.
+      pool.query(`
+        SELECT COALESCE(referrer_host, '(none)') AS referrer_host,
+               COUNT(*)::int AS views,
+               COUNT(*) FILTER (WHERE viewed_at >= NOW() - INTERVAL '7 days')::int AS last_7_days,
+               MAX(viewed_at) AS most_recent
+          FROM page_view
+         WHERE utm_source IS NULL
+         GROUP BY referrer_host
+         ORDER BY views DESC, most_recent DESC
+         LIMIT 25`),
     ]);
 
     return res.json({
@@ -422,6 +448,11 @@ const getOverview = async (req, res) => {
             // counts is otherwise read as all-time and quietly understates
             // every page.
             byPath: viewsByPath.rows,
+
+            // Untagged traffic only — see the query. `(none)` is a direct
+            // visit or a referrer the browser withheld; a search engine host
+            // here is organic search, which no UTM will ever mark.
+            byReferrer: viewsByReferrer.rows,
           },
 
           notMeasured: {

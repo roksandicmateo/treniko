@@ -194,6 +194,37 @@ const BEACON_SOURCE = `(function () {
           a.setAttribute('href', a.getAttribute('href') + '?' + carry);
         });
       }
+
+      // Count downloads of the free tracker.
+      //
+      // The file is served straight off disk by nginx, so a download never
+      // reaches the application and never appears in page_view. That left the
+      // most important step of the whole funnel unmeasured: we could see how
+      // many people reached the tracker page and had no idea how many of them
+      // actually took the file. Views without downloads and views with them are
+      // the difference between a page that needs rewriting and one that works.
+      //
+      // The download's own path is sent as the event, so it shows up in the
+      // admin page breakdown next to the page that led to it, with whatever
+      // campaign tags brought the visitor in. Same beacon, same endpoint, no new
+      // table and nothing identifying.
+      document.querySelectorAll('a[href^="/downloads/"]').forEach(function (a) {
+        a.addEventListener('click', function () {
+          try {
+            var d = { path: a.getAttribute('href').split('?')[0] };
+            ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (k) {
+              if (body[k]) d[k] = body[k];
+            });
+            if (body.referrer_host) d.referrer_host = body.referrer_host;
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon(
+                '/api/metrics/view',
+                new Blob([JSON.stringify(d)], { type: 'application/json' })
+              );
+            }
+          } catch (e) { /* a click must never be blocked by its own counter */ }
+        });
+      });
     } catch (e) { /* a counter must never break the page it counts */ }
   })();
 `;
