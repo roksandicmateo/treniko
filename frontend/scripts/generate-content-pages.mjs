@@ -94,6 +94,7 @@ const header = () => `  <header class="site">
         <a href="/personal-trainer-software">Software</a>
         <a href="/guides">Guides</a>
         <a href="/free-personal-trainer-client-tracker">Free tracker</a>
+        <a href="/personal-trainer-pricing-calculator">Calculator</a>
         <a href="/">Product</a>
       </nav>
     </div>
@@ -107,6 +108,7 @@ const footer = () => `  <footer class="site">
         <a href="/personal-trainer-client-management-software">Client management software</a>
         <a href="/guides">Guides</a>
         <a href="/free-personal-trainer-client-tracker">Free tracker</a>
+        <a href="/personal-trainer-pricing-calculator">Pricing calculator</a>
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
       </div>
@@ -245,13 +247,35 @@ for (const f of readdirSync(join(PUBLIC, 'assets-static'))) {
 const beacon = () => `  <script src="${BEACON_HREF}" defer></script>`;
 
 /**
+ * Write a page-specific script as `/assets-static/<name>.<hash>.js` and return
+ * its href.
+ *
+ * Interactive pages cannot use an inline <script>: the Content-Security-Policy
+ * on this site is `script-src 'self'` with no hashes and no nonces, which is
+ * only sustainable because nothing inline exists to accommodate. A tool page
+ * that reached for an inline handler would force the policy to be weakened for
+ * every page on the site.
+ */
+function emitScript(name, source) {
+  const hash = createHash('sha256').update(source).digest('hex').slice(0, 10);
+  const file = `${name}.${hash}.js`;
+  writeFileSync(join(PUBLIC, 'assets-static', file), source, 'utf8');
+  for (const f of readdirSync(join(PUBLIC, 'assets-static'))) {
+    if (new RegExp(`^${name}\.[0-9a-f]{10}\.js$`).test(f) && f !== file) {
+      unlinkSync(join(PUBLIC, 'assets-static', f));
+    }
+  }
+  return `/assets-static/${file}`;
+}
+
+/**
  * Build one page.
  *
  * `jsonld` is passed through verbatim, so every schema block is written
  * deliberately next to the content it describes rather than assembled from
  * guesswork here. Nothing may claim a rating, a review or a price.
  */
-function page({ path, title, description, crumbs, jsonld, body }) {
+function page({ path, title, description, crumbs, jsonld, body, script }) {
   const url = `${ORIGIN}${path}`;
   const crumbHtml = crumbs
     .map((c, i) =>
@@ -299,7 +323,8 @@ ${body}
   </main>
 ${footer()}
 ${beacon()}
-</body>
+${script ? `  <script src="${script}" defer></script>
+` : ''}</body>
 </html>
 `;
 }
@@ -548,6 +573,11 @@ ${cta('Start with the clients you already have. Adding one and booking a session
         <h3>Free client &amp; session tracker</h3>
         <p>A spreadsheet where the remaining-session count works itself out. Excel or Google
           Sheets, no sign-up.</p>
+      </a>
+      <a class="card" href="/personal-trainer-pricing-calculator">
+        <h3>Free pricing calculator</h3>
+        <p>What an hour really pays once prep, travel and messages are counted — and what a
+          package discount actually costs.</p>
       </a>
     </div>`,
   });
@@ -1011,6 +1041,12 @@ ${cta('TRENIKO is built for exactly this handover: no setup wizard, no configura
       and say it when they buy. We go through the options in
       <a href="/guides/session-packages">tracking packages and remaining sessions</a>.</p>
 
+    <h2>Before the tracking, the price</h2>
+    <p>The sheet records what a client bought. Deciding what a block should cost in the first
+      place — once the prep, travel and messages around each session are counted — is a different
+      question, and the <a href="/personal-trainer-pricing-calculator">pricing calculator</a> does
+      that arithmetic. Also free, also no sign-up.</p>
+
     <h2>The weekly check</h2>
     <p>Ten minutes, and it is most of client retention:</p>
     <ul>
@@ -1433,6 +1469,10 @@ ${cta('TRENIKO stores completed, cancelled and no-show as distinct outcomes on t
     <p>Add those up honestly for one client for one week and divide by the sessions delivered.
       That number — not your headline rate — is what you are really being paid per hour of work,
       and it is the number a package discount comes out of.</p>
+    <p>If you would rather not do that by hand, the
+      <a href="/personal-trainer-pricing-calculator">pricing calculator</a> does exactly this
+      arithmetic and the package side of it. It suggests no prices — it only works on what you
+      type.</p>
     <p>Do this before anything else on this page. Everything after it is a decision about that
       figure, and you cannot make those decisions without it.</p>
 
@@ -1814,6 +1854,258 @@ ${cta('The fastest way to judge it is with a client you actually have. Adding on
       <a class="card" href="/free-personal-trainer-client-tracker">
         <h3>Free client &amp; session tracker</h3>
         <p>Start with a spreadsheet that already counts sessions down. No sign-up.</p>
+      </a>
+    </div>`,
+  });
+}
+
+/* 12 ── /personal-trainer-pricing-calculator ──────────────────────────────── */
+{
+  const path = '/personal-trainer-pricing-calculator';
+  const crumbs = [
+    { name: 'TRENIKO', path: '/' },
+    { name: 'Pricing calculator', path },
+  ];
+  const title = 'Personal Trainer Pricing Calculator (Free, No Sign-up) | TRENIKO';
+  const description =
+    'Work out what an hour of coaching really pays once prep, travel and messages are counted, and what a package discount actually costs. Free, no sign-up.';
+
+  /**
+   * The arithmetic, as a separate file.
+   *
+   * It calculates only from what the visitor types. There are no benchmark
+   * rates, no "average trainer earns" figures and no suggested prices anywhere
+   * in it, because those numbers vary by city and market and TRENIKO has not
+   * measured them. A calculator that invented one would be worse than useless:
+   * it would be confidently wrong about somebody's income.
+   *
+   * Everything happens in the browser. Nothing is sent anywhere, nothing is
+   * stored, and the page works with the network disconnected after load.
+   */
+  const CALC = `(function () {
+  'use strict';
+
+  var ids = ['rate', 'length', 'prep', 'travel', 'messaging', 'admin', 'blockSize', 'discount'];
+  var el = {};
+  ids.forEach(function (id) { el[id] = document.getElementById(id); });
+  var out = document.getElementById('results');
+  if (!out || ids.some(function (id) { return !el[id]; })) return;
+
+  function num(node) {
+    var v = parseFloat(String(node.value).replace(',', '.'));
+    return isFinite(v) && v >= 0 ? v : 0;
+  }
+
+  // Money is formatted without a currency symbol on purpose: the trainer's
+  // currency is unknown, and guessing one would put a wrong unit on every
+  // figure. The page says "in your currency" once, next to the first input.
+  function money(v) {
+    return (Math.round(v * 100) / 100).toLocaleString(undefined, {
+      minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+  }
+
+  function calc() {
+    var rate = num(el.rate);
+    var minutes = num(el.length) + num(el.prep) + num(el.travel) + num(el.messaging) + num(el.admin);
+    var hours = minutes / 60;
+    var realHourly = hours > 0 ? rate / hours : 0;
+
+    var block = Math.max(1, Math.round(num(el.blockSize)));
+    var discount = Math.min(100, num(el.discount));
+    var listTotal = rate * block;
+    var packageTotal = listTotal * (1 - discount / 100);
+    var perSession = block > 0 ? packageTotal / block : 0;
+    var given = listTotal - packageTotal;
+    var packageHourly = hours > 0 ? perSession / hours : 0;
+
+    var rows = [
+      ['Time you actually spend per session',
+       minutes + ' min' + (minutes !== 60 ? ' (' + (Math.round(hours * 100) / 100) + ' h)' : ''),
+       'The session plus everything around it.'],
+      ['What that hour really pays', money(realHourly) + ' / hour',
+       'Your headline rate divided by the time the session actually costs you.'],
+      ['Block of ' + block + ' at list price', money(listTotal), ''],
+      ['Block of ' + block + ' at ' + (Math.round(discount * 10) / 10) + '% off', money(packageTotal),
+       'Per session: ' + money(perSession)],
+      ['What the discount gives away', money(given),
+       given > 0 ? 'Over the block. Ask what it buys — cash up front, or commitment.' : 'No discount applied.'],
+      ['Real hourly rate inside the package', money(packageHourly) + ' / hour',
+       'This is the number to compare against what you would accept.']
+    ];
+
+    var html = '<div class="table-scroll"><table><tbody>';
+    rows.forEach(function (r) {
+      html += '<tr><td>' + r[0] + '</td><td><strong>' + r[1] + '</strong>' +
+              (r[2] ? '<br><span style="color:#6b7280;font-size:14px">' + r[2] + '</span>' : '') +
+              '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    if (rate > 0 && minutes > num(el.length)) {
+      var lost = rate - realHourly;
+      if (lost > 0.005) {
+        html += '<p style="margin-top:14px">Charging ' + money(rate) +
+          ' for the session but spending ' + minutes + ' minutes on it means the unpaid ' +
+          (minutes - num(el.length)) + ' minutes cost you ' + money(lost) +
+          ' of every hour. That is not an argument for charging more — it is the number to know ' +
+          'before you agree to a discount on top of it.</p>';
+      }
+    }
+
+    out.innerHTML = html;
+  }
+
+  ids.forEach(function (id) {
+    el[id].addEventListener('input', calc);
+    el[id].addEventListener('change', calc);
+  });
+  calc();
+})();
+`;
+
+  const script = emitScript('calculator', CALC);
+
+  PAGES.push({
+    path,
+    title,
+    description,
+    script,
+    crumbs,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        breadcrumb(crumbs),
+        ORG,
+        {
+          // A genuinely free browser tool, described as one. No price, no
+          // rating, no review — there are none to describe.
+          '@type': 'WebApplication',
+          '@id': `${ORIGIN}${path}#app`,
+          name: 'Personal trainer pricing calculator',
+          url: `${ORIGIN}${path}`,
+          description,
+          applicationCategory: 'BusinessApplication',
+          operatingSystem: 'Any browser',
+          isAccessibleForFree: true,
+          inLanguage: 'en',
+          publisher: { '@id': `${ORIGIN}/#organization` },
+        },
+      ],
+    },
+    body: `    <p class="eyebrow">Free tool</p>
+    <h1>Personal trainer pricing calculator</h1>
+    <p class="lede">Two numbers most trainers have never worked out: what an hour of coaching
+      actually pays once the unpaid time around it is counted, and what a package discount really
+      costs over a block. This does both. Nothing to install, no sign-up, and nothing you type
+      leaves your browser.</p>
+
+    <div class="note">
+      <span class="label">Before you start</span>
+      <p>There are no suggested prices anywhere on this page. What a session is worth depends on
+        your city, your market and your experience, and any tool that hands you a number is
+        guessing about all three. This one only does arithmetic on what you type.</p>
+    </div>
+
+    <h2>Your session</h2>
+    <form id="calc" onsubmit="return false" style="margin:0 0 8px">
+      <div style="display:grid;gap:14px;grid-template-columns:1fr">
+        <label>What you charge for one session <span style="color:#6b7280">(in your currency)</span>
+          <input id="rate" type="number" min="0" step="1" value="40" inputmode="decimal">
+        </label>
+        <label>Session length <span style="color:#6b7280">(minutes)</span>
+          <input id="length" type="number" min="0" step="5" value="60" inputmode="numeric">
+        </label>
+        <label>Programming and planning, per session <span style="color:#6b7280">(minutes)</span>
+          <input id="prep" type="number" min="0" step="5" value="10" inputmode="numeric">
+        </label>
+        <label>Travel and setup, per session <span style="color:#6b7280">(minutes)</span>
+          <input id="travel" type="number" min="0" step="5" value="15" inputmode="numeric">
+        </label>
+        <label>Messages and check-ins, per session <span style="color:#6b7280">(minutes)</span>
+          <input id="messaging" type="number" min="0" step="5" value="10" inputmode="numeric">
+        </label>
+        <label>Admin, invoicing and chasing, per session <span style="color:#6b7280">(minutes)</span>
+          <input id="admin" type="number" min="0" step="5" value="5" inputmode="numeric">
+        </label>
+      </div>
+
+      <h2>The package</h2>
+      <div style="display:grid;gap:14px;grid-template-columns:1fr">
+        <label>Sessions in a block
+          <input id="blockSize" type="number" min="1" step="1" value="10" inputmode="numeric">
+        </label>
+        <label>Discount on the block <span style="color:#6b7280">(%)</span>
+          <input id="discount" type="number" min="0" max="100" step="0.5" value="10" inputmode="decimal">
+        </label>
+      </div>
+    </form>
+
+    <h2>What that comes to</h2>
+    <div id="results" aria-live="polite"><noscript>This calculator needs JavaScript. The same
+      arithmetic is written out step by step in
+      <a href="/guides/pricing-personal-training-packages">how to price personal training
+      packages</a>, and the free spreadsheet does the package side of it.</noscript></div>
+
+    <h2>How to read it</h2>
+    <p>The row that matters most is <strong>"what that hour really pays"</strong>. Almost every
+      package is priced off a session rate, and almost every session rate is set as though the
+      session is the whole job. It is not: the programming, the travel, the messages and the
+      invoicing are all work the client is buying, and they are all unpaid unless the rate covers
+      them.</p>
+    <p>The second is <strong>"what the discount gives away"</strong>. A package discount should buy
+      you something — cash up front, or commitment. If a client would have booked ten sessions
+      anyway, one at a time, then the discount bought nothing except the cash-flow benefit. That is
+      why blanket "10% off anything over ten sessions" pricing quietly leaks money: it pays a
+      discount to the clients least in need of persuading.</p>
+    <p>Neither number tells you what to charge. They tell you what you are currently charging,
+      which is the part most people are surprised by. The reasoning behind both, at length, is in
+      <a href="/guides/pricing-personal-training-packages">how to price personal training
+      packages</a>.</p>
+
+    <h2>What this deliberately does not do</h2>
+    <ul>
+      <li><strong>It does not suggest a price.</strong> Nobody who has not seen your market can,
+        and a number invented here would be confidently wrong about your income.</li>
+      <li><strong>It does not compare you to anyone.</strong> There is no "average trainer charges"
+        figure, because TRENIKO has not measured one and repeating a number from a listicle is not
+        measurement.</li>
+      <li><strong>It does not send anything anywhere.</strong> No account, no email, no storage.
+        Close the tab and it is gone.</li>
+    </ul>
+
+    <h2>Once the price is decided, the tracking starts</h2>
+    <p>A package price is a decision you make once. Keeping track of which client is how far
+      through which block, at which price, and whether they have paid, is a job that comes back
+      every week — and it is where the money actually leaks. Two ways to handle it:</p>
+    <div class="cards">
+      <a class="card" href="/free-personal-trainer-client-tracker">
+        <h3>Free client &amp; session tracker</h3>
+        <p>A spreadsheet where the remaining-session count works itself out. Excel or Google
+          Sheets, no sign-up.</p>
+      </a>
+      <a class="card" href="/guides/session-packages">
+        <h3>How to track packages and sessions left</h3>
+        <p>Why the count drifts, and the one rule that keeps it honest.</p>
+      </a>
+    </div>
+${cta('TRENIKO holds each package with its price, its session count and its expiry, counts down as sessions are completed, and flags a client before the block runs out — which is when the renewal conversation is worth having rather than after.')}
+
+    <h2>Read next</h2>
+    <div class="cards">
+      <a class="card" href="/guides/pricing-personal-training-packages">
+        <h3>Pricing personal training packages</h3>
+        <p>The unpaid hours to count first, what a discount actually buys, and how to set an
+          expiry that is not a trap.</p>
+      </a>
+      <a class="card" href="/guides/cancellation-policy">
+        <h3>Writing a cancellation policy that holds</h3>
+        <p>A price and a policy belong in the same message. The four things yours has to
+          decide.</p>
+      </a>
+      <a class="card" href="/personal-trainer-client-management-software">
+        <h3>Client management software for trainers</h3>
+        <p>The five questions it has to answer instantly.</p>
       </a>
     </div>`,
   });

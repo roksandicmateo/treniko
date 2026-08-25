@@ -219,3 +219,42 @@ footer.site .links { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 1
 
 /* The animation-free baseline is deliberate: nothing here fades in, so nothing
    depends on JavaScript or on prefers-reduced-motion to be readable. */
+
+/* ── Form controls ────────────────────────────────────────────────────────────
+   Used only by the pricing calculator. Kept in the shared stylesheet rather
+   than a second file because it is a few hundred bytes and the sheet is already
+   fetched on every content page — a separate request would cost more than the
+   rules do.
+
+   The 16px font size on inputs is not a taste decision: iOS Safari zooms the
+   viewport when a focused input is smaller than that, which on a phone throws
+   the reader out of the page they were reading. */
+label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+label input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px 12px;
+  font-size: 16px;
+  font-weight: 400;
+  font-family: inherit;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+}
+label input:focus {
+  outline: 2px solid var(--sky);
+  outline-offset: 1px;
+  border-color: var(--sky);
+}
+@media (min-width: 560px) {
+  form > div { grid-template-columns: 1fr 1fr !important; }
+}

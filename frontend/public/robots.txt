@@ -20,6 +20,7 @@ Allow: /personal-trainer-software
 Allow: /personal-trainer-client-management-software
 Allow: /guides
 Allow: /free-personal-trainer-client-tracker
+Allow: /personal-trainer-pricing-calculator
 Allow: /downloads/
 Disallow: /login
 Disallow: /register
