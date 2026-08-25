@@ -11,22 +11,33 @@ Pulled from production, not estimated:
 | Tenant rows | 9 |
 | **Real accounts** (tenant with a user) | **4** |
 | Email verified | 3 |
-| **Accounts that have added a client** | **0** |
-| Accounts that have booked a session | 0 |
-| Accounts that have created a package | 0 |
+| **Accounts that have added a client** | **3** |
+| Accounts that have created a package | 1 |
+| Accounts that have booked a session | 1 |
 | Page views, all time | 43 — essentially all QA traffic from these sessions |
 | Visits from a search engine | **0** |
 | Signups with attribution | **0** — all four accounts predate the attribution table |
 
-**Nobody has ever used TRENIKO.** Four accounts exist, three confirmed an email
-address, none of them added a single client. Those four are development
-accounts from May.
+**Corrected 25 Aug 2026.** This section previously read "nobody has ever used
+TRENIKO — none of them added a single client". That was wrong, and the reason
+matters more than the number: the activation counts were reading through
+row-level security with no tenant context, so `clients`, `packages` and the
+session tables were invisible to the query and returned 0 for every account
+regardless of reality. Migration 036 fixed it.
 
-This is not a discouraging way to open the document; it is the only useful one.
-Every plan below is written for a product with **zero users and zero traffic**,
-because that is what exists. The activation panel added to the admin dashboard
-today makes this number visible permanently, so it can never quietly be assumed
-to be better than it is.
+The true picture: **three of the four accounts added a client, and one went all
+the way through to a booked session.** All four are development accounts from
+May, so this is not evidence of product-market fit — but it is evidence that the
+core flow works end to end, which the broken metric had been denying.
+
+The number that is genuinely still zero is **trainers acquired**: no account
+came from a measured source, and none is a real personal trainer running a
+business.
+
+Every plan below is written for a product with **zero acquired trainers and zero
+organic traffic**, because that is what exists. The activation panel on the
+admin dashboard now makes both numbers visible permanently — and, since
+migration 036, correctly.
 
 ---
 
@@ -83,7 +94,7 @@ answerable in a demo in four seconds.
 **A real user is an account that has added a client and booked a session.**
 
 Not a signup. Not a verified email. Both of those have happened four times and
-three times respectively and meant nothing.
+three times respectively, in development accounts, and neither is a trainer.
 
 Measured on the admin dashboard: `Added a client` → `Booked a session` →
 `Created a package`. Ten accounts with zero clients is not ten users; it is ten

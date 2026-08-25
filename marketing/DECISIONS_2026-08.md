@@ -146,7 +146,7 @@ product beats a funded one, which is never on breadth.
 
 | Item | State |
 |---|---|
-| **Activation funnel on the admin dashboard** — accounts, verified, added-a-client, booked, package | ✅ Deployed. It reads 4 / 3 / **0** / 0 / 0 |
+| **Activation funnel on the admin dashboard** — accounts, verified, added-a-client, booked, package | ✅ Deployed. **The first reading, 4 / 3 / 0 / 0 / 0, was wrong** — the query read through RLS with no tenant context and could only ever return 0. Migration 036 fixed it; the true figures are 4 / 3 / 3 / 1 / 1 |
 | **Signup count corrected** — accounts, not tenant rows; was overstating by 125% | ✅ Deployed |
 | **Free pricing calculator** with sitemap, nav, footer and two contextual links | ✅ Deployed, arithmetic verified by hand |
 | **Free/no-card line on the registration form**, three languages | ✅ Deployed |
