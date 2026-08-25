@@ -86,7 +86,19 @@ describe('sanitizePageView — the whitelist, without a database', () => {
     for (const bad of [
       'https://evil.example.com/',
       '//evil.example.com',
+      // Protocol-relative, with a dot — the shape that slipped through the
+      // moment the dot was permitted for download paths. Not a path: a browser
+      // resolves it to another origin.
+      '//evil.example.com/x.png',
+      '///evil.example.com',
       '/../../etc/passwd',
+      // The dot is allowed now, so every traversal spelling is checked
+      // explicitly rather than being blocked as a side effect of the
+      // character class.
+      '/..',
+      '/downloads/../../etc/passwd',
+      '/a/../../b',
+      '/....//etc/passwd',
       '/<script>alert(1)</script>',
       'javascript:alert(1)',
       '/path?a=b',
@@ -96,6 +108,22 @@ describe('sanitizePageView — the whitelist, without a database', () => {
       // assertion itself rather than into a message.
       expect({ input: bad, result: sanitizePageView({ path: bad }) })
         .toEqual({ input: bad, result: null });
+    }
+  });
+
+  test('accepts a file path, so downloads can be counted', () => {
+    // The free tracker is served off disk by nginx and never reaches the
+    // application, so a click beacon is the only evidence anyone took it.
+    // Before the dot was permitted these events were silently dropped and the
+    // most important step of the lead-magnet funnel was unmeasurable.
+    for (const good of [
+      '/downloads/treniko-client-session-tracker.xlsx',
+      '/downloads/treniko-client-session-tracker.csv',
+      '/guides/no-show-clients',
+      '/',
+    ]) {
+      expect({ input: good, result: sanitizePageView({ path: good })?.path })
+        .toEqual({ input: good, result: good });
     }
   });
 

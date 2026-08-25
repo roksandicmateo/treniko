@@ -63,7 +63,32 @@ function sanitizePageView(raw) {
   // the endpoint is public, so a caller could post anything. A path must look
   // like a path — no protocol, no host, no traversal — or the table becomes a
   // place to write arbitrary strings that later get rendered in an admin panel.
-  if (!/^\/[A-Za-z0-9/_-]*$/.test(out.path)) return null;
+  //
+  // The dot is permitted so that file downloads can be counted: the free
+  // tracker at /downloads/treniko-client-session-tracker.xlsx is served off
+  // disk by nginx and never reaches the application, so a click beacon is the
+  // only way to know anyone took it. Without the dot those events were being
+  // silently dropped here, which is the correct behaviour for unexpected input
+  // and the wrong answer for a path we deliberately send.
+  //
+  // `..` stays rejected on its own line below. It is the only reason the dot
+  // was excluded in the first place, and widening the class without restoring
+  // that check would trade a measurement for a traversal.
+  if (!/^\/[A-Za-z0-9/._-]*$/.test(out.path)) return null;
+
+  // Two things the character class used to reject only as a side effect of
+  // excluding the dot. Both are restored explicitly, because a property that
+  // holds by accident stops holding the moment the accident is edited — which
+  // is exactly what happened when the dot was permitted, and what the test
+  // suite caught.
+  //
+  // `..` is traversal.
+  if (out.path.includes('..')) return null;
+  // `//host` is a protocol-relative URL. It is not a path: a browser resolves
+  // it against the current scheme and lands on another origin, so anywhere the
+  // admin panel renders one of these as a link it becomes an off-site
+  // redirect wearing a local-looking value.
+  if (out.path.startsWith('//')) return null;
 
   return out;
 }
