@@ -6,9 +6,13 @@ import {
 import { progressService } from '../../services/trainingService';
 import AddProgressModal from './AddProgressModal';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../utils/locale';
 
 export default function ProgressChart({ clientId }) {
   const { t } = useTranslation();
+  // Dates follow the UI language, not the machine's locale and not a hardcoded
+  // one — see src/utils/locale.js.
+  const dateLocale = useDateLocale();
   const [data,           setData]           = useState({});
   const [selectedMetric, setSelectedMetric] = useState('');
   const [loading,        setLoading]        = useState(true);
@@ -68,7 +72,7 @@ export default function ProgressChart({ clientId }) {
   // is the 15th anywhere west of Greenwich.
   const chartData = chronological.map((e) => ({
     date:  new Date(`${String(e.date).slice(0, 10)}T00:00:00`)
-             .toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+             .toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' }),
     value: parseFloat(e.value),
   }));
 
@@ -187,7 +191,7 @@ export default function ProgressChart({ clientId }) {
                   <tr key={e.id} className="border-t border-gray-50 hover:bg-gray-50 group">
                     <td className="px-4 py-2.5 text-gray-600">
                       {new Date(`${String(e.date).slice(0, 10)}T00:00:00`)
-                        .toLocaleDateString('en-GB', {
+                        .toLocaleDateString(dateLocale, {
                           day: 'numeric', month: 'short', year: 'numeric',
                         })}
                     </td>

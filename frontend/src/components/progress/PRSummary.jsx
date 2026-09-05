@@ -1,7 +1,9 @@
 // frontend/src/components/progress/PRSummary.jsx  (NEW FILE)
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../utils/locale';
 import { progressService } from '../../services/trainingService';
+import { toStrengthSeries } from './strengthSeries';
 
 const ESTIMATE_1RM = (weight, reps) => {
   if (!weight || !reps || reps <= 0) return null;
@@ -10,6 +12,8 @@ const ESTIMATE_1RM = (weight, reps) => {
 
 export default function PRSummary({ clientId }) {
   const { t } = useTranslation();
+  // Dates follow the UI language — see src/utils/locale.js.
+  const dateLocale = useDateLocale();
   const [data,    setData]    = useState({});
   const [loading, setLoading] = useState(true);
   const [sortBy,  setSortBy]  = useState('exercise'); // exercise | date | weight
@@ -17,8 +21,11 @@ export default function PRSummary({ clientId }) {
   const load = useCallback(() => {
     setLoading(true);
     progressService.getStrength(clientId)
-      .then(r => setData(r.data))
-      .catch(() => {})
+      // Normalised on arrival: this screen reads `ex.entries` too, and on the
+      // payload shape the endpoint used to send that resolves to
+      // Array.prototype.entries and throws. See strengthSeries.js.
+      .then(r => setData(toStrengthSeries(r.data)))
+      .catch(() => setData({}))
       .finally(() => setLoading(false));
   }, [clientId]);
 
@@ -40,7 +47,7 @@ export default function PRSummary({ clientId }) {
 
   // Build PR list — one entry per exercise
   const prs = Object.entries(data).map(([name, ex]) => {
-    const entries = ex.entries || [];
+    const entries = ex.entries;
     const maxWeightEntry = entries.reduce((best, e) =>
       e.maxWeight > (best?.maxWeight ?? 0) ? e : best, null
     );
@@ -73,7 +80,8 @@ export default function PRSummary({ clientId }) {
   });
 
   const formatDate = (d) => d
-    ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? new Date(`${String(d).slice(0, 10)}T00:00:00`)
+        .toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
 
   return (

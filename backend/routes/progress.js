@@ -91,20 +91,59 @@ router.get('/client/:clientId', async (req, res) => {
       ORDER BY COALESCE(e.id::text, te.id::text), ts.weight DESC NULLS LAST
     `, [clientId, tenantId]);
 
-    // Summary stats for the period
+    // Summary stats for the period.
+    //
+    // ── What was wrong ────────────────────────────────────────────────────────
+    // This was a single flat query that joined trainings -> training_exercises
+    // -> training_sets and then summed the *training's* duration:
+    //
+    //     SUM(EXTRACT(EPOCH FROM (t.end_time - t.start_time))/3600)
+    //     FROM trainings t JOIN training_exercises te … JOIN training_sets ts …
+    //
+    // The join multiplies each training into one row per set, so its duration
+    // was added once per set. Eight one-hour sessions of three exercises × three
+    // sets reported **72.0 h** instead of 8.0 — and the error grew with the
+    // amount of work logged, which is the opposite of what a progress screen
+    // should do.
+    //
+    // ── The fix ───────────────────────────────────────────────────────────────
+    // Count each thing over the grain it belongs to. `logged` holds one row per
+    // training, so its duration is summed exactly once no matter how many sets
+    // hang off it; `set_rows` holds one row per set, which is the right grain
+    // for the set and exercise counts. Nothing is divided by anything.
+    //
+    // The population is unchanged on purpose: as before, a completed training
+    // counts only once it has at least one logged set. That keeps every tile
+    // except Total Hours reporting exactly what it reported before.
     const { rows: [stats] } = await pool.query(`
+      WITH logged AS (
+        SELECT t.id, t.start_time, t.end_time
+        FROM trainings t
+        WHERE t.client_id    = $1
+          AND t.tenant_id    = $2
+          AND t.is_completed = true
+          AND t.start_time  >= $3
+          AND EXISTS (
+            SELECT 1
+            FROM training_exercises te
+            JOIN training_sets ts ON ts.training_exercise_id = te.id
+            WHERE te.training_id = t.id
+          )
+      ),
+      set_rows AS (
+        SELECT te.exercise_id, ts.id
+        FROM logged l
+        JOIN training_exercises te ON te.training_id = l.id
+        JOIN training_sets ts      ON ts.training_exercise_id = te.id
+      )
       SELECT
-        COUNT(DISTINCT t.id)::int           AS total_sessions,
-        COUNT(DISTINCT te.exercise_id)::int AS unique_exercises,
-        COALESCE(SUM(EXTRACT(EPOCH FROM (t.end_time - t.start_time))/3600)::numeric(10,1), 0) AS total_hours,
-        COUNT(ts.id)::int                   AS total_sets
-      FROM trainings t
-      JOIN training_exercises te ON te.training_id = t.id
-      JOIN training_sets ts      ON ts.training_exercise_id = te.id
-      WHERE t.client_id   = $1
-        AND t.tenant_id   = $2
-        AND t.is_completed = true
-        AND t.start_time  >= $3
+        (SELECT COUNT(*) FROM logged)::int                        AS total_sessions,
+        (SELECT COUNT(DISTINCT exercise_id) FROM set_rows)::int    AS unique_exercises,
+        COALESCE(
+          (SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time)) / 3600) FROM logged),
+          0
+        )::numeric(10,1)                                           AS total_hours,
+        (SELECT COUNT(*) FROM set_rows)::int                       AS total_sets
     `, [clientId, tenantId, sinceStr]);
 
     // Exercises with weight data (for filter dropdown)
@@ -187,6 +226,42 @@ router.get('/overview', async (req, res) => {
 
 
 // ── GET /api/progress/:clientId/strength ─────────────────────────────────────
+//
+// Response contract — depended on by BOTH `StrengthProgress` and `PRSummary`:
+//
+//   {
+//     "<exercise name>": {
+//       "category": string | null,
+//       "entries": [                       // chronological, oldest first
+//         { "date": "YYYY-MM-DD",
+//           "maxWeight": number,           // heaviest working set that day
+//           "maxReps": number | null,
+//           "estOneRM": number,            // best Epley estimate of the day
+//           "totalVolume": number,         // Σ reps × weight
+//           "setCount": number }
+//       ]
+//     }
+//   }
+//
+// ── What was wrong ───────────────────────────────────────────────────────────
+// The handler returned `{ "<exercise name>": [ …raw snake_case rows… ] }` — a
+// bare array per exercise, with no `entries`, no `category`, and none of the
+// derived numbers. Both components read `exercise.entries`, and on an array
+// that resolves to **`Array.prototype.entries`**: a function, which is truthy,
+// so the `|| []` fallback never fired and the next line threw
+//
+//     TypeError: entries.map is not a function
+//
+// taking the whole Progress section down behind the error boundary. `PRSummary`
+// hit the same trap one line later with `.reduce`. Two independent consumers
+// agreeing on a shape the server never sent is what makes this the server's
+// bug, so the fix is here: the endpoint now returns the shape its consumers
+// document, with the per-session numbers computed in SQL where the sets are.
+//
+// Only working sets count, which is what the endpoint has always claimed to
+// mean ("working sets only" in the client) and what the personal-records query
+// above already does. `set_type` defaults to 'working', so a row that predates
+// the column is included rather than silently dropped.
 router.get('/:clientId/strength', async (req, res) => {
   try {
     const { tenantId } = req.user;
@@ -200,9 +275,16 @@ router.get('/:clientId/strength', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT
         COALESCE(e.name, te.exercise_name, 'Unknown') AS exercise_name,
-        DATE(t.start_time)::text AS session_date,
-        MAX(ts.weight)::float AS max_weight,
-        MAX(ts.reps) AS max_reps
+        MIN(e.category)                               AS category,
+        DATE(t.start_time)::text                      AS session_date,
+        MAX(ts.weight)::float                         AS max_weight,
+        MAX(ts.reps)::int                             AS max_reps,
+        -- Epley, per set, best of the day. Reps are capped at 30 the same way
+        -- the client's own helper caps them; the formula degrades badly beyond
+        -- that and a 50-rep set is not a strength record.
+        MAX(ts.weight * (1 + LEAST(COALESCE(ts.reps, 0), 30) / 30.0))::float AS est_one_rm,
+        COALESCE(SUM(COALESCE(ts.reps, 0) * ts.weight), 0)::float            AS total_volume,
+        COUNT(ts.id)::int                             AS set_count
       FROM trainings t
       JOIN training_exercises te ON te.training_id = t.id
       LEFT JOIN exercises e ON e.id = te.exercise_id
@@ -211,15 +293,28 @@ router.get('/:clientId/strength', async (req, res) => {
         AND t.is_completed=true
         AND DATE(t.start_time) >= $3
         AND ts.weight IS NOT NULL
+        AND COALESCE(ts.set_type, 'working') IN ('working', 'topset', 'amrap')
       GROUP BY COALESCE(e.name, te.exercise_name, 'Unknown'), DATE(t.start_time)
       ORDER BY exercise_name, session_date
     `, [clientId, tenantId, sinceStr]);
 
-    const grouped = {};
-    rows.forEach(row => {
-      if (!grouped[row.exercise_name]) grouped[row.exercise_name] = [];
-      grouped[row.exercise_name].push(row);
-    });
+    // `Object.create(null)` rather than `{}`: exercise names are user-supplied
+    // keys, and a client who names an exercise "constructor" should get a data
+    // row, not a collision with Object.prototype.
+    const grouped = Object.create(null);
+    for (const row of rows) {
+      if (!grouped[row.exercise_name]) {
+        grouped[row.exercise_name] = { category: row.category || null, entries: [] };
+      }
+      grouped[row.exercise_name].entries.push({
+        date:        row.session_date,
+        maxWeight:   row.max_weight,
+        maxReps:     row.max_reps,
+        estOneRM:    row.est_one_rm,
+        totalVolume: row.total_volume,
+        setCount:    row.set_count,
+      });
+    }
     res.json(grouped);
   } catch (e) {
     if (sendDbClientError(res, e)) return;

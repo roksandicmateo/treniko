@@ -1,7 +1,8 @@
 // frontend/src/pages/ProgressPage.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../utils/locale';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -19,15 +20,30 @@ const MONTHS_OPTIONS = [
   { value: '12', label: '1Y' },
 ];
 
-const fmtDate = (d) => {
+/**
+ * Day + month, in the language the user picked.
+ *
+ * ── What was wrong ───────────────────────────────────────────────────────────
+ * Both formatters here were `toLocaleString('default', { month: 'short' })`,
+ * hand-assembled into `"17. srp"`. `'default'` is not the app's language — it is
+ * the *runtime's* locale, whatever the browser or operating system is set to. On
+ * a machine set to Croatian the English UI drew its charts with Croatian months
+ * ("17. srp", "4. ruj") next to English axis labels, and switching the language
+ * inside the app changed nothing, because i18next was never consulted. The
+ * hand-built `"D. MMM"` shape then imposed Croatian punctuation on every locale.
+ *
+ * Both are now `Intl` calls against the active locale (src/utils/locale.js), so
+ * each language gets its own month names *and* its own conventions.
+ *
+ * Dates arrive as "YYYY-MM-DD". `new Date('2026-08-16')` is parsed as UTC
+ * midnight, which is the 15th anywhere west of Greenwich, so the day is pinned
+ * to local midnight before formatting.
+ */
+const makeDayFormatter = (locale) => (d) => {
   if (!d) return '';
-  const date = new Date(d);
-  return `${date.getDate()}. ${date.toLocaleString('default', { month: 'short' })}`;
-};
-
-const fmtWeek = (d) => {
-  if (!d) return '';
-  return `${new Date(d).getDate()}. ${new Date(d).toLocaleString('default', { month: 'short' })}`;
+  const day = new Date(`${String(d).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(day.getTime())) return '';
+  return day.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 };
 
 // ── Stat card ────────────────────────────────────────────────────────────────
@@ -40,7 +56,9 @@ const StatCard = ({ label, value, unit, icon, color }) => (
 );
 
 // ── Custom tooltip ────────────────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, label }) => {
+// `fmtDate` is passed in rather than closed over: the formatter depends on the
+// active language, and this component is defined outside the page.
+const CustomTooltip = ({ active, payload, label, fmtDate = (v) => v }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-3 py-2 shadow-lg text-xs">
@@ -57,6 +75,11 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function ProgressPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  // Charts and cards format their dates in the active UI language. Rebuilt when
+  // the user switches language, so an already-rendered chart re-labels itself.
+  const dateLocale = useDateLocale();
+  const fmtDate = useMemo(() => makeDayFormatter(dateLocale), [dateLocale]);
 
   const [clients,    setClients]    = useState([]);
   const [clientId,   setClientId]   = useState('');
@@ -225,7 +248,7 @@ export default function ProgressPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<CustomTooltip fmtDate={fmtDate} />} />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                   {selectedExercises.map((ex, i) => (
                     <Line key={ex.id} type="monotone" dataKey={ex.name}
@@ -252,11 +275,11 @@ export default function ProgressPage() {
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={data.frequencyData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="week_start" tickFormatter={fmtWeek} tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="week_start" tickFormatter={fmtDate} tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                   <Tooltip
                     formatter={(val, name) => [val, name === 'session_count' ? 'Sessions' : 'Minutes']}
-                    labelFormatter={fmtWeek}
+                    labelFormatter={fmtDate}
                     contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', fontSize: '12px' }} />
                   <Bar dataKey="session_count" fill="#0ea5e9" radius={[6,6,0,0]} name="Sessions" />
                 </BarChart>

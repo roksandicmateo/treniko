@@ -222,8 +222,23 @@ last read back off the platform on **24 August 2026**, and *not* re-verified tod
 
 ## 10. Product defects found while capturing
 
-None of these was fixed — this was a marketing sprint, and all four are
-application work. All four are real and reproducible on the local build.
+> **UPDATE — 5 September 2026, same day.** All four were fixed in the
+> product-fix sprint that followed this one (`fix: resolve progress metrics and
+> client history defects`, migration `042_last_session_actually_happened.sql`),
+> with regression tests for each. The record of what was found, and of what the
+> September assets did about it, is kept below unchanged. Asset status after the
+> fixes:
+>
+> | Asset | Status |
+> |---|---|
+> | `screenshots/desktop-clients.png` | **REGENERATED** — it showed future dates under *Last session*. Recaptured from the same synthetic demo tenant after the fix; every other screenshot re-captured byte-identical, so nothing else was touched. |
+> | `/dashboard/progress` (withheld) | **UNBLOCKED, still not captured.** Capturing it is a marketing decision, not part of a bug-fix sprint. |
+> | client page → Progress → Strength (withheld) | **UNBLOCKED, still not captured.** Same. |
+> | Everything else in `feed/`, `stories/`, `captions/`, `templates/` | **Unaffected.** No feed or Story asset used a screenshot carrying any of these defects. |
+
+None of these was fixed at the time of the marketing sprint — that was a
+marketing sprint, and all four are application work. All four were real and
+reproducible on the local build.
 
 1. **Croatian dates in the English UI (Progress page).** The Strength Progress
    chart labels its x-axis `17. srp`, `7. kol`, `4. ruj` with the language set to
@@ -232,8 +247,10 @@ application work. All four are real and reproducible on the local build.
 2. **`Total Hours` is multiplied by set count.** `routes/progress.js:95` sums
    `end_time - start_time` across a join to `training_exercises` and
    `training_sets`, so each training's duration is counted once per set row:
-   eight one-hour sessions read **72.0 h**. The overview query at line 169 has the
-   same shape.
+   eight one-hour sessions read **72.0 h**.
+   *(Correction, added with the fix: this write-up originally said the
+   `/progress/overview` query "has the same shape". It does not — it reads
+   `trainings` alone, with no join to sets, and was never wrong.)*
 3. **The client page's Progress → Strength sub-tab crashes.**
    `TypeError: entries.map is not a function` in `<StrengthProgress>`
    (`frontend/src/components/progress/StrengthProgress.jsx`); the error boundary

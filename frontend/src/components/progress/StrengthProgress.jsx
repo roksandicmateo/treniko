@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../utils/locale';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { progressService } from '../../services/trainingService';
+import { toStrengthSeries } from './strengthSeries';
 
 const METRICS = [
   { key: 'maxWeight',   label: 'Max Weight', unit: 'kg',  desc: 'Heaviest working set' },
@@ -12,8 +14,14 @@ const METRICS = [
   { key: 'totalVolume', label: 'Volume',     unit: 'kg',  desc: 'Sets × Reps × Weight' },
 ];
 
+/** "YYYY-MM-DD" at local midnight — `new Date('2026-08-16')` is UTC midnight,
+ *  which is the previous day anywhere west of Greenwich. */
+const day = (d) => new Date(`${String(d).slice(0, 10)}T00:00:00`);
+
 export default function StrengthProgress({ clientId }) {
   const { t } = useTranslation();
+  // Dates follow the UI language — see src/utils/locale.js.
+  const dateLocale = useDateLocale();
   const [data,             setData]             = useState({});
   const [loading,          setLoading]          = useState(true);
   const [selectedExercise, setSelectedExercise] = useState('');
@@ -24,11 +32,14 @@ export default function StrengthProgress({ clientId }) {
     setLoading(true);
     progressService.getStrength(clientId)
       .then((r) => {
-        setData(r.data);
-        const keys = Object.keys(r.data);
+        const series = toStrengthSeries(r.data);
+        setData(series);
+        const keys = Object.keys(series);
         if (keys.length > 0) setSelectedExercise(keys[0]);
       })
-      .catch(() => {})
+      // A failed request leaves `data` empty, which renders the empty state
+      // rather than a broken panel.
+      .catch(() => setData({}))
       .finally(() => setLoading(false));
   }, [clientId]);
 
@@ -38,11 +49,13 @@ export default function StrengthProgress({ clientId }) {
     n.toLowerCase().includes(search.toLowerCase())
   );
   const selected    = data[selectedExercise];
-  const entries     = selected?.entries || [];
+  // `toStrengthSeries` guarantees this is an array; see strengthSeries.js for
+  // what used to arrive here instead.
+  const entries     = selected?.entries ?? [];
   const metricInfo  = METRICS.find((m) => m.key === selectedMetric);
 
   const chartData = entries.map((e) => ({
-    date:        new Date(e.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+    date:        day(e.date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' }),
     maxWeight:   e.maxWeight,
     estOneRM:    parseFloat(e.estOneRM),
     totalVolume: e.totalVolume,
@@ -135,7 +148,7 @@ export default function StrengthProgress({ clientId }) {
                 </p>
                 {prEntry?.date && (
                   <p className="text-xs text-amber-500 mt-0.5">
-                    {new Date(prEntry.date).toLocaleDateString('en-GB', {
+                    {day(prEntry.date).toLocaleDateString(dateLocale, {
                       day: 'numeric', month: 'long', year: 'numeric',
                     })}
                   </p>
@@ -213,13 +226,13 @@ export default function StrengthProgress({ clientId }) {
                 {[...entries].reverse().map((e) => (
                   <tr key={String(e.date)} className="border-t border-gray-50 hover:bg-gray-50">
                     <td className="px-3 py-2 text-gray-600">
-                      {new Date(e.date).toLocaleDateString('en-GB', {
+                      {day(e.date).toLocaleDateString(dateLocale, {
                         day: 'numeric', month: 'short', year: 'numeric',
                       })}
                     </td>
                     <td className="px-3 py-2 text-right font-medium text-gray-800">{e.maxWeight} kg</td>
                     <td className="px-3 py-2 text-right text-gray-600">{e.estOneRM} kg</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{e.totalVolume.toFixed(0)} kg</td>
+                    <td className="px-3 py-2 text-right text-gray-500">{Number(e.totalVolume ?? 0).toFixed(0)} kg</td>
                     <td className="px-3 py-2 text-right text-gray-500">{e.setCount}</td>
                   </tr>
                 ))}

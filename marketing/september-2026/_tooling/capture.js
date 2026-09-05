@@ -122,21 +122,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     { width: 1000, height: 900, deviceScaleFactor: 2 });
   await shot('desktop-client-detail', `/dashboard/clients/${james.id}`, DESKTOP, { wait: 3000 });
   await shot('desktop-packages', '/dashboard/packages', DESKTOP);
-  // NOT CAPTURED: /dashboard/progress.
+  // NOT CAPTURED (yet): /dashboard/progress and the client page's
+  // Progress → Strength sub-tab.
   //
-  // The Strength Progress chart labels its x-axis with Croatian month
-  // abbreviations ("17. srp", "7. kol") while the interface language is English,
-  // and the Total Hours tile reads 72.0 h for eight one-hour sessions — the
-  // stats query multiplies each training's duration by its joined set rows. Both
-  // are real defects, reported in SEPTEMBER_MARKETING_COMPLETE.md. Neither was
-  // fixed: that is application work, not a marketing sprint. Nothing that reads
-  // wrong is shipped as marketing material, so the screen is not captured.
+  // Both were withheld from the September set because of product defects, not
+  // because of anything about the screens: the Progress chart labelled its axis
+  // with Croatian months in an English UI and its Total Hours tile read 72.0 h
+  // for eight one-hour sessions, and the Strength sub-tab threw
+  // `TypeError: entries.map is not a function` behind the error boundary.
   //
-  // NOT CAPTURED: the client page's Progress → Strength sub-tab.
-  //
-  // It throws `TypeError: entries.map is not a function` in <StrengthProgress>
-  // and the error boundary replaces the whole section with "Something went
-  // wrong". Also reported, also not fixed here.
+  // **All three defects are fixed** — see the product-fix commit and
+  // backend/migrations/042. The screens are safe to capture again; they are left
+  // out here only because adding them is a marketing decision for the next
+  // content session, not a side effect of a bug-fix sprint. Re-enable by adding
+  // the two `shot(...)` calls back.
 
   await shot('desktop-trainings', '/dashboard/trainings', DESKTOP);
   await shot('desktop-groups', '/dashboard/groups', DESKTOP);
