@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from '../components/training/AddTrainingModal';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../utils/locale';
 
 const TYPE_COLORS = {
   Gym:        { bg: 'bg-blue-50 dark:bg-blue-900/20',    text: 'text-blue-700 dark:text-blue-400',   border: 'border-blue-200 dark:border-blue-800' },
@@ -85,6 +86,8 @@ export default function TrainingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  // Dates and times follow the UI language; both were hardcoded 'en-GB'.
+  const dateLocale = useDateLocale();
   const [training,    setTraining]    = useState(null);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
@@ -198,12 +201,12 @@ export default function TrainingDetailPage() {
         <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-1.5">
             <span>📅</span>
-            <span>{startDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span>{startDate.toLocaleDateString(dateLocale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span>🕐</span>
             <span>
-              {startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} – {endDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              {startDate.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit', hour12: false })} – {endDate.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit', hour12: false })}
               <span className="text-gray-400 dark:text-gray-500 ml-1">({duration} min)</span>
             </span>
           </div>

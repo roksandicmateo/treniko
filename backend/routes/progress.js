@@ -112,9 +112,20 @@ router.get('/client/:clientId', async (req, res) => {
     // hang off it; `set_rows` holds one row per set, which is the right grain
     // for the set and exercise counts. Nothing is divided by anything.
     //
-    // The population is unchanged on purpose: as before, a completed training
-    // counts only once it has at least one logged set. That keeps every tile
-    // except Total Hours reporting exactly what it reported before.
+    // ── The population ────────────────────────────────────────────────────────
+    // Every completed training in the period counts as a session and
+    // contributes its hour, whether or not any sets were logged against it.
+    //
+    // The first pass at this fix kept the old population — an inner join to
+    // `training_sets`, so a training with no logged sets vanished from all four
+    // tiles. That is wrong for the two tiles that are about *time*: a session
+    // the trainer ran and marked complete happened, and the client was there for
+    // an hour, even if nobody wrote down the sets afterwards. It made "Sessions"
+    // disagree with the dashboard's own completed count for the same period, for
+    // no reason a trainer could see.
+    //
+    // Sets and exercises still count over the set grain, so an unlogged session
+    // contributes 0 to those — which is exactly what it should contribute.
     const { rows: [stats] } = await pool.query(`
       WITH logged AS (
         SELECT t.id, t.start_time, t.end_time
@@ -123,12 +134,6 @@ router.get('/client/:clientId', async (req, res) => {
           AND t.tenant_id    = $2
           AND t.is_completed = true
           AND t.start_time  >= $3
-          AND EXISTS (
-            SELECT 1
-            FROM training_exercises te
-            JOIN training_sets ts ON ts.training_exercise_id = te.id
-            WHERE te.training_id = t.id
-          )
       ),
       set_rows AS (
         SELECT te.exercise_id, ts.id

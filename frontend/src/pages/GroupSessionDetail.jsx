@@ -1,6 +1,7 @@
 // frontend/src/pages/GroupSessionDetail.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../utils/locale';
 import { useParams, useNavigate, useLocation as useRouterLocation } from 'react-router-dom';
 import { showToast } from '../components/Toast';
 import ExerciseBuilder from '../components/training/ExerciseBuilder';
@@ -21,6 +22,7 @@ const STATUS_CONFIG = {
 
 export default function GroupSessionDetail() {
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
   const { groupId, sessionId } = useParams();
   const navigate  = useNavigate();
   const routerLocation = useRouterLocation();
@@ -129,7 +131,9 @@ export default function GroupSessionDetail() {
   if (!session) return null;
 
   const attendedCount = attendance.filter(a => a.status === 'completed').length;
-  const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  // Was 'en-GB', which printed English months in a Croatian or German UI.
+  const fmtDate = (d) => new Date(d + 'T00:00:00')
+    .toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const fmtT = (t) => t?.slice(0, 5) || '';
 
   return (

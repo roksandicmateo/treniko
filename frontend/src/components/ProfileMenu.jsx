@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../utils/locale';
 import { showToast } from './Toast';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -11,6 +12,8 @@ const ProfileMenu = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  // The deletion date followed the machine's locale — see src/utils/locale.js.
+  const dateLocale = useDateLocale();
   const [open, setOpen] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [deletionPending, setDeletionPending] = useState(false);
@@ -230,7 +233,7 @@ const ProfileMenu = () => {
               <div className="px-3 py-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
                 <p className="text-xs text-yellow-800 dark:text-yellow-400 font-medium mb-1">⏳ {t('profile.deletionScheduled')}</p>
                 <p className="text-xs text-yellow-700 dark:text-yellow-500 mb-2">
-                  {t('profile.deletionScheduledOn')} {deletionDate ? new Date(deletionDate).toLocaleDateString() : '…'}
+                  {t('profile.deletionScheduledOn')} {deletionDate ? new Date(deletionDate).toLocaleDateString(dateLocale) : '…'}
                 </p>
                 <button onClick={handleCancelDeletion}
                   className="w-full py-1.5 text-xs rounded-lg border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors font-medium">

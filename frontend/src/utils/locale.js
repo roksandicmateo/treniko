@@ -57,3 +57,50 @@ export const useDateLocale = () => {
   const { i18n } = useTranslation();
   return resolveDateLocale(i18n.language);
 };
+
+/**
+ * Money, formatted for the active UI language.
+ *
+ * ── What was wrong ───────────────────────────────────────────────────────────
+ * The same amount was written three different ways in three places: the billing
+ * tab hardcoded `de-DE` and rendered "450,00 €", package cards printed
+ * `450.00 EUR` by hand, and the subscription page glued a "€" in front of
+ * `toFixed(2)`. A trainer moving between those screens saw the same number in
+ * three formats, one of which was in a locale nobody had chosen.
+ *
+ * `Intl` places the symbol and the separators the way each language does it —
+ * €450.00 in English, 450,00 € in Croatian and German — which a template string
+ * cannot. The currency comes from the record, because a package carries its own.
+ *
+ * @param {number|string} amount
+ * @param {object}  [options]
+ * @param {string}  [options.currency='EUR'] ISO 4217 code from the record
+ * @param {string}  [options.locale]         defaults to the fallback locale
+ * @returns {string} '' when the amount is not a number, so a missing price
+ *                   renders as nothing rather than as "NaN"
+ */
+export const formatCurrency = (amount, { currency = 'EUR', locale = DEFAULT_DATE_LOCALE } = {}) => {
+  // `Number(null)` and `Number('')` are both 0, so an absent price would render
+  // as a confident "€0.00" — a package with no price would look free. Absent is
+  // checked before the conversion, not after it.
+  if (amount === null || amount === undefined || amount === '') return '';
+  const value = Number(amount);
+  if (!Number.isFinite(value)) return '';
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(value);
+  } catch {
+    // An unknown currency code throws rather than falling back, and a price is
+    // more useful than an empty cell.
+    return `${value.toFixed(2)} ${currency}`;
+  }
+};
+
+/**
+ * `formatCurrency` bound to the active language.
+ *
+ * @returns {(amount: number|string, currency?: string) => string}
+ */
+export const useCurrencyFormatter = () => {
+  const locale = useDateLocale();
+  return (amount, currency = 'EUR') => formatCurrency(amount, { currency, locale });
+};

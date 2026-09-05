@@ -1,11 +1,12 @@
 // frontend/src/components/BillingTab.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useCurrencyFormatter, useDateLocale } from '../utils/locale';
 import { paymentsAPI, packagesAPI } from '../services/api';
 import PaymentModal from './PaymentModal';
 import ConfirmModal from './ConfirmModal';
 import { showToast } from './Toast';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 
 export default function BillingTab({ clientId }) {
   const { t } = useTranslation();
@@ -66,12 +67,18 @@ export default function BillingTab({ clientId }) {
     }
   };
 
-  const fmt = (amount) =>
-    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(amount);
+  // Was `new Intl.NumberFormat('de-DE', …)` — a locale nobody chose, so an
+  // English UI printed "450,00 €" here and "€450.00" elsewhere in the app.
+  const fmt = useCurrencyFormatter();
+  const dateLocale = useDateLocale();
 
+  // date-fns' `format` without a locale writes English month names whatever the
+  // UI language is; `Intl` against the active locale does not.
   const fmtDate = (dateStr) => {
-    try { return format(parseISO(dateStr), 'd MMM yyyy'); }
-    catch { return dateStr; }
+    try {
+      return parseISO(dateStr)
+        .toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { return dateStr; }
   };
 
   const methodLabel = (method) => t(`billing.method.${method}`, { defaultValue: method });

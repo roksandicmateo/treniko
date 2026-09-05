@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useCurrencyFormatter } from '../utils/locale';
 import { useState, useEffect } from 'react';
 import PackageModal from '../components/PackageModal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -14,6 +15,9 @@ const TYPE_COLORS = {
 
 const PackagesPage = () => {
   const { t } = useTranslation();
+  // Was `450.00 EUR`, hand-assembled; Intl places the symbol and the separators
+  // the way each language does — see src/utils/locale.js.
+  const money = useCurrencyFormatter();
   const [packages, setPackages] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -142,8 +146,7 @@ const PackagesPage = () => {
 
               {pkg.price && (
                 <p className="text-lg font-bold text-gray-800 dark:text-gray-200">
-                  {Number(pkg.price).toFixed(2)}{' '}
-                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400">{pkg.currency}</span>
+                  {money(pkg.price, pkg.currency || 'EUR')}
                 </p>
               )}
 

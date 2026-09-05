@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale, DEFAULT_DATE_LOCALE } from '../utils/locale';
 import { showToast } from '../components/Toast';
 import SessionModal from '../components/SessionModal';
 import TimeInput from '../components/TimeInput';
@@ -17,7 +18,11 @@ const STATUS_CONFIG = {
   no_show:   { label: 'sessions.legend_noshow',    color: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400',        dot: 'bg-red-500' },
 };
 
-const fmt  = (d) => new Date(((d || '').slice(0, 10)) + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+// Takes the locale rather than hardcoding one: 'en-GB' printed English months
+// in a Croatian or German UI. Callers pass the active locale (useDateLocale).
+const fmt  = (d, locale = DEFAULT_DATE_LOCALE) =>
+  new Date(((d || '').slice(0, 10)) + 'T00:00:00')
+    .toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
 const fmtT = (t) => t?.slice(0, 5) || '';
 
 // ── Schedule Group Session Modal ──────────────────────────────────────────────
@@ -178,6 +183,7 @@ function AddMembersModal({ groupId, existingIds, onClose, onAdded }) {
 // ── Session History Row ───────────────────────────────────────────────────────
 function GroupSessionRow({ session, onMemberClick, groupId, navigate }) {
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
   const [expanded, setExpanded] = useState(false);
   const attendanceRate = session.total_members > 0 ? Math.round((session.completed / session.total_members) * 100) : 0;
 
@@ -187,7 +193,7 @@ function GroupSessionRow({ session, onMemberClick, groupId, navigate }) {
         onClick={() => setExpanded(e => !e)}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{fmt(session.session_date)}</p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{fmt(session.session_date, dateLocale)}</p>
             <span className="text-xs text-gray-400 dark:text-gray-500">{fmtT(session.start_time)} – {fmtT(session.end_time)}</span>
             {session.session_type && (
               <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{session.session_type}</span>
@@ -239,6 +245,7 @@ export default function GroupDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
 
   const [group,        setGroup]        = useState(null);
   const [sessions,     setSessions]     = useState([]);
@@ -485,7 +492,7 @@ export default function GroupDetail() {
                             className="flex items-center gap-3 px-4 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors">
                             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
                             <p className="flex-1 text-xs text-gray-600 dark:text-gray-400">
-                              {fmt(s.session_date)} · {fmtT(s.start_time)}–{fmtT(s.end_time)}
+                              {fmt(s.session_date, dateLocale)} · {fmtT(s.start_time)}–{fmtT(s.end_time)}
                               {s.session_type ? ` · ${s.session_type}` : ''}
                               {s.group_id ? ' 👥' : ''}
                             </p>
@@ -512,7 +519,7 @@ export default function GroupDetail() {
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
               <strong>{attendanceTarget.memberAttendance.first_name} {attendanceTarget.memberAttendance.last_name}</strong>
-              {' — '}{new Date(attendanceTarget.groupSession.session_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              {' — '}{new Date(attendanceTarget.groupSession.session_date + 'T00:00:00').toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}
               {' '}{attendanceTarget.groupSession.start_time?.slice(0,5)}
             </p>
             <div className="grid grid-cols-2 gap-2">

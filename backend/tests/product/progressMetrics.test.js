@@ -93,12 +93,17 @@ const bookSession = ({ date, status }) =>
     return session.id;
   });
 
-/** Both places that answer "when did this client last train". */
+/**
+ * The one definition of "when did this client last train".
+ *
+ * There used to be two — this view and a denormalised `clients` column kept in
+ * step by a trigger. Migration 043 dropped the column; the view is what both
+ * the clients list and the dashboard now read.
+ */
 const readLastSession = () =>
   asTenant({ tenantId: T.tenantId, userId: T.userId }, async () => {
     const { rows: [row] } = await pool.query(
-      `SELECT c.last_session_date::text AS column_value,
-              cs.last_session_date::text AS view_value
+      `SELECT cs.last_session_date::text AS view_value
          FROM clients c
          JOIN client_statistics cs ON cs.client_id = c.id
         WHERE c.id = $1`,
@@ -107,14 +112,24 @@ const readLastSession = () =>
     return row;
   });
 
+/** The denormalised column is gone, and must stay gone. */
+const columnExists = async () => {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'clients'
+        AND column_name = 'last_session_date'`
+  );
+  return rows.length > 0;
+};
+
 const clearSessions = () =>
   asTenant({ tenantId: T.tenantId, userId: T.userId }, () =>
     pool.query('DELETE FROM training_sessions WHERE client_id = $1', [T.clientId]));
 
 beforeAll(async () => {
   T = await createTenant('progress');
-  // The fixture seeds one training with no exercises; the aggregation tests
-  // count only trainings that have logged sets, so it must not be counted.
+  // The fixture seeds one training of its own; these tests count sessions, so
+  // the arithmetic has to start from a client with none.
   await asTenant({ tenantId: T.tenantId, userId: T.userId }, () =>
     pool.query('DELETE FROM trainings WHERE client_id = $1', [T.clientId]));
 });
@@ -146,6 +161,22 @@ describe('total hours counts each session once, not once per set', () => {
     expect(res.body.stats.unique_exercises).toBeGreaterThanOrEqual(0);
   });
 
+  test('a completed session with no sets logged still counts as a session and an hour', async () => {
+    const before = await auth(request(app).get(`/api/progress/client/${T.clientId}?months=6`));
+    const hoursBefore = Number(before.body.stats.total_hours);
+    const sessionsBefore = before.body.stats.total_sessions;
+    const setsBefore = before.body.stats.total_sets;
+
+    // A session the trainer ran and marked complete, but never wrote sets for.
+    await logTraining({ daysAgo: 10, exercises: 0, setsPerExercise: 0 });
+
+    const after = await auth(request(app).get(`/api/progress/client/${T.clientId}?months=6`));
+    expect(after.body.stats.total_sessions).toBe(sessionsBefore + 1);
+    expect(Number(after.body.stats.total_hours)).toBeCloseTo(hoursBefore + 1, 1);
+    // …and contributes nothing to the tiles that count logged work.
+    expect(after.body.stats.total_sets).toBe(setsBefore);
+  });
+
   test('one session with many sets still contributes exactly its own hour', async () => {
     const before = await auth(request(app).get(`/api/progress/client/${T.clientId}?months=6`));
     const hoursBefore = Number(before.body.stats.total_hours);
@@ -156,7 +187,7 @@ describe('total hours counts each session once, not once per set', () => {
 
     const after = await auth(request(app).get(`/api/progress/client/${T.clientId}?months=6`));
     expect(Number(after.body.stats.total_hours)).toBeCloseTo(hoursBefore + 1, 1);
-    expect(after.body.stats.total_sessions).toBe(9);
+    expect(after.body.stats.total_sessions).toBe(10);   // 8 + the unlogged one + this
     expect(after.body.stats.total_sets).toBe(72 + 40);
   });
 });
@@ -241,9 +272,8 @@ describe('"last session" is the most recent session that actually happened', () 
     await bookSession({ date: dayOffset(-3), status: 'completed' });
     await bookSession({ date: dayOffset(+7), status: 'scheduled' });
 
-    const { column_value, view_value } = await readLastSession();
+    const { view_value } = await readLastSession();
 
-    expect(column_value).toBe(dayOffset(-3));
     expect(view_value).toBe(dayOffset(-3));
   });
 
@@ -251,9 +281,8 @@ describe('"last session" is the most recent session that actually happened', () 
     await bookSession({ date: dayOffset(-10), status: 'completed' });
     await bookSession({ date: dayOffset(-2), status: 'cancelled' });
 
-    const { column_value, view_value } = await readLastSession();
+    const { view_value } = await readLastSession();
 
-    expect(column_value).toBe(dayOffset(-10));
     expect(view_value).toBe(dayOffset(-10));
   });
 
@@ -264,18 +293,16 @@ describe('"last session" is the most recent session that actually happened', () 
     await bookSession({ date: dayOffset(-14), status: 'completed' });
     await bookSession({ date: dayOffset(-1), status: 'no_show' });
 
-    const { column_value, view_value } = await readLastSession();
+    const { view_value } = await readLastSession();
 
-    expect(column_value).toBe(dayOffset(-14));
     expect(view_value).toBe(dayOffset(-14));
   });
 
   test('a session completed today counts', async () => {
     await bookSession({ date: dayOffset(0), status: 'completed' });
 
-    const { column_value, view_value } = await readLastSession();
+    const { view_value } = await readLastSession();
 
-    expect(column_value).toBe(dayOffset(0));
     expect(view_value).toBe(dayOffset(0));
   });
 
@@ -283,26 +310,26 @@ describe('"last session" is the most recent session that actually happened', () 
     await bookSession({ date: dayOffset(-5), status: 'completed' });
     await bookSession({ date: dayOffset(+2), status: 'completed' });
 
-    const { column_value, view_value } = await readLastSession();
+    const { view_value } = await readLastSession();
 
-    expect(column_value).toBe(dayOffset(-5));
     expect(view_value).toBe(dayOffset(-5));
   });
 
   test('a client with only future bookings has no last session at all', async () => {
     await bookSession({ date: dayOffset(+3), status: 'scheduled' });
 
-    const { column_value, view_value } = await readLastSession();
+    const { view_value } = await readLastSession();
 
-    expect(column_value).toBeNull();
     expect(view_value).toBeNull();
   });
 
-  test('completing a scheduled session refreshes the stored column', async () => {
-    // The old trigger fired only on INSERT or UPDATE OF session_date, so the one
-    // event that changes the answer — the status change — never refreshed it.
+  test('completing a scheduled session changes the answer immediately', async () => {
+    // This used to be maintained by a trigger that fired only on INSERT or
+    // UPDATE OF session_date, so the one event that changes the answer — the
+    // status change — never refreshed it. Reading the view removes the class of
+    // problem: there is nothing to refresh.
     const sessionId = await bookSession({ date: dayOffset(-4), status: 'scheduled' });
-    expect((await readLastSession()).column_value).toBeNull();
+    expect((await readLastSession()).view_value).toBeNull();
 
     await asTenant({ tenantId: T.tenantId, userId: T.userId }, () =>
       pool.query(
@@ -310,18 +337,24 @@ describe('"last session" is the most recent session that actually happened', () 
         [sessionId]
       ));
 
-    expect((await readLastSession()).column_value).toBe(dayOffset(-4));
+    expect((await readLastSession()).view_value).toBe(dayOffset(-4));
   });
 
   test('deleting the last session rolls the date back to the one before it', async () => {
+    // Also unmaintainable by the old trigger, which never fired on DELETE.
     await bookSession({ date: dayOffset(-20), status: 'completed' });
     const newer = await bookSession({ date: dayOffset(-6), status: 'completed' });
-    expect((await readLastSession()).column_value).toBe(dayOffset(-6));
+    expect((await readLastSession()).view_value).toBe(dayOffset(-6));
 
     await asTenant({ tenantId: T.tenantId, userId: T.userId }, () =>
       pool.query('DELETE FROM training_sessions WHERE id = $1', [newer]));
 
-    expect((await readLastSession()).column_value).toBe(dayOffset(-20));
+    expect((await readLastSession()).view_value).toBe(dayOffset(-20));
+  });
+
+  test('the denormalised clients.last_session_date column is gone (migration 043)', async () => {
+    // Two definitions of one fact is how they drifted apart in the first place.
+    expect(await columnExists()).toBe(false);
   });
 
   test('the clients list serves the corrected value', async () => {

@@ -4,9 +4,13 @@ import { format } from 'date-fns';
 import { showToast } from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
+import { useCurrencyFormatter } from '../utils/locale';
 
 const SubscriptionPage = () => {
   const { t } = useTranslation();
+  // Prices were a euro sign glued to toFixed(), which is the wrong shape in
+  // Croatian and German — see src/utils/locale.js.
+  const money = useCurrencyFormatter();
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +113,7 @@ const SubscriptionPage = () => {
                 {subscription.plan_display_name}
                 {subscription.is_trial && <span className="ml-2 text-sm font-normal text-primary-500">(Trial)</span>}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">€{parseFloat(subscription.price_monthly).toFixed(2)}/month</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{money(subscription.price_monthly)}/month</div>
             </div>
             <div className="mb-4">
               <div className="text-sm text-gray-500 dark:text-gray-400">{t('common.status')}</div>
@@ -173,7 +177,7 @@ const SubscriptionPage = () => {
                 <div className="text-center mb-4">
                   <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{plan.display_name}</h3>
                   <div className="mt-2">
-                    <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">€{parseFloat(plan.price_monthly).toFixed(0)}</span>
+                    <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">{money(plan.price_monthly)}</span>
                     <span className="text-gray-500 dark:text-gray-400">/month</span>
                   </div>
                   {plan.price_yearly > 0 && <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('subscription.orYearly', { price: parseFloat(plan.price_yearly).toFixed(0) })}</div>}
@@ -220,7 +224,7 @@ const SubscriptionPage = () => {
                 <input type="radio" name="billing" value="monthly" checked={billingPeriod === 'monthly'} onChange={e => setBillingPeriod(e.target.value)} className="mr-3" />
                 <div>
                   <div className="font-medium text-gray-800 dark:text-gray-200">{t('subscription.billingMonthly')}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">€{parseFloat(selectedPlan.price_monthly).toFixed(2)}/month</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{money(selectedPlan.price_monthly)}/month</div>
                 </div>
               </label>
               {selectedPlan.price_yearly > 0 && (
@@ -228,7 +232,7 @@ const SubscriptionPage = () => {
                   <input type="radio" name="billing" value="yearly" checked={billingPeriod === 'yearly'} onChange={e => setBillingPeriod(e.target.value)} className="mr-3" />
                   <div>
                     <div className="font-medium text-gray-800 dark:text-gray-200">{t('subscription.billingYearly')} <span className="text-green-500 text-sm ml-1">{t('subscription.savePercent')}</span></div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">€{parseFloat(selectedPlan.price_yearly).toFixed(2)}/year</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{money(selectedPlan.price_yearly)}/year</div>
                   </div>
                 </label>
               )}

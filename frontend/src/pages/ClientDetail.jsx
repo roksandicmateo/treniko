@@ -1,6 +1,7 @@
 // frontend/src/pages/ClientDetail.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../utils/locale';
 import { useParams, useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from '../components/training/AddTrainingModal';
@@ -61,6 +62,9 @@ function ProgressSection({ clientId }) {
 
 function PackagesSection({ clientId, clientName }) {
   const { t } = useTranslation();
+  // Package dates followed the machine's locale, not the app's: a bare
+  // `toLocaleDateString()` is the same defect as `undefined` — see utils/locale.js.
+  const dateLocale = useDateLocale();
   const [clientPackages, setClientPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -155,8 +159,8 @@ function PackagesSection({ clientId, clientName }) {
                   </div>
                 )}
                 <div className="flex gap-4 text-xs text-gray-500 mb-3">
-                  <span>{t('packages.started')}: {new Date(cp.start_date).toLocaleDateString()}</span>
-                  {cp.end_date && <span>{t('packages.expires')}: {new Date(cp.end_date).toLocaleDateString()}</span>}
+                  <span>{t('packages.started')}: {new Date(cp.start_date).toLocaleDateString(dateLocale)}</span>
+                  {cp.end_date && <span>{t('packages.expires')}: {new Date(cp.end_date).toLocaleDateString(dateLocale)}</span>}
                 </div>
                 {cp.price && <p className="text-xs text-gray-400 mb-3">{Number(cp.price).toFixed(2)} {cp.currency}</p>}
                 {cp.notes && <p className="text-xs text-gray-500 italic mb-3">"{cp.notes}"</p>}
@@ -176,8 +180,8 @@ function PackagesSection({ clientId, clientName }) {
                 <div>
                   <p className="text-sm font-medium text-gray-700">{cp.package_name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {new Date(cp.start_date).toLocaleDateString()}
-                    {cp.end_date ? ` → ${new Date(cp.end_date).toLocaleDateString()}` : ''}
+                    {new Date(cp.start_date).toLocaleDateString(dateLocale)}
+                    {cp.end_date ? ` → ${new Date(cp.end_date).toLocaleDateString(dateLocale)}` : ''}
                     {' · '}{cp.sessions_used} {t('packages.sessionsUsed')}
                   </p>
                 </div>
@@ -218,6 +222,7 @@ function PackagesSection({ clientId, clientName }) {
 
 export default function ClientDetail() {
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -471,7 +476,7 @@ export default function ClientDetail() {
       {/* Profile tab */}
       {tab === 'profile' && (
         <div className="space-y-4">
-          {[[t('clients.phone'), client.phone], [t('clients.dateOfBirth'), client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString() : null], [t('common.notes'), client.notes]]
+          {[[t('clients.phone'), client.phone], [t('clients.dateOfBirth'), client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString(dateLocale) : null], [t('common.notes'), client.notes]]
             .map(([label, value]) => value ? (
               <div key={label} className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
                 <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{label}</p>

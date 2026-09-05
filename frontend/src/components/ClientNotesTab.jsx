@@ -1,6 +1,7 @@
 // frontend/src/components/ClientNotesTab.jsx  (NEW FILE)
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../utils/locale';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -13,6 +14,9 @@ const NOTE_FIELDS = [
 
 const ClientNotesTab = ({ client, onUpdated }) => {
   const { t } = useTranslation();
+  // Was `undefined`, i.e. the machine's locale, not the app's language —
+  // see src/utils/locale.js.
+  const dateLocale = useDateLocale();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -91,7 +95,7 @@ const ClientNotesTab = ({ client, onUpdated }) => {
               <div className="bg-gray-50 rounded-xl px-4 py-3">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">🎂 {t('clients.dateOfBirth')}</p>
                 <p className="text-sm text-gray-800">
-                  {new Date(client.date_of_birth).toLocaleDateString(undefined, {
+                  {new Date(client.date_of_birth).toLocaleDateString(dateLocale, {
                     day: 'numeric', month: 'long', year: 'numeric'
                   })}
                   {' '}

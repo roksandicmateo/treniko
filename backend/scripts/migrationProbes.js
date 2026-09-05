@@ -116,12 +116,21 @@ module.exports = {
     table('tenants'), table('users'), table('clients'), table('training_sessions'),
   ]),
 
-  // A view, a supporting column and the trigger that maintains it.
-  '002_client_statistics.sql': all([
+  // A view, a supporting column and the trigger that maintains it — and then
+  // 043 drops the column, the trigger and the function, leaving the view as the
+  // single definition of "last session". So on any database that has reached
+  // 043 those three are legitimately absent, and probing for them would report a
+  // fully-migrated database as incomplete. Either state is evidence that 002
+  // ran: the column is still there (002 applied, 043 not yet), or the view is
+  // (002 applied and its column superseded). Same shape as the 016 entry.
+  '002_client_statistics.sql': any([
+    all([
+      view('client_statistics'),
+      column('clients', 'last_session_date'),
+      routine('update_client_last_session'),
+      trigger('trigger_update_last_session'),
+    ]),
     view('client_statistics'),
-    column('clients', 'last_session_date'),
-    routine('update_client_last_session'),
-    trigger('trigger_update_last_session'),
   ]),
 
   // Two tables, the completion columns on training_sessions, and the two views

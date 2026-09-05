@@ -34,6 +34,7 @@ import PRSummary from '../components/progress/PRSummary';
 import ProgressChart from '../components/progress/ProgressChart';
 import ProgressPage from '../pages/ProgressPage';
 import i18n from '../i18n';
+import { formatCurrency, resolveDateLocale } from '../utils/locale';
 
 const SESSION_DATE = '2026-08-17';   // "17 Aug" / "17. kol." / "17. Aug."
 const METRIC_DATE  = '2026-09-04';
@@ -312,5 +313,56 @@ describe('PRSummary survives the payload that used to crash it', () => {
     render(<PRSummary clientId="c1" />);
 
     await screen.findByText(i18n.t('prs.noPRs'));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Money was written three ways in three places: `Intl` with a hardcoded 'de-DE'
+// in the billing tab, "450.00 EUR" assembled by hand on package cards, and a '€'
+// glued in front of toFixed() on the subscription page. One formatter now, bound
+// to the active language.
+describe('formatCurrency follows the language and the record', () => {
+  test('each locale places the symbol and separators its own way', () => {
+    const en = formatCurrency(450, { locale: 'en-GB' });
+    const hr = formatCurrency(450, { locale: 'hr-HR' });
+    const de = formatCurrency(450, { locale: 'de-DE' });
+
+    expect(en).not.toBe(hr);
+    // The amount survives whichever way it is written.
+    for (const rendered of [en, hr, de]) expect(rendered).toMatch(/450/);
+    // English puts the symbol first; Croatian and German put it last.
+    expect(en.trim().startsWith('€')).toBe(true);
+    expect(hr.trim().endsWith('€')).toBe(true);
+  });
+
+  test('the currency comes from the record, not from a constant', () => {
+    expect(formatCurrency(450, { currency: 'GBP', locale: 'en-GB' })).toMatch(/£/);
+    expect(formatCurrency(450, { currency: 'USD', locale: 'en-GB' })).toMatch(/\$/);
+  });
+
+  test('a missing or unparseable amount renders as nothing, never "NaN" or a fake zero', () => {
+    // `Number(null)` and `Number('')` are 0 — a package with no price must not
+    // render as "€0.00", which reads as free.
+    expect(formatCurrency(null)).toBe('');
+    expect(formatCurrency(undefined)).toBe('');
+    expect(formatCurrency('')).toBe('');
+    expect(formatCurrency('not a number')).toBe('');
+    // A real zero is a real price and still renders.
+    expect(formatCurrency(0, { locale: 'en-GB' })).toMatch(/0/);
+  });
+
+  test('a string amount from the API formats like a number', () => {
+    expect(formatCurrency('450.00', { locale: 'en-GB' }))
+      .toBe(formatCurrency(450, { locale: 'en-GB' }));
+  });
+
+  test('an unknown currency code falls back to a readable price', () => {
+    // Intl throws on a bad code; an empty cell where a price belongs is worse.
+    expect(formatCurrency(450, { currency: 'NOTACODE', locale: 'en-GB' })).toBe('450.00 NOTACODE');
+  });
+
+  test('it uses the same language mapping as the dates', () => {
+    expect(formatCurrency(450, { locale: resolveDateLocale('hr') }))
+      .toBe(formatCurrency(450, { locale: 'hr-HR' }));
   });
 });

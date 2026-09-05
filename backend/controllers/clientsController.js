@@ -20,11 +20,17 @@ const getAllClients = async (req, res) => {
         c.is_active, 
         c.created_at, 
         c.updated_at,
+        -- From the view, which is the single definition of "last session"
+        -- (migrations 042 and 043): the most recent COMPLETED session dated
+        -- today or earlier. This used to read a denormalised column on
+        -- the clients table that counted any session of any status, so a
+        -- booking for next week appeared under a column headed "Last session".
+        --
         -- ::text for the same reason next_session_date is cast below: a DATE
         -- serialises as a timestamp at local midnight, which is the previous
-        -- day once it reaches a client in another timezone. "Last session" is a
-        -- calendar date, so it travels as one.
-        c.last_session_date::text AS last_session_date,
+        -- day once it reaches a client in another timezone. It is a calendar
+        -- date, so it travels as one.
+        cs.last_session_date::text AS last_session_date,
         c.is_archived,
         cs.total_sessions,
         cs.upcoming_sessions AS upcoming_sessions_count,
@@ -69,7 +75,7 @@ const getClientById = async (req, res) => {
     const clientResult = await queryWithTenant(
       `SELECT 
         c.id, c.first_name, c.last_name, c.email, c.phone, c.is_active,
-        c.created_at, c.updated_at, c.last_session_date::text AS last_session_date,
+        c.created_at, c.updated_at, cs.last_session_date::text AS last_session_date,
         c.date_of_birth, c.goals, c.injuries, c.diet_notes, c.notes,
         cs.total_sessions, cs.upcoming_sessions AS upcoming_sessions_count,
         cs.completed_sessions, cs.next_session_date::text AS next_session_date
