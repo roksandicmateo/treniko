@@ -10,6 +10,31 @@ superseded.
 
 ---
 
+## SESSION 10 — 5 Sep 2026 — the second half of September is built
+
+Cycle 2's concepts for **15–30 Sep** are now finished assets, in a new folder:
+**`marketing/september-2026/`**, with the calendar at
+`marketing/september-2026-content-calendar.md` and the full report at
+`marketing/september-2026/SEPTEMBER_MARKETING_COMPLETE.md`.
+
+* **Built:** 8 Instagram feed posts (27 slides) · the same 8 exported for
+  Facebook with rewritten copy · 10 Story sequences (21 frames) · 33 product
+  screenshots from a fresh synthetic demo tenant · 7 template specimens.
+* **Scheduled: NOTHING.** The Claude browser extension was **not connected**
+  this session, so nothing could be scheduled and — importantly — **nothing
+  already scheduled could be verified**. The 5–14 Sep items below are still
+  last-verified 24 Aug. Re-verify before trusting them.
+* **Canva** is connected. A folder exists for the campaign:
+  <https://www.canva.com/folder/FAHUT59ACno>. Nothing was uploaded — its
+  connector only ingests images from public URLs.
+* **Four product defects** were found while capturing and are written up in the
+  report: Croatian dates in the English Progress chart, `Total Hours` inflated by
+  set count, the client Progress → Strength tab crashing, and "Last session"
+  showing a future date. None was fixed; none is a marketing job.
+* Nothing in cycle 1 was touched, cancelled or rewritten. €0 spent.
+
+---
+
 ## SESSION 9 — 24 Aug 2026
 
 Session 9 closed the measurement loop. **No content was scheduled, published or
