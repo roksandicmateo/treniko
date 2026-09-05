@@ -1,10 +1,12 @@
 // frontend/src/components/DpaAcceptanceModal.jsx
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const DpaAcceptanceModal = ({ onAccepted }) => {
+  const { t } = useTranslation();
   const [hasScrolled, setHasScrolled] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState('');
@@ -40,12 +42,12 @@ const DpaAcceptanceModal = ({ onAccepted }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh] dark:bg-gray-900">
         
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Data Processing Agreement</h2>
-          <p className="text-sm text-gray-500 mt-1">
+        <div className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('dpa.agreementTitle')}</h2>
+          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
             Please read and scroll through the entire agreement before accepting.
           </p>
         </div>
@@ -53,10 +55,10 @@ const DpaAcceptanceModal = ({ onAccepted }) => {
         {/* Scrollable DPA text */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto px-6 py-4 text-sm text-gray-700 space-y-4"
+          className="flex-1 overflow-y-auto px-6 py-4 text-sm text-gray-700 space-y-4 dark:text-gray-300"
           style={{ minHeight: 0 }}
         >
-          <p className="font-semibold text-gray-900">TRENIKO — Data Processing Agreement v1.0</p>
+          <p className="font-semibold text-gray-900 dark:text-gray-100">TRENIKO — Data Processing Agreement v1.0</p>
           <p>Effective date: March 2026</p>
 
           <p>
@@ -142,12 +144,12 @@ const DpaAcceptanceModal = ({ onAccepted }) => {
             authority procedures.
           </p>
 
-          <p className="text-gray-400 text-xs pt-2">— End of Data Processing Agreement v1.0 —</p>
+          <p className="text-gray-400 text-xs pt-2 dark:text-gray-500">— End of Data Processing Agreement v1.0 —</p>
         </div>
 
         {/* Scroll hint */}
         {!hasScrolled && (
-          <div className="px-6 py-2 bg-yellow-50 border-t border-yellow-200">
+          <div className="px-6 py-2 bg-yellow-50 border-t border-yellow-200 dark:bg-amber-950/40">
             <p className="text-xs text-yellow-700 text-center">
               ↓ Scroll to the bottom to enable the Accept button
             </p>
@@ -156,13 +158,13 @@ const DpaAcceptanceModal = ({ onAccepted }) => {
 
         {/* Error */}
         {error && (
-          <div className="px-6 py-2 bg-red-50 border-t border-red-200">
-            <p className="text-xs text-red-600">{error}</p>
+          <div className="px-6 py-2 bg-red-50 border-t border-red-200 dark:bg-red-950/40">
+            <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex flex-col gap-2">
+        <div className="px-6 py-4 border-t border-gray-200 flex flex-col gap-2 dark:border-gray-700">
           <button
             onClick={handleAccept}
             disabled={!hasScrolled || accepting}
@@ -174,7 +176,7 @@ const DpaAcceptanceModal = ({ onAccepted }) => {
           >
             {accepting ? 'Recording acceptance...' : 'I have read and accept this agreement'}
           </button>
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-gray-400 text-center dark:text-gray-500">
             You cannot use Treniko without accepting this agreement.
           </p>
         </div>

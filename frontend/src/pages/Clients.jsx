@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { ClientListSkeleton } from '../components/SkeletonLoader';
 import ConfirmModal from '../components/ConfirmModal';
 import { useDateLocale } from '../utils/locale';
+import Icon from '../components/Icon';
+import { formatDayLabel, formatTime } from '../utils/datetime';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -28,26 +30,47 @@ const Clients = () => {
   const [subscription, setSubscription] = useState(null);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [search,       setSearch]       = useState('');
+  const [searching,    setSearching]    = useState(false);
+  const [currentPage,  setCurrentPage]  = useState(1);
   const PAGE_SIZE = 20;
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, type: 'warning' });
   const showConfirm = (title, message, onConfirm, type = 'warning') => setConfirmModal({ open: true, title, message, onConfirm, type });
 
+  // Two states, not three. "Inactive" and "archived" were separate columns in
+  // the database and the same thing to a trainer, with the difference explained
+  // nowhere. Both read as paused; the client detail page sets both columns
+  // together (see pauseClient there), and the filter reads either.
   const FILTERS = [
-    { key: 'Active',   label: t('clients.active') },
-    { key: 'Inactive', label: t('clients.inactive') },
-    { key: 'Archived', label: t('clients.archived') },
+    { key: 'Active', label: t('clients.active') },
+    { key: 'Paused', label: t('clients.onPause') },
   ];
 
   useEffect(() => { loadClients(); loadSubscription(); }, []);
 
-  const loadClients = async () => {
+  const loadClients = async (term = '') => {
     try {
-      const response = await clientsAPI.getAll();
+      // The API has supported `?search=` since it was written; the UI never
+      // called it, so with thirty clients the only way to find one was to page
+      // through the list. Searching on the server also means a match on a
+      // client sitting on page three still shows up.
+      const response = await clientsAPI.getAll(term ? { search: term } : undefined);
       setClients(response.data.clients);
     } catch { showToast(t('common.error'), 'error'); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setSearching(false); }
   };
+
+  // Debounced: one request per pause in typing rather than one per keystroke.
+  useEffect(() => {
+    const term = search.trim();
+    if (term.length === 0 && !searching) {
+      // Nothing to debounce on the first render or after a clear that already
+      // reloaded; the initial effect below does the unfiltered load.
+    }
+    setSearching(true);
+    const timer = setTimeout(() => { loadClients(term); setCurrentPage(1); }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const loadSubscription = async () => {
     try {
@@ -63,9 +86,8 @@ const Clients = () => {
   useEffect(() => { setCurrentPage(1); }, [filter]);
 
   const filteredClients = clients.filter(c => {
-    if (filter === 'Active')   return c.is_active && !c.is_archived;
-    if (filter === 'Inactive') return !c.is_active && !c.is_archived;
-    if (filter === 'Archived') return c.is_archived;
+    if (filter === 'Active') return c.is_active && !c.is_archived;
+    if (filter === 'Paused') return !c.is_active || c.is_archived;
     return true;
   });
 
@@ -74,25 +96,15 @@ const Clients = () => {
   const paginatedClients = filteredClients.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const counts = {
-    Active:   clients.filter(c => c.is_active && !c.is_archived).length,
-    Inactive: clients.filter(c => !c.is_active && !c.is_archived).length,
-    Archived: clients.filter(c => c.is_archived).length,
+    Active: clients.filter(c => c.is_active && !c.is_archived).length,
+    Paused: clients.filter(c => !c.is_active || c.is_archived).length,
   };
 
-  const handleSetStatus = async (client, updates, successMsg) => {
-    const token = localStorage.getItem('token');
-    try {
-      await fetch(`${API_URL}/clients/${client.id}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-      showToast(successMsg, 'success');
-      loadClients(); loadSubscription();
-    } catch { showToast(t('common.error'), 'error'); }
-  };
-
-  const handleArchive    = (e, client) => { e.stopPropagation(); showConfirm(t('clients.archive'), t('clients.archiveConfirm'), () => handleSetStatus(client, { isArchived: true, isActive: false }, t('clients.clientArchived')), 'warning'); };
+  // Pausing and deleting a client now live on the client's own page, where the
+  // consequences are visible — they were four small text links per row on a
+  // phone, next to each other, three of which nobody performs from a list.
+  // Reactivating stays here because it is the one action a trainer takes FROM
+  // this screen: they filter to paused and bring someone back.
   const handleReactivate = async (e, client) => {
     e.stopPropagation();
     const token = localStorage.getItem('token');
@@ -111,8 +123,6 @@ const Clients = () => {
       loadClients(); loadSubscription();
     } catch { showToast(t('common.error'), 'error'); }
   };
-  const handleDeactivate = (e, client) => { e.stopPropagation(); handleSetStatus(client, { isActive: false }, t('clients.clientDeactivated')); };
-
   const handleAdd = () => {
     if (subscription && subscription.clients_limit_reached) { setLimitModalOpen(true); return; }
     setEditingClient(null);
@@ -166,16 +176,6 @@ const Clients = () => {
     } catch (error) { showToast(error.response?.data?.message || t('common.error'), 'error'); }
   };
 
-  const handleDelete = async (id) => {
-    showConfirm(t('common.delete'), t('clients.deleteConfirm'), async () => {
-    try {
-      await clientsAPI.delete(id);
-      showToast(t('clients.clientDeleted'), 'success');
-      loadClients(); loadSubscription();
-    } catch { showToast(t('common.error'), 'error'); }
-    }, 'danger');
-  };
-
   // `window.location.href` tore the whole SPA down and rebuilt it — a blank
   // screen, a fresh bundle parse and a re-validation round trip every time a
   // trainer tapped a client. On a phone on mobile data that is seconds, not
@@ -201,6 +201,31 @@ const Clients = () => {
         <button onClick={handleAdd} className="btn-primary">{t('clients.addClient')}</button>
       </div>
 
+      {/* Search. The endpoint has always supported it; the UI did not, so a
+          trainer with thirty clients paged through them to find one. */}
+      <div className="relative mb-4">
+        <Icon name="search" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <label htmlFor="client-search" className="sr-only">{t('clients.searchLabel')}</label>
+        <input
+          id="client-search"
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder={t('common.searchPlaceholder')}
+          className="input pl-9 pr-9"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch('')}
+            aria-label={t('common.clearSearch')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <Icon name="x" className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       {/* Filter tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit mb-6">
         {FILTERS.map(f => (
@@ -216,92 +241,138 @@ const Clients = () => {
       </div>
 
       {filteredClients.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-center py-16">
-          <p className="text-gray-400 dark:text-gray-500 mb-4">{t('clients.noClients')}</p>
-          {filter === 'Active' && <button onClick={handleAdd} className="btn-primary">{t('clients.addFirst')}</button>}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl text-center py-14 px-6">
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            {search.trim() ? t('clients.noSearchResults') : t('clients.noClients')}
+          </p>
+          {search.trim()
+            ? (
+              <button onClick={() => setSearch('')} className="btn-secondary">{t('common.clearSearch')}</button>
+            )
+            : filter === 'Active' && <button onClick={handleAdd} className="btn-primary">{t('clients.addFirst')}</button>}
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-          {/* The table had five header cells over six body cells, so from the
-              sessions column rightwards every heading sat above the wrong data
-              and the actions column had no heading at all. The missing header
-              is added and each header now carries the same responsive
-              visibility as the cell beneath it. This wrapper scrolls
-              horizontally: at 375px the row of action links is wider than the
-              viewport, and without it the whole page scrolled sideways. */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+          {/* The wrapper scrolls horizontally rather than the page: at 375px a
+              wide row used to push the whole document sideways. */}
           <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.name')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.email')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('clients.phone')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">{t('clients.stats.completed')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.status')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.actions')}</th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.name')}</th>
+                {/* The two columns the list is actually opened for. The phone
+                    number was here and the session balance was not, so finding
+                    out how many sessions someone had left meant opening them
+                    and then their packages tab. */}
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('clients.remaining')}</th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('clients.nextSession')}</th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell">{t('clients.lastSession')}</th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">{t('clients.status')}</th>
+                <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <span className="sr-only">{t('clients.actions')}</span>
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {paginatedClients.map(client => (
-                <tr key={client.id} onClick={() => handleViewClient(client.id)}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`font-medium ${client.is_archived ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
-                      {client.first_name} {client.last_name}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{client.email || '—'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">{client.phone || '—'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {client.completed_sessions > 0 ? (
-                        <span className="font-medium text-gray-800 dark:text-gray-200">{client.completed_sessions}</span>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {paginatedClients.map(client => {
+                const paused = !client.is_active || client.is_archived;
+                const remaining = client.sessions_remaining == null ? null : Number(client.sessions_remaining);
+                return (
+                  <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td className="px-4 sm:px-6 py-3">
+                      {/* A link rather than a click handler on the row: the row
+                          was not reachable by keyboard and announced nothing to
+                          a screen reader. */}
+                      <button
+                        type="button"
+                        onClick={() => handleViewClient(client.id)}
+                        className={`text-left font-medium hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded ${
+                          paused ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'
+                        }`}
+                      >
+                        {client.first_name} {client.last_name}
+                      </button>
+                      <span className="block text-xs text-gray-400 dark:text-gray-500 truncate max-w-[220px]">
+                        {client.email || client.phone || ''}
+                      </span>
+                    </td>
+
+                    <td className="px-4 sm:px-6 py-3 whitespace-nowrap">
+                      {remaining == null ? (
+                        <span className="text-sm text-gray-400 dark:text-gray-600">
+                          {client.active_package_name ? t('packages.unlimited') : t('clients.noPackage')}
+                        </span>
                       ) : (
-                        <span className="text-gray-300 dark:text-gray-600">—</span>
+                        <span className={`text-sm font-semibold tabular-nums ${
+                          remaining <= 1 ? 'text-red-600 dark:text-red-400'
+                            : remaining <= 3 ? 'text-amber-700 dark:text-amber-400'
+                            : 'text-gray-800 dark:text-gray-200'
+                        }`}>
+                          {remaining}
+                        </span>
                       )}
-                      {client.completed_sessions > 0 && (
-                        <span className="text-gray-400 dark:text-gray-500 text-xs ml-1">{t('training.completed').toLowerCase()}</span>
+                    </td>
+
+                    <td className="px-4 sm:px-6 py-3 whitespace-nowrap hidden sm:table-cell text-sm text-gray-600 dark:text-gray-400 tabular-nums">
+                      {client.next_session_date
+                        ? formatDayLabel(client.next_session_date, dateLocale, t)
+                        : <span className="text-gray-300 dark:text-gray-600">{t('clients.noUpcoming')}</span>}
+                    </td>
+
+                    <td
+                      data-testid="client-last-session"
+                      className="px-4 sm:px-6 py-3 whitespace-nowrap hidden lg:table-cell text-sm text-gray-500 dark:text-gray-400 tabular-nums"
+                    >
+                      {client.last_session_date
+                        ? new Date(client.last_session_date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })
+                        : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                    </td>
+
+                    <td className="px-4 sm:px-6 py-3 whitespace-nowrap hidden md:table-cell">
+                      {paused
+                        ? <span className="badge-gray">{t('clients.onPause')}</span>
+                        : <span className="badge-green">{t('clients.active')}</span>}
+                    </td>
+
+                    <td className="px-4 sm:px-6 py-3 whitespace-nowrap text-right">
+                      {/* Four text links per row were four small targets side by
+                          side on a phone, three of which were lifecycle changes
+                          nobody makes from a list. Editing stays; the rest live
+                          on the client, where the consequences are visible. */}
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); handleEdit(client); }}
+                        aria-label={`${t('common.edit')} ${client.first_name} ${client.last_name}`}
+                        className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 dark:hover:text-sky-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                      >
+                        <Icon name="edit" className="h-4 w-4" />
+                      </button>
+                      {paused && (
+                        <button
+                          type="button"
+                          onClick={e => handleReactivate(e, client)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-800 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 mr-1"
+                        >
+                          {t('clients.reactivate')}
+                        </button>
                       )}
-                    </div>
-                    {client.last_session_date && (
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        {new Date(client.last_session_date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {client.is_archived
-                      ? <span className="badge-yellow">{t('clients.archived')}</span>
-                      : client.is_active
-                        ? <span className="badge-green">{t('clients.active')}</span>
-                        : <span className="badge-gray">{t('clients.inactive')}</span>}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-3">
-                    {client.is_active && !client.is_archived && <>
-                      <button onClick={e => { e.stopPropagation(); handleEdit(client); }} className="text-primary-500 hover:text-primary-700">{t('common.edit')}</button>
-                      <button onClick={e => handleDeactivate(e, client)} className="text-amber-500 hover:text-amber-700">{t('clients.deactivate')}</button>
-                      <button onClick={e => handleArchive(e, client)} className="text-gray-400 hover:text-gray-600">{t('clients.archive')}</button>
-                      <button onClick={e => { e.stopPropagation(); handleDelete(client.id); }} className="text-red-500 hover:text-red-700">{t('common.delete')}</button>
-                    </>}
-                    {!client.is_active && !client.is_archived && <>
-                      <button onClick={e => { e.stopPropagation(); handleEdit(client); }} className="text-primary-500 hover:text-primary-700">{t('common.edit')}</button>
-                      <button onClick={e => handleReactivate(e, client)} className="text-green-500 hover:text-green-700">{t('clients.reactivate')}</button>
-                      <button onClick={e => handleArchive(e, client)} className="text-gray-400 hover:text-gray-600">{t('clients.archive')}</button>
-                      <button onClick={e => { e.stopPropagation(); handleDelete(client.id); }} className="text-red-500 hover:text-red-700">{t('common.delete')}</button>
-                    </>}
-                    {client.is_archived && <>
-                      <button onClick={e => handleReactivate(e, client)} className="text-green-500 hover:text-green-700">{t('clients.reactivate')}</button>
-                      <button onClick={e => { e.stopPropagation(); handleDelete(client.id); }} className="text-red-500 hover:text-red-700">{t('common.delete')}</button>
-                    </>}
-                  </td>
-                </tr>
-              ))}
+                      <button
+                        type="button"
+                        onClick={() => handleViewClient(client.id)}
+                        aria-label={`${t('attention.openClient')}: ${client.first_name} ${client.last_name}`}
+                        className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                      >
+                        <Icon name="chevronR" className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           </div>
         </div>
       )}
-
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4 px-1">

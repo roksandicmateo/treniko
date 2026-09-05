@@ -1,4 +1,5 @@
 // frontend/src/components/ProfileMenu.jsx
+import Icon from './Icon';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -136,33 +137,33 @@ const ProfileMenu = () => {
           <div className="p-3 space-y-1">
 
             {/* My Profile */}
-            <div onClick={() => { navigate('/dashboard/profile'); setOpen(false); }}
-              className="px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-              <div className="flex items-center gap-2.5">
-                <span className="text-base">👤</span>
-                <div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('profile.myProfile')}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">{t('profile.personalInfo')} & {t('profile.language')}</p>
-                </div>
-              </div>
-            </div>
+            <button type="button" onClick={() => { navigate('/dashboard/profile'); setOpen(false); }}
+              className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+              <span className="flex items-center gap-2.5">
+                <Icon name="user" className="h-5 w-5" />
+                <span>
+                  <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">{t('profile.myProfile')}</span>
+                  <span className="block text-xs text-gray-400 dark:text-gray-500">{t('profile.personalInfo')} &amp; {t('profile.language')}</span>
+                </span>
+              </span>
+            </button>
 
             {/* Subscription */}
-            <div onClick={() => { navigate('/dashboard/subscription'); setOpen(false); }}
-              className="px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base">💳</span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('subscription.title')}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{t('subscription.currentPlan')}</p>
-                  </div>
-                </div>
+            <button type="button" onClick={() => { navigate('/dashboard/subscription'); setOpen(false); }}
+              className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+              <span className="flex items-center justify-between">
+                <span className="flex items-center gap-2.5">
+                  <Icon name="money" className="h-5 w-5" />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">{t('subscription.title')}</span>
+                    <span className="block text-xs text-gray-400 dark:text-gray-500">{t('subscription.currentPlan')}</span>
+                  </span>
+                </span>
                 {subscription && (
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${planColor}`}>{planName}</span>
                 )}
-              </div>
-            </div>
+              </span>
+            </button>
 
             {/* Sections that live only in the desktop top nav.
                 The mobile bottom bar carries six destinations and Groups and
@@ -171,20 +172,20 @@ const ProfileMenu = () => {
                 by any route the interface offered. They are surfaced here,
                 where the menu is available at every breakpoint. */}
             <div className="border-t border-gray-100 dark:border-gray-800 my-1 sm:hidden" />
-            <div onClick={() => { navigate('/dashboard/groups'); setOpen(false); }}
-              className="sm:hidden px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-              <div className="flex items-center gap-2.5">
-                <span className="text-base">🤝</span>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('nav.groups')}</p>
-              </div>
-            </div>
-            <div onClick={() => { navigate('/dashboard/exercises'); setOpen(false); }}
-              className="sm:hidden px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-              <div className="flex items-center gap-2.5">
-                <span className="text-base">💪</span>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('nav.exercises')}</p>
-              </div>
-            </div>
+            <button type="button" onClick={() => { navigate('/dashboard/groups'); setOpen(false); }}
+              className="sm:hidden w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+              <span className="flex items-center gap-2.5">
+                <Icon name="groups" className="h-5 w-5" />
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('nav.groups')}</span>
+              </span>
+            </button>
+            <button type="button" onClick={() => { navigate('/dashboard/exercises'); setOpen(false); }}
+              className="sm:hidden w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+              <span className="flex items-center gap-2.5">
+                <Icon name="dumbbell" className="h-5 w-5" />
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('nav.exercises')}</span>
+              </span>
+            </button>
 
             <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
             <p className="px-3 pt-1 pb-0.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('profile.gdprPrivacy')}</p>
@@ -192,7 +193,7 @@ const ProfileMenu = () => {
             {/* Export */}
             <button onClick={handleExport} disabled={exporting}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left disabled:opacity-50">
-              <span className="text-base">📦</span>
+              <Icon name="packages" className="h-5 w-5" />
               <div>
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                   {exporting ? t('common.loading') : t('profile.exportData')}
@@ -206,7 +207,7 @@ const ProfileMenu = () => {
               !showDeleteConfirm ? (
                 <button onClick={() => setShowDeleteConfirm(true)}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left">
-                  <span className="text-base">🗑️</span>
+                  <Icon name="trash" className="h-5 w-5" />
                   <div>
                     <p className="text-sm font-medium text-red-600 dark:text-red-400">{t('profile.deleteAccount')}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">{t('form.scheduledDays')}</p>
@@ -247,7 +248,7 @@ const ProfileMenu = () => {
             {/* Logout */}
             <button onClick={handleLogout}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
-              <span className="text-base">🚪</span>
+              <Icon name="logout" className="h-5 w-5" />
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('auth.logout')}</p>
             </button>
           </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Icon from './Icon';
 import { Link } from 'react-router-dom';
 import { subscriptionsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +33,7 @@ const SubscriptionBanner = () => {
       <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 rounded-xl">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">⚠️</span>
+            <Icon name="alert" className="h-6 w-6" />
             <div>
               <div className="font-semibold text-yellow-900 dark:text-yellow-400">
                 {t('subscription.expiringDays', { count: daysLeft })}
@@ -56,7 +57,7 @@ const SubscriptionBanner = () => {
       <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 rounded-xl">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🔒</span>
+            <Icon name="alert" className="h-6 w-6" />
             <div>
               <div className="font-semibold text-red-900 dark:text-red-400">{t('packages.expired')} — {t('subscription.readOnly')}</div>
               <div className="text-sm text-red-700 dark:text-red-500">

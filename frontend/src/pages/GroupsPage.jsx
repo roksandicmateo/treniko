@@ -1,4 +1,5 @@
 // frontend/src/pages/GroupsPage.jsx
+import Icon from '../components/Icon';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -146,7 +147,7 @@ export default function GroupsPage() {
         <div className="text-center py-16 text-gray-400 dark:text-gray-500">{t('common.loading')}</div>
       ) : groups.length === 0 ? (
         <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
-          <p className="text-4xl mb-3">👥</p>
+          <p className="mb-3"><Icon name="clients" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></p>
           <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">{t('groups.noGroups')}</p>
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">{t('groups.noGroupsHint')}</p>
           <button onClick={() => setModalOpen(true)} className="btn-primary">{t('groups.addFirst')}</button>

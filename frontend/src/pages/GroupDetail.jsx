@@ -1,4 +1,5 @@
 // frontend/src/pages/GroupDetail.jsx
+import Icon from '../components/Icon';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -223,15 +224,19 @@ function GroupSessionRow({ session, onMemberClick, groupId, navigate }) {
           {session.members?.map(m => {
             const cfg = STATUS_CONFIG[m.status] || STATUS_CONFIG.scheduled;
             return (
-              <div key={m.id} onClick={() => onMemberClick(m, session)}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors">
-                <div className="w-7 h-7 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-400 flex-shrink-0">
+              <button
+                type="button"
+                key={m.id}
+                onClick={() => onMemberClick(m, session)}
+                className="w-full text-left flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-white dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              >
+                <span className="w-7 h-7 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-400 flex-shrink-0">
                   {m.first_name[0]}{m.last_name[0]}
-                </div>
-                <p className="flex-1 text-sm text-gray-700 dark:text-gray-300 font-medium">{m.first_name} {m.last_name}</p>
+                </span>
+                <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 font-medium">{m.first_name} {m.last_name}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{t(cfg.label)}</span>
-                <span className="text-xs text-primary-500 hover:underline flex-shrink-0">{t('common.edit')} →</span>
-              </div>
+                <Icon name="chevronR" className="h-4 w-4 text-primary-500 flex-shrink-0" />
+              </button>
             );
           })}
         </div>
@@ -358,7 +363,7 @@ export default function GroupDetail() {
       {/* Header */}
       <div className="flex items-center gap-4 flex-wrap">
         <button onClick={() => navigate('/dashboard/groups')} className="text-gray-400 hover:text-gray-600 text-sm">
-          ← {t('nav.groups')}
+          {t('nav.groups')}
         </button>
         <div className="flex items-center gap-3 flex-1">
           <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0"
@@ -375,7 +380,7 @@ export default function GroupDetail() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setAddMembersOpen(true)} className="btn-secondary text-sm">{t('groups.addMembers')}</button>
-          <button onClick={() => setScheduleGroupOpen(true)} className="btn-primary text-sm">📅 {t('groups.scheduleGroupSession')}</button>
+          <button onClick={() => setScheduleGroupOpen(true)} className="btn-primary text-sm">{t('groups.scheduleGroupSession')}</button>
         </div>
       </div>
 
@@ -399,7 +404,7 @@ export default function GroupDetail() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
-        {[['sessions', `📅 ${t('groups.sessions')}`], ['members', `👥 ${t('nav.clients')}`]].map(([key, label]) => (
+        {[['sessions', `${t('groups.sessions')}`], ['members', `${t('nav.clients')}`]].map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               tab === key ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -414,7 +419,7 @@ export default function GroupDetail() {
         <div>
           {sessions.length === 0 ? (
             <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
-              <p className="text-3xl mb-3">📅</p>
+              <p className="mb-3"><Icon name="calendar" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></p>
               <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">{t('groups.noSessionsYet')}</p>
               <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">{t('groups.scheduleToTrack')}</p>
               <button onClick={() => setScheduleGroupOpen(true)} className="btn-primary">
@@ -437,7 +442,7 @@ export default function GroupDetail() {
         <div>
           {group.members?.length === 0 ? (
             <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
-              <p className="text-3xl mb-3">👥</p>
+              <p className="mb-3"><Icon name="clients" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></p>
               <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">{t('groups.noMembers')}</p>
               <button onClick={() => setAddMembersOpen(true)} className="btn-primary mt-4">{t('groups.addMembers')}</button>
             </div>
@@ -524,10 +529,10 @@ export default function GroupDetail() {
             </p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { status: 'completed', label: `✅ ${t('sessions.legend_completed')}`, cls: 'border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20' },
-                { status: 'no_show',   label: `❌ ${t('sessions.legend_noshow')}`,    cls: 'border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20' },
-                { status: 'cancelled', label: `🚫 ${t('sessions.legend_cancelled')}`, cls: 'border-gray-300 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400' },
-                { status: 'scheduled', label: `📅 ${t('sessions.legend_scheduled')}`, cls: 'border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20' },
+                { status: 'completed', label: `${t('sessions.legend_completed')}`, cls: 'border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20' },
+                { status: 'no_show',   label: `${t('sessions.legend_noshow')}`,    cls: 'border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20' },
+                { status: 'cancelled', label: `${t('sessions.legend_cancelled')}`, cls: 'border-gray-300 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400' },
+                { status: 'scheduled', label: `${t('sessions.legend_scheduled')}`, cls: 'border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20' },
               ].map(item => (
                 <button key={item.status} onClick={() => updateAttendance(item.status)}
                   className={`py-3 rounded-xl border-2 font-medium text-sm transition-colors ${item.cls}`}>

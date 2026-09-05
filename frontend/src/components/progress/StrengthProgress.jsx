@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import Icon from '../Icon';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../utils/locale';
 import {
@@ -70,14 +71,14 @@ export default function StrengthProgress({ clientId }) {
   const latestEntry = entries[entries.length - 1];
   const firstEntry  = entries[0];
 
-  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">{t('common.loading')}</div>;
+  if (loading) return <div className="py-12 text-center text-gray-400 text-sm dark:text-gray-500">{t('common.loading')}</div>;
 
   if (Object.keys(data).length === 0) {
     return (
-      <div className="border border-dashed border-gray-200 rounded-xl py-16 text-center">
-        <div className="text-4xl mb-3">🏋️</div>
-        <p className="text-gray-500 font-medium mb-1">{t('progress.noStrengthData')}</p>
-        <p className="text-gray-400 text-sm max-w-xs mx-auto">
+      <div className="border border-dashed border-gray-200 rounded-xl py-16 text-center dark:border-gray-700">
+        <div className="mb-3"><Icon name="dumbbell" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></div>
+        <p className="text-gray-500 font-medium mb-1 dark:text-gray-400">{t('progress.noStrengthData')}</p>
+        <p className="text-gray-400 text-sm max-w-xs mx-auto dark:text-gray-500">
           {t('progress.strengthAutoTracked')}
         </p>
       </div>
@@ -90,7 +91,7 @@ export default function StrengthProgress({ clientId }) {
       {/* ── Exercise sidebar ── */}
       <div className="w-44 flex-shrink-0">
         <input
-          className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs placeholder-gray-400 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs placeholder-gray-400 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700"
           placeholder={t('common.search') + '…'}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -116,7 +117,7 @@ export default function StrengthProgress({ clientId }) {
             );
           })}
           {exercises.length === 0 && (
-            <p className="text-gray-400 text-xs px-2 pt-1">{t('common.noResults')}</p>
+            <p className="text-gray-400 text-xs px-2 pt-1 dark:text-gray-500">{t('common.noResults')}</p>
           )}
         </div>
       </div>
@@ -128,17 +129,17 @@ export default function StrengthProgress({ clientId }) {
           {/* Category + name */}
           <div className="flex items-center gap-2">
             {selected.category && (
-              <span className="text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full dark:bg-gray-800 dark:text-gray-400">
                 {selected.category}
               </span>
             )}
-            <h3 className="font-semibold text-gray-900 text-sm">{selectedExercise}</h3>
+            <h3 className="font-semibold text-gray-900 text-sm dark:text-gray-100">{selectedExercise}</h3>
           </div>
 
           {/* PR banner */}
           {prValue != null && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
-              <span className="text-2xl">🏆</span>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3 dark:bg-amber-950/40">
+              <Icon name="trophy" className="h-6 w-6" />
               <div>
                 <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">
                   {t('prs.title')} · {metricInfo?.label}
@@ -179,16 +180,16 @@ export default function StrengthProgress({ clientId }) {
               { label: t('progress.first'), val: firstEntry  ? parseFloat(firstEntry[selectedMetric]).toFixed(1)  : '—', unit: metricInfo?.unit },
               { label: t('progress.latest'),  val: latestEntry ? parseFloat(latestEntry[selectedMetric]).toFixed(1) : '—', unit: metricInfo?.unit },
             ].map(({ label, val, unit }) => (
-              <div key={label} className="bg-gray-50 rounded-xl p-2.5 text-center">
-                <p className="text-xs text-gray-400">{label}</p>
-                <p className="font-bold text-gray-800 text-sm">{val} <span className="font-normal text-gray-400 text-xs">{unit}</span></p>
+              <div key={label} className="bg-gray-50 rounded-xl p-2.5 text-center dark:bg-gray-800">
+                <p className="text-xs text-gray-400 dark:text-gray-500">{label}</p>
+                <p className="font-bold text-gray-800 text-sm dark:text-gray-200">{val} <span className="font-normal text-gray-400 text-xs dark:text-gray-500">{unit}</span></p>
               </div>
             ))}
           </div>
 
           {/* Chart */}
           {chartData.length > 1 ? (
-            <div className="bg-white border border-gray-100 rounded-xl p-3">
+            <div className="bg-white border border-gray-100 rounded-xl p-3 dark:bg-gray-900 dark:border-gray-800">
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -205,16 +206,16 @@ export default function StrengthProgress({ clientId }) {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="bg-blue-50 rounded-xl p-4 text-center text-sm text-blue-600">
+            <div className="bg-blue-50 rounded-xl p-4 text-center text-sm text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
   {t('progress.logMoreSessions')}
             </div>
           )}
 
           {/* Session-by-session table */}
-          <div className="border border-gray-100 rounded-xl overflow-hidden">
+          <div className="border border-gray-100 rounded-xl overflow-hidden dark:border-gray-800">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-gray-50 text-gray-400">
+                <tr className="bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-500">
                   <th className="px-3 py-2 text-left font-medium">{t('common.date')}</th>
                   <th className="px-3 py-2 text-right font-medium">{t('progress.maxKg')}</th>
                   <th className="px-3 py-2 text-right font-medium">{t('prs.est1RM')}</th>
@@ -224,23 +225,23 @@ export default function StrengthProgress({ clientId }) {
               </thead>
               <tbody>
                 {[...entries].reverse().map((e) => (
-                  <tr key={String(e.date)} className="border-t border-gray-50 hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-600">
+                  <tr key={String(e.date)} className="border-t border-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
                       {day(e.date).toLocaleDateString(dateLocale, {
                         day: 'numeric', month: 'short', year: 'numeric',
                       })}
                     </td>
-                    <td className="px-3 py-2 text-right font-medium text-gray-800">{e.maxWeight} kg</td>
-                    <td className="px-3 py-2 text-right text-gray-600">{e.estOneRM} kg</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{Number(e.totalVolume ?? 0).toFixed(0)} kg</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{e.setCount}</td>
+                    <td className="px-3 py-2 text-right font-medium text-gray-800 dark:text-gray-200">{e.maxWeight} kg</td>
+                    <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-400">{e.estOneRM} kg</td>
+                    <td className="px-3 py-2 text-right text-gray-500 dark:text-gray-400">{Number(e.totalVolume ?? 0).toFixed(0)} kg</td>
+                    <td className="px-3 py-2 text-right text-gray-500 dark:text-gray-400">{e.setCount}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-gray-400 text-center dark:text-gray-500">
   {t('progress.strengthFormula')}
           </p>
         </div>

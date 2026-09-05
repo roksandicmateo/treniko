@@ -1,7 +1,6 @@
 // frontend/src/pages/ClientDetail.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDateLocale } from '../utils/locale';
 import { useParams, useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from '../components/training/AddTrainingModal';
@@ -12,9 +11,27 @@ import ClientNotesTab from '../components/ClientNotesTab';
 import PRSummary from '../components/progress/PRSummary';
 import BillingTab from '../components/BillingTab';
 import ConfirmModal from '../components/ConfirmModal';
+import ClientSummaryHeader from '../components/ClientSummaryHeader';
+import PackageAdjustPanel from '../components/PackageAdjustPanel';
+import SessionModal from '../components/SessionModal';
+import Icon from '../components/Icon';
+import { useDateLocale } from '../utils/locale';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-const TABS = ['profile', 'trainings', 'progress', 'packages', 'notes', 'prs', 'billing'];
+// Five, not seven. `notes` was a tab of its own for two text fields that
+// belong on the profile, and `prs` was a second progress tab showing the same
+// client's numbers from a different angle — so "progress" now holds body
+// metrics, strength and personal records, which is one subject rather than
+// three tabs. Nothing was removed; the same components render in fewer places.
+const TABS = ['profile', 'trainings', 'progress', 'packages', 'billing'];
+
+const TAB_ICONS = {
+  profile:   'user',
+  trainings: 'dumbbell',
+  progress:  'chart',
+  packages:  'packages',
+  billing:   'money',
+};
 
 const TYPE_COLORS = {
   Gym:        'bg-blue-100 text-blue-700',
@@ -44,25 +61,30 @@ function ProgressSection({ clientId }) {
   const [progressTab, setProgressTab] = useState('body');
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
         <button onClick={() => setProgressTab('body')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'body' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'body' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
           {t('progress.bodyMetrics')}
         </button>
         <button onClick={() => setProgressTab('strength')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'strength' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'strength' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
           {t('progress.strength')}
+        </button>
+        <button onClick={() => setProgressTab('prs')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${progressTab === 'prs' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+          {t('clients.tabs.prs')}
         </button>
       </div>
       {progressTab === 'body'     && <ProgressChart    clientId={clientId} />}
       {progressTab === 'strength' && <StrengthProgress clientId={clientId} />}
+      {progressTab === 'prs'      && <PRSummary        clientId={clientId} />}
     </div>
   );
 }
 
 function PackagesSection({ clientId, clientName }) {
   const { t } = useTranslation();
-  // Package dates followed the machine's locale, not the app's: a bare
+  // Package dates followed the machine's locale, not the app's: bare
   // `toLocaleDateString()` is the same defect as `undefined` — see utils/locale.js.
   const dateLocale = useDateLocale();
   const [clientPackages, setClientPackages] = useState([]);
@@ -122,49 +144,52 @@ function PackagesSection({ clientId, clientName }) {
     return Math.min(100, Math.round((cp.sessions_used / cp.total_sessions) * 100));
   };
 
-  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">{t('common.loading')}</div>;
+  if (loading) return <div className="text-gray-400 text-sm py-8 text-center dark:text-gray-500">{t('common.loading')}</div>;
 
   return (
     <div className="space-y-6">
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{t('packages.activePackage')}</h3>
-          <button onClick={() => setAssignOpen(true)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">+ {t('packages.assignPackage')}</button>
+          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-gray-300">{t('packages.activePackage')}</h3>
+          <button onClick={() => setAssignOpen(true)} className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-400">+ {t('packages.assignPackage')}</button>
         </div>
 
         {active.length === 0 ? (
-          <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
-            <p className="text-gray-400 text-sm mb-3">{t('packages.noActivePackage')}</p>
+          <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center dark:border-gray-700">
+            <p className="text-gray-400 text-sm mb-3 dark:text-gray-500">{t('packages.noActivePackage')}</p>
             <button onClick={() => setAssignOpen(true)} className="btn-primary text-sm">{t('packages.assignFirst')}</button>
           </div>
         ) : (
           active.map(cp => {
             const pct = progressPct(cp);
             return (
-              <div key={cp.id} className="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-2xl p-5">
+              <div key={cp.id} className="bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900 rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
-                    <h4 className="font-semibold text-gray-900">{cp.package_name}</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">{t(TYPE_LABEL_KEYS[cp.package_type] || 'packages.typeSessionBased')}</p>
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100">{cp.package_name}</h4>
+                    <p className="text-xs text-gray-500 mt-0.5 dark:text-gray-400">{t(TYPE_LABEL_KEYS[cp.package_type] || 'packages.typeSessionBased')}</p>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-700 font-medium px-2.5 py-1 rounded-full">{t('packages.status.active')}</span>
+                  <span className="text-xs bg-green-100 text-green-700 font-medium px-2.5 py-1 rounded-full dark:text-emerald-300">{t('packages.status.active')}</span>
                 </div>
-                <p className="text-sm text-gray-600 mb-2">{formatUsage(cp)}</p>
+                <p className="text-sm text-gray-600 mb-2 dark:text-gray-400">{formatUsage(cp)}</p>
                 {pct !== null && (
                   <div className="mb-3">
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{pct}% {t('packages.used')}</p>
+                    <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">{pct}% {t('packages.used')}</p>
                   </div>
                 )}
-                <div className="flex gap-4 text-xs text-gray-500 mb-3">
+                <div className="flex gap-4 text-xs text-gray-500 mb-3 dark:text-gray-400">
                   <span>{t('packages.started')}: {new Date(cp.start_date).toLocaleDateString(dateLocale)}</span>
                   {cp.end_date && <span>{t('packages.expires')}: {new Date(cp.end_date).toLocaleDateString(dateLocale)}</span>}
                 </div>
-                {cp.price && <p className="text-xs text-gray-400 mb-3">{Number(cp.price).toFixed(2)} {cp.currency}</p>}
-                {cp.notes && <p className="text-xs text-gray-500 italic mb-3">"{cp.notes}"</p>}
-                <button onClick={() => handleCancel(cp)} className="text-xs text-red-500 hover:text-red-700">{t('packages.cancelPackage')}</button>
+                {cp.price && <p className="text-xs text-gray-400 mb-3 dark:text-gray-500">{Number(cp.price).toFixed(2)} {cp.currency}</p>}
+                {cp.notes && <p className="text-xs text-gray-500 italic mb-3 dark:text-gray-400">"{cp.notes}"</p>}
+                <button onClick={() => handleCancel(cp)} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400">{t('packages.cancelPackage')}</button>
+
+                {/* Correcting the balance, and the ledger that explains it. */}
+                <PackageAdjustPanel clientId={clientId} clientPackage={cp} onChanged={load} />
               </div>
             );
           })
@@ -173,13 +198,13 @@ function PackagesSection({ clientId, clientName }) {
 
       {history.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">{t('common.history')}</h3>
+          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3 dark:text-gray-300">{t('common.history')}</h3>
           <div className="space-y-2">
             {history.map(cp => (
-              <div key={cp.id} className="border border-gray-200 rounded-xl p-4 flex items-start justify-between gap-3">
+              <div key={cp.id} className="border border-gray-200 rounded-xl p-4 flex items-start justify-between gap-3 dark:border-gray-700">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">{cp.package_name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{cp.package_name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5 dark:text-gray-500">
                     {new Date(cp.start_date).toLocaleDateString(dateLocale)}
                     {cp.end_date ? ` → ${new Date(cp.end_date).toLocaleDateString(dateLocale)}` : ''}
                     {' · '}{cp.sessions_used} {t('packages.sessionsUsed')}
@@ -195,7 +220,7 @@ function PackagesSection({ clientId, clientName }) {
       )}
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm">{error}</div>
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm dark:bg-red-950/40">{error}</div>
       )}
 
       <ConfirmModal
@@ -229,7 +254,8 @@ export default function ClientDetail() {
   const [client,       setClient]       = useState(null);
   const [trainings,    setTrainings]    = useState([]);
   const [tab,          setTab]          = useState('profile');
-  const [modalOpen,    setModalOpen]    = useState(false);
+  const [trainingModalOpen, setTrainingModalOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [editTraining, setEditTraining] = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
@@ -307,7 +333,7 @@ export default function ClientDetail() {
     try {
       const { data } = await trainingService.getById(trainingId);
       setEditTraining(data);
-      setModalOpen(true);
+      setTrainingModalOpen(true);
     } catch { /* ignore */ }
   }
 
@@ -336,29 +362,50 @@ export default function ClientDetail() {
     }
   }
 
-  async function deactivateClient() {
-    showConfirm(t('clients.deactivate'), `${t('clients.deactivate')} ${client.first_name} ${client.last_name}?`, async () => {
-      await fetch(`${API_URL}/clients/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ isActive: false }),
-      });
-      navigate('/dashboard/clients');
-    });
+  /**
+   * Pause a client.
+   *
+   * The product had two ways to stop working with someone — "deactivate" and
+   * "archive" — with different effects on the plan limit and the statistics,
+   * and no explanation of the difference anywhere a trainer could read it.
+   * There is one action now. It sets both columns, so a paused client is out of
+   * the active list and out of the plan's client count, which is what a trainer
+   * pausing someone means by it.
+   */
+  async function pauseClient() {
+    setMenuOpen(false);
+    showConfirm(
+      t('clients.pause'),
+      `${t('clients.pause')}: ${client.first_name} ${client.last_name}?`,
+      async () => {
+        await fetch(`${API_URL}/clients/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ isActive: false, isArchived: true }),
+        });
+        navigate('/dashboard/clients');
+      }
+    );
   }
 
-  async function archiveClient() {
-    showConfirm(t('clients.archive'), `${t('clients.archive')} ${client.first_name} ${client.last_name}?`, async () => {
-      await fetch(`${API_URL}/clients/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ isArchived: true, isActive: false }),
-      });
-      navigate('/dashboard/clients');
-    });
+  async function deleteClient() {
+    setMenuOpen(false);
+    showConfirm(
+      t('common.delete'),
+      t('clients.deleteConfirm'),
+      async () => {
+        await fetch(`${API_URL}/clients/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
+        navigate('/dashboard/clients');
+      },
+      'danger'
+    );
   }
 
   async function reactivateClient() {
+    setMenuOpen(false);
     await fetch(`${API_URL}/clients/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
@@ -367,70 +414,111 @@ export default function ClientDetail() {
     load();
   }
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-gray-400">{t('common.loading')}</div></div>;
+  // One reading of "not currently training with me", however it was set.
+  const isPaused = client ? (client.is_archived === true || client.is_active === false) : false;
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-gray-400 dark:text-gray-500">{t('common.loading')}</div></div>;
   if (error) return (
     <div className="p-4 text-center">
-      <p className="text-red-600 mb-4">{error}</p>
-      <button onClick={() => navigate('/dashboard/clients')} className="text-blue-600 hover:underline">← {t('clients.title')}</button>
+      <p className="text-red-600 mb-4 dark:text-red-400">{error}</p>
+      <button onClick={() => navigate('/dashboard/clients')} className="text-blue-600 hover:underline dark:text-blue-400">← {t('clients.title')}</button>
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto px-4 pb-8">
-      <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-sm mt-4 mb-4 flex items-center gap-1">{t('common.back')}</button>
+      <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-sm mt-4 mb-4 flex items-center gap-1 dark:text-gray-500">{t('common.back')}</button>
 
       {/* Client header */}
-      <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-          <span className="text-blue-600 font-bold text-2xl">{client.first_name?.[0]}{client.last_name?.[0]}</span>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-5">
+        <div className="w-14 h-14 rounded-2xl bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center flex-shrink-0">
+          <span className="text-sky-700 dark:text-sky-300 font-bold text-xl">
+            {client.first_name?.[0]}{client.last_name?.[0]}
+          </span>
         </div>
-        {/* min-w-0 / break-words / flex-shrink-0, for the reason documented on the
-            profile header: a long client name or email address in a flex row
-            with no shrink allowance widens the row past the viewport and the
-            whole page scrolls sideways on a phone. */}
+        {/* min-w-0 / break-words / flex-shrink-0: a long client name or email
+            address in a flex row with no shrink allowance widens the row past
+            the viewport and the whole page scrolls sideways on a phone. */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 break-words">{client.first_name} {client.last_name}</h1>
-              {client.email && <p className="text-gray-500 dark:text-gray-400 text-sm break-words">{client.email}</p>}
-              <div className="flex items-center gap-2 mt-1">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 break-words">
+                {client.first_name} {client.last_name}
+              </h1>
+              {client.email && (
+                <p className="text-gray-500 dark:text-gray-400 text-sm break-words">{client.email}</p>
+              )}
+              <div className="flex items-center gap-2 mt-1.5">
+                {/* Two states, not three. "Deactivated" and "archived" were
+                    different rows in the database and the same thing to a
+                    trainer, with no explanation of the difference anywhere in
+                    the product. Both now read as "paused"; which column is set
+                    stays an implementation detail. */}
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                  client.is_archived ? 'bg-yellow-100 text-yellow-700' :
-                  client.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  isPaused
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                    : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
                 }`}>
-                  {client.is_archived ? t('clients.archived') : client.is_active ? t('clients.active') : t('clients.inactive')}
+                  {isPaused ? t('clients.onPause') : t('clients.active')}
                 </span>
-                <span className="text-gray-300 text-xs">{trainings.length} {t('training.title').toLowerCase()}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {t('counts.session', { count: Number(client.total_sessions) || 0 })}
+                </span>
               </div>
             </div>
+
             <div className="flex gap-2 flex-shrink-0">
-              {client.is_active && !client.is_archived && (
-                <button onClick={() => { setEditTraining(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium">
-                  + {t('training.title')}
-                </button>
-              )}
               <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setMenuOpen(m => !m); }}
-                  className="border border-gray-300 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-xl text-sm">···</button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(m => !m); }}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  aria-label={t('clients.actions')}
+                  className="border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 px-3 py-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-gray-400"
+                >
+                  <Icon name="more" className="h-4 w-4" />
+                </button>
                 {menuOpen && (
-                  <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-10">
-                    <button onClick={() => {
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-1 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg z-10 overflow-hidden dark:border-gray-700"
+                  >
+                    <button role="menuitem" onClick={() => {
                       setEditProfileForm({ firstName: client.first_name, lastName: client.last_name, email: client.email || '', phone: client.phone || '' });
                       setEditProfileOpen(true);
                       setMenuOpen(false);
-                    }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 rounded-t-xl">{t('clients.editProfile')}</button>
-                    {client.is_active && client.is_archived !== true && (
-                      <button onClick={deactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-yellow-600 hover:bg-yellow-50">{t('clients.deactivate')}</button>
+                    }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300">
+                      {t('clients.editProfile')}
+                    </button>
+
+                    <button role="menuitem" onClick={() => { setEditTraining(null); setTrainingModalOpen(true); setMenuOpen(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300">
+                      + {t('training.addTraining').replace('+ ', '')}
+                    </button>
+
+                    {!isPaused && (
+                      <button role="menuitem" onClick={pauseClient}
+                        className="w-full text-left px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40">
+                        {t('clients.pause')}
+                        <span className="block text-xs font-normal text-gray-400 dark:text-gray-500">{t('clients.pauseHint')}</span>
+                      </button>
                     )}
-                    {client.is_archived !== true && (
-                      <button onClick={archiveClient} className="w-full text-left px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">{t('clients.archive')}</button>
+                    {isPaused && (
+                      <button role="menuitem" onClick={reactivateClient}
+                        className="w-full text-left px-4 py-2.5 text-sm text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40">
+                        {t('clients.reactivate')}
+                        <span className="block text-xs font-normal text-gray-400 dark:text-gray-500">{t('clients.reactivateHint')}</span>
+                      </button>
                     )}
-                    {!client.is_active && client.is_archived !== true && (
-                      <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50">{t('clients.reactivate')}</button>
-                    )}
-                    {client.is_archived === true && (
-                      <button onClick={reactivateClient} className="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 rounded-b-xl">{t('clients.reactivate')}</button>
-                    )}
+
+                    {/* Deleting a client used to be a red link in the list, one
+                        tap from opening them. It belongs here, behind a
+                        confirmation, on the page that shows what is about to
+                        go: their sessions, packages and payments. */}
+                    <button role="menuitem" onClick={deleteClient}
+                      className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border-t border-gray-100 dark:border-gray-800">
+                      {t('common.delete')}
+                    </button>
                   </div>
                 )}
               </div>
@@ -439,36 +527,30 @@ export default function ClientDetail() {
         </div>
       </div>
 
-      {/* Stats
-          These come from client_statistics — the same source the client list
-          reads — so the two screens cannot disagree. They used to be counted
-          here from whatever the trainings tab happened to hold (individual
-          trainings plus group sessions), which is a different population from
-          the one the list page counts, so the same client showed different
-          totals depending on where you looked. */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-blue-600">{Number(client.total_sessions) || 0}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.total')}</p>
-        </div>
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-green-600">{Number(client.completed_sessions) || 0}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.completed')}</p>
-        </div>
-        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-orange-500">{Number(client.upcoming_sessions_count) || 0}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{t('clients.stats.upcoming')}</p>
-        </div>
+      {/* Everything the page is opened for, before any tab. */}
+      <div className="mb-6">
+        <ClientSummaryHeader
+          client={client}
+          onSchedule={isPaused ? null : () => setScheduleOpen(true)}
+        />
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
+      <div role="tablist" className="flex border-b border-gray-200 dark:border-gray-800 mb-6 overflow-x-auto dark:border-gray-700">
         {TABS.map(tabKey => (
-          <button key={tabKey} onClick={() => setTab(tabKey)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px whitespace-nowrap ${
-              tab === tabKey ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}>
-{tabKey === 'packages' ? `📦 ${t('clients.tabs.packages')}` : tabKey === 'notes' ? `📋 ${t('clients.tabs.notes')}` : tabKey === 'prs' ? `🏆 ${t('clients.tabs.prs')}` : tabKey === 'billing' ? `💳 ${t('clients.tabs.billing')}` : t(`clients.tabs.${tabKey}`)}
+          <button
+            key={tabKey}
+            role="tab"
+            aria-selected={tab === tabKey}
+            onClick={() => setTab(tabKey)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded-t ${
+              tab === tabKey
+                ? 'border-sky-600 text-sky-700 dark:border-sky-400 dark:text-sky-300'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <Icon name={TAB_ICONS[tabKey]} className="h-4 w-4" />
+            {t(`clients.tabs.${tabKey}`)}
           </button>
         ))}
       </div>
@@ -484,14 +566,49 @@ export default function ClientDetail() {
               </div>
             ) : null)}
           {!client.phone && !client.date_of_birth && !client.notes && (
-            <p className="text-gray-400 text-sm text-center py-8">
+            <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-6">
               {t('clients.noAdditionalInfo')}{' '}
               <button onClick={() => {
                 setEditProfileForm({ firstName: client.first_name, lastName: client.last_name, email: client.email || '', phone: client.phone || '' });
                 setEditProfileOpen(true);
-              }} className="text-blue-600 hover:underline">{t('clients.editProfile')}</button>
+              }} className="text-sky-600 dark:text-sky-400 hover:underline">{t('clients.editProfile')}</button>
             </p>
           )}
+
+          {/* Whether this client wants the day-before reminder. Recorded per
+              client because it is their decision, and because an
+              unsolicited-mail complaint asks exactly this. */}
+          {client.email && (
+            <label className="flex items-start gap-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl px-4 py-3 cursor-pointer dark:bg-gray-800">
+              <input
+                type="checkbox"
+                checked={client.reminders_opt_out !== true}
+                onChange={async (e) => {
+                  const optOut = !e.target.checked;
+                  setClient(c => ({ ...c, reminders_opt_out: optOut }));
+                  await fetch(`${API_URL}/clients/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+                    body: JSON.stringify({ remindersOptOut: optOut }),
+                  });
+                }}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+                  {t('profile.remindersOn')}
+                </span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  {t('clients.remindersOptOutHint')}
+                </span>
+              </span>
+            </label>
+          )}
+
+          {/* Goals, injuries and diet notes used to be a tab of their own for
+              what is three text fields about this person — which is what a
+              profile is. */}
+          <ClientNotesTab client={client} onUpdated={updated => setClient(c => ({ ...c, ...updated }))} />
         </div>
       )}
 
@@ -499,27 +616,34 @@ export default function ClientDetail() {
       {tab === 'trainings' && (
         <div>
           {trainings.length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-gray-200 rounded-2xl">
-              <p className="text-gray-400 text-sm mb-3">{t('training.noTrainings')}</p>
+            <div className="text-center py-12 border border-dashed border-gray-200 rounded-2xl dark:border-gray-700">
+              <p className="text-gray-400 text-sm mb-3 dark:text-gray-500">{t('training.noTrainings')}</p>
               {client.is_active && (
-                <button onClick={() => { setEditTraining(null); setModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium">{t('training.addTraining')}</button>
+                <button onClick={() => { setEditTraining(null); setTrainingModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium">{t('training.addTraining')}</button>
               )}
             </div>
           ) : (
             <div className="space-y-2">
               {trainings.map(tr => (
-                <div key={tr.id} onClick={() => tr.session_kind === 'group' ? navigate(`/dashboard/groups/${tr.group_id}/sessions/${tr.id}?from=client&clientId=${id}`) : openEdit(tr.id)} className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{tr.title || tr.workout_type}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(tr.session_kind === 'group' ? (tr.session_date + 'T' + (tr.start_time || '00:00')) : tr.start_time).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  key={tr.id}
+                  onClick={() => tr.session_kind === 'group'
+                    ? navigate(`/dashboard/groups/${tr.group_id}/sessions/${tr.id}?from=client&clientId=${id}`)
+                    : openEdit(tr.id)}
+                  className="w-full text-left flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors dark:hover:bg-gray-800 dark:border-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                >
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-medium text-gray-800 dark:text-gray-200 truncate">{tr.title || tr.workout_type}</span>
+                    <span className="block text-xs text-gray-400 mt-0.5 dark:text-gray-500">
+                      {new Date(tr.session_kind === 'group' ? (tr.session_date + 'T' + (tr.start_time || '00:00')) : tr.start_time).toLocaleString(dateLocale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2 flex-shrink-0">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[tr.workout_type] || 'bg-gray-100 text-gray-600'}`}>{tr.workout_type}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tr.is_completed ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{tr.is_completed ? t('training.completed') : t('sessions.scheduled')}</span>
-                  </div>
-                </div>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tr.is_completed ? 'bg-green-100 text-green-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'}`}>{tr.is_completed ? t('training.completed') : t('sessions.scheduled')}</span>
+                  </span>
+                </button>
               ))}
             </div>
           )}
@@ -528,8 +652,6 @@ export default function ClientDetail() {
 
       {tab === 'progress'  && <ProgressSection clientId={id} />}
       {tab === 'packages'  && <PackagesSection clientId={id} clientName={`${client.first_name} ${client.last_name}`} />}
-      {tab === 'notes'     && <ClientNotesTab client={client} onUpdated={updated => setClient(c => ({ ...c, ...updated }))} />}
-      {tab === 'prs'       && <PRSummary clientId={id} />}
       {tab === 'billing' && <BillingTab clientId={id} />}
       {/* Edit Profile Modal */}
       {editProfileOpen && (
@@ -537,7 +659,7 @@ export default function ClientDetail() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 border border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('clients.editProfile')}</h2>
-              <button onClick={() => setEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light">×</button>
+              <button onClick={() => setEditProfileOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none font-light dark:text-gray-500">×</button>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -559,7 +681,7 @@ export default function ClientDetail() {
                 <input type="tel" value={editProfileForm.phone} onChange={e => setEditProfileForm(f => ({ ...f, phone: e.target.value }))} className="input" />
               </div>
               {editProfileError && (
-                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">{editProfileError}</div>
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm dark:bg-red-950/40">{editProfileError}</div>
               )}
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setEditProfileOpen(false); setEditProfileError(''); }} className="flex-1 btn-secondary">{t('common.cancel')}</button>
@@ -582,11 +704,26 @@ export default function ClientDetail() {
         confirmText={t('common.confirm')}
         cancelText={t('common.cancel')}
       />
+      {/* Booking a session from here, with this client already selected.
+          Getting to it used to mean going to the calendar and picking the
+          client out of a dropdown of everyone — while standing in front of
+          them. */}
+      {scheduleOpen && (
+        <SessionModal
+          session={null}
+          initialClientId={id}
+          initialDate={null}
+          initialTime={null}
+          onClose={() => setScheduleOpen(false)}
+          onSave={() => { setScheduleOpen(false); load(); }}
+        />
+      )}
+
       {/* Add Training Modal */}
       <AddTrainingModal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setEditTraining(null); }}
-        onSaved={saved => { onTrainingSaved(saved); setModalOpen(false); }}
+        isOpen={trainingModalOpen}
+        onClose={() => { setTrainingModalOpen(false); setEditTraining(null); }}
+        onSaved={saved => { onTrainingSaved(saved); setTrainingModalOpen(false); }}
         initialClientId={id}
         editTraining={editTraining}
       />

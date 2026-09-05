@@ -30,7 +30,27 @@ api.interceptors.request.use(
 
 // Handle token expiration
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // ── Sliding session ──────────────────────────────────────────────────────
+    // Once a token passes the halfway point of its 24-hour life, the API
+    // returns a fresh one in this header (see backend middleware/auth.js). A
+    // trainer who keeps using the app is therefore never signed out mid-week;
+    // one who does not open it for a day still has to sign in.
+    //
+    // Storing it here means every screen benefits from any request the app
+    // happens to make, without a dedicated refresh call or a second token to
+    // keep anywhere.
+    const renewed = response.headers?.['x-refreshed-token'];
+    if (renewed) {
+      try {
+        localStorage.setItem('token', renewed);
+      } catch {
+        // Storage full or blocked: the current token still works until it
+        // expires, and the trainer signs in again then.
+      }
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401 || 
         (error.response?.status === 403 && error.response?.data?.error !== 'dpa_required')) {
@@ -110,23 +130,14 @@ export const sessionsAPI = {
     api.delete(`/sessions/${id}`),
 };
 
-// Training Logs APIs
-export const trainingLogsAPI = {
-  getBySession: (sessionId) =>
-    api.get(`/training-logs/session/${sessionId}`),
-  
-  save: (sessionId, data) =>
-    api.post(`/training-logs/session/${sessionId}`, data),
-  
-  delete: (sessionId) =>
-    api.delete(`/training-logs/session/${sessionId}`),
-  
-  getExerciseStats: (clientId) =>
-    api.get(`/training-logs/client/${clientId}/exercise-stats`),
-  
-  getCompletionStats: (clientId) =>
-    api.get(`/training-logs/client/${clientId}/completion-stats`),
-};
+// The `/api/training-logs` endpoints are deliberately not wrapped here.
+//
+// They are the older per-session workout log, superseded in the product by
+// `trainings` (the exercise builder behind AddTrainingModal). The only frontend
+// caller was TrainingLogModal.jsx, which was never mounted on any route — 377
+// lines reachable by nothing — so both it and this wrapper have gone. The
+// server routes stay: they work, they are covered by the backend suite, and
+// they are what the plan feature-gate is tested against.
 
 // Subscriptions APIs
 export const subscriptionsAPI = {

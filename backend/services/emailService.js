@@ -258,6 +258,115 @@ async function sendVerificationEmail({ to, firstName, verificationUrl }) {
   });
 }
 
+
+// ── Session reminder — the only email in this product addressed to a CLIENT ──
+//
+// Everything else here goes to the trainer. This one goes to the person the
+// trainer trains, which changes the rules: it carries the trainer's name so it
+// is obvious who is writing, it says how to reach them, and it never links into
+// the app (the client has no account and never will).
+//
+// Language follows the TRAINER's setting, not a guess: their clients speak the
+// language they coach in. 'auto' and anything unrecognised fall back to
+// Croatian, which is where the product is being tested.
+const REMINDER_COPY = {
+  hr: {
+    subject: (trainerName) => `Podsjetnik: sutra imaš trening kod ${trainerName}`,
+    greeting: (name) => `Bok ${name},`,
+    lead: 'podsjećamo te na tvoj sljedeći trening:',
+    whenLabel: 'Kada',
+    trainerLabel: 'Trener',
+    typeLabel: 'Vrsta treninga',
+    cantMakeIt: (trainerName) =>
+      `Ako ti termin ne odgovara, javi se na vrijeme ${trainerName} — tako netko drugi može iskoristiti termin.`,
+    signoff: 'Vidimo se!',
+    at: 'u',
+    title: 'Podsjetnik na trening',
+    footer: (trainerName) => `Ovu poruku šalje ${trainerName} preko Trenika.`,
+    days: ['nedjelja', 'ponedjeljak', 'utorak', 'srijeda', 'četvrtak', 'petak', 'subota'],
+    months: ['siječnja', 'veljače', 'ožujka', 'travnja', 'svibnja', 'lipnja',
+             'srpnja', 'kolovoza', 'rujna', 'listopada', 'studenoga', 'prosinca'],
+  },
+  en: {
+    subject: (trainerName) => `Reminder: your session with ${trainerName} is tomorrow`,
+    greeting: (name) => `Hi ${name},`,
+    lead: 'a quick reminder about your next session:',
+    whenLabel: 'When',
+    trainerLabel: 'Trainer',
+    typeLabel: 'Session type',
+    cantMakeIt: (trainerName) =>
+      `If the time no longer works, let ${trainerName} know in good time so the slot can go to someone else.`,
+    signoff: 'See you there!',
+    at: 'at',
+    title: 'Session reminder',
+    footer: (trainerName) => `Sent by ${trainerName} through Treniko.`,
+    days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    months: ['January', 'February', 'March', 'April', 'May', 'June',
+             'July', 'August', 'September', 'October', 'November', 'December'],
+  },
+  de: {
+    subject: (trainerName) => `Erinnerung: morgen Training bei ${trainerName}`,
+    greeting: (name) => `Hallo ${name},`,
+    lead: 'eine kurze Erinnerung an dein nächstes Training:',
+    whenLabel: 'Wann',
+    trainerLabel: 'Trainer',
+    typeLabel: 'Art des Trainings',
+    cantMakeIt: (trainerName) =>
+      `Falls der Termin nicht mehr passt, sag ${trainerName} rechtzeitig Bescheid, damit jemand anderes ihn nutzen kann.`,
+    signoff: 'Bis bald!',
+    at: 'um',
+    title: 'Trainingserinnerung',
+    footer: (trainerName) => `Gesendet von ${trainerName} über Treniko.`,
+    days: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+    months: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+             'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
+  },
+};
+
+/**
+ * Format the session date the way a person would say it, without pulling in a
+ * date library. `sessionDate` is a calendar date string ("2026-09-01") and
+ * `startTime` a wall clock ("18:00:00") — both already in the trainer's own
+ * zone, so no conversion happens here and none should.
+ */
+function formatSessionWhen(sessionDate, startTime, endTime, copy) {
+  const [y, m, d] = sessionDate.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dayName = copy.days[date.getUTCDay()];
+  const monthName = copy.months[m - 1];
+  const from = String(startTime).slice(0, 5);
+  const to = endTime ? String(endTime).slice(0, 5) : null;
+  return `${dayName}, ${d}. ${monthName} ${y}. ${copy.at} ${from}${to ? `–${to}` : ''}`;
+}
+
+async function sendSessionReminderEmail({
+  to, clientFirstName, trainerName, trainerEmail, trainerPhone,
+  sessionDate, startTime, endTime, sessionType, language,
+}) {
+  const copy = REMINDER_COPY[language] || REMINDER_COPY.hr;
+  const when = formatSessionWhen(sessionDate, startTime, endTime, copy);
+  const contact = [trainerEmail, trainerPhone].filter(Boolean).join(' · ');
+
+  return sendEmail({
+    to,
+    subject: copy.subject(trainerName),
+    html: baseLayout(`
+      <h2>${escapeHtml(copy.title)}</h2>
+      <p>${escapeHtml(copy.greeting(clientFirstName))}</p>
+      <p>${escapeHtml(copy.lead)}</p>
+      <div class="highlight">
+        <strong>${escapeHtml(copy.whenLabel)}:</strong> ${escapeHtml(when)}<br>
+        <strong>${escapeHtml(copy.trainerLabel)}:</strong> ${escapeHtml(trainerName)}
+        ${sessionType ? `<br><strong>${escapeHtml(copy.typeLabel)}:</strong> ${escapeHtml(sessionType)}` : ''}
+      </div>
+      <p>${escapeHtml(copy.cantMakeIt(trainerName))}</p>
+      ${contact ? `<p style="font-size:14px;color:#475569;">${escapeHtml(contact)}</p>` : ''}
+      <p>${escapeHtml(copy.signoff)}</p>
+      <p style="font-size:12px;color:#94a3b8;margin-top:24px;">${escapeHtml(copy.footer(trainerName))}</p>
+    `),
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendPasswordResetEmail,
@@ -267,4 +376,5 @@ module.exports = {
   sendFirstClientEmail,
   sendDeletionScheduledEmail,
   sendVerificationEmail,
+  sendSessionReminderEmail,
 };

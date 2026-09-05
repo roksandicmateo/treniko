@@ -58,12 +58,19 @@
     "of": "of",
     "tryAgain": "Try again",
     "clearSearch": "Clear search",
-    "retry": "Retry"
+    "retry": "Try again",
+    "tomorrow": "Tomorrow",
+    "saveChanges": "Save changes",
+    "reason": "Reason",
+    "price": "Price",
+    "searchPlaceholder": "Search by name...",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "nav": {
     "dashboard": "Dashboard",
     "calendar": "Calendar",
-    "trainings": "Trainings",
+    "trainings": "Programmes",
     "exercises": "Exercises",
     "clients": "Clients",
     "groups": "Groups",
@@ -114,7 +121,9 @@
     "verificationLinkHint": "Click the link in the email to activate your account. Check your spam folder if you don't see it.",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
-    "freeReassurance": "Free — up to 5 clients and 20 sessions a month. No credit card: there is no payment processor in TRENIKO. You will get one email to confirm your address."
+    "freeReassurance": "Free — up to 5 clients and 20 sessions a month. No credit card: there is no payment processor in TRENIKO. You will get one email to confirm your address.",
+    "linkExpired": "Link expired",
+    "linkInvalid": "Invalid link"
   },
   "dashboard": {
     "greeting_morning": "Good morning",
@@ -137,7 +146,10 @@
     "noClients": "No clients yet",
     "openCalendar": "Open Calendar →",
     "noUpcoming": "No upcoming sessions this week",
-    "added": "Added"
+    "added": "Added",
+    "statsTitle": "Numbers",
+    "todayTitle": "Today",
+    "noSessionsTodayShort": "Nothing on today"
   },
   "clients": {
     "title": "Clients",
@@ -172,7 +184,7 @@
     "archived": "Archived",
     "tabs": {
       "profile": "Profile",
-      "trainings": "Trainings",
+      "trainings": "Programmes",
       "progress": "Progress",
       "packages": "Packages",
       "notes": "Notes",
@@ -191,7 +203,24 @@
     "clientDeleted": "Client deleted",
     "clientArchived": "Client archived",
     "clientReactivated": "Client reactivated",
-    "clientDeactivated": "Client deactivated"
+    "clientDeactivated": "Client deactivated",
+    "searchLabel": "Search clients",
+    "noSearchResults": "No client matches that search",
+    "remaining": "Remaining",
+    "nextSession": "Next session",
+    "lastSession": "Last session",
+    "noPackage": "No package",
+    "noUpcoming": "Nothing booked",
+    "paid": "Paid",
+    "unpaidAmount": "Owes {{amount}}",
+    "noPayments": "No payments",
+    "scheduleSession": "+ Book a session",
+    "pause": "Pause",
+    "pauseHint": "Keeps everything, but takes the client out of your active list.",
+    "onPause": "Paused",
+    "reactivateHint": "Put the client back on your active list.",
+    "remindersOptOut": "No reminders",
+    "remindersOptOutHint": "This client will not get the email reminder the day before."
   },
   "sessions": {
     "title": "Calendar",
@@ -217,9 +246,9 @@
     "conflictDetected": "Schedule Conflict Detected",
     "conflictOverlaps": "This session overlaps with existing sessions:",
     "scheduleAnyway": "Schedule Anyway",
-    "trainingLogged": "Training Logged",
-    "noTrainingLogged": "No training logged yet",
-    "addTraining": "Log Training",
+    "trainingLogged": "Programme recorded",
+    "noTrainingLogged": "No programme recorded yet",
+    "addTraining": "Add programme",
     "legend_scheduled": "Scheduled",
     "legend_completed": "Completed",
     "legend_noshow": "No-show",
@@ -247,7 +276,22 @@
     "groupSession": "Group session",
     "openSession": "Open session",
     "adhocGroup": "Group",
-    "groupNamePlaceholder": "e.g. Morning group, Monday HIIT..."
+    "groupNamePlaceholder": "e.g. Morning group, Monday HIIT...",
+    "chargedFromPackage": "One session taken off {{package}}",
+    "noActivePackageWarning": "Session recorded, but this client has no active package.",
+    "packageExhaustedWarning": "Session recorded, but the package is used up.",
+    "packageExpiredWarning": "Session recorded, but the package has expired.",
+    "assignPackageNow": "Assign a package",
+    "noShowChargeQuestion": "Charge this to the package?",
+    "noShowChargeYes": "Yes, take a session",
+    "noShowChargeNo": "Don't charge",
+    "sessionReleased": "Session given back to the package",
+    "movedTo": "Moved to {{when}}",
+    "moveFailed": "Could not move the session",
+    "quickAdd": "New session",
+    "noParticipants": "No participants",
+    "presentCount": "{{present}}/{{total}} present",
+    "attendancePresent": "Present"
   },
   "calendar": {
     "title": "Calendar",
@@ -255,12 +299,12 @@
     "month": "Month",
     "week": "Week",
     "day": "Day",
-    "clickToCreate": "Click or drag to create a session"
+    "clickToCreate": "Tap an empty slot to book a session"
   },
   "training": {
-    "title": "Trainings",
-    "addTraining": "+ Add Training",
-    "noTrainings": "No trainings yet",
+    "title": "Programmes",
+    "addTraining": "+ Add programme",
+    "noTrainings": "No programmes yet",
     "upcoming": "Upcoming",
     "past": "Past",
     "completed": "Completed",
@@ -334,14 +378,34 @@
     "goToPackages": "Go to Packages →",
     "noSessionsRemaining": "No sessions remaining",
     "sessionsUsed": "sessions used",
-    "typeSessionBased": "🎯 Session-based",
-    "typeTimeBased": "📅 Time-based",
-    "typeUnlimited": "♾️ Unlimited",
+    "typeSessionBased": "Session based",
+    "typeTimeBased": "Time based",
+    "typeUnlimited": "Unlimited",
     "noSessionsYet": "No sessions yet",
     "used": "used",
     "started": "Started",
     "expires": "Expires",
-    "days": "days"
+    "days": "days",
+    "ledger": "Package history",
+    "adjust": "Manual correction",
+    "adjustTitle": "Correct this package",
+    "adjustHint": "Add or give back sessions without inventing a session in the calendar.",
+    "adjustAmount": "Number of sessions",
+    "adjustAdd": "Take sessions off",
+    "adjustGiveBack": "Give sessions back",
+    "adjustReason": "Reason (required)",
+    "adjustReasonPH": "e.g. illness, agreed with client",
+    "adjustSaved": "Correction saved",
+    "entrySession": "Session",
+    "entryGroupSession": "Group session",
+    "entryAdjustment": "Correction",
+    "priceForClient": "Price for this client",
+    "priceHint": "Taken from the template. Change it if you agreed something else.",
+    "sessionsForClient": "Number of sessions",
+    "markPaid": "Client has paid",
+    "markPaidHint": "Records a payment against this package straight away.",
+    "paymentMethod": "Payment method",
+    "noActive": "No active package"
   },
   "billing": {
     "title": "Billing",
@@ -473,7 +537,7 @@
     "allPresent": "All ✓",
     "allAbsent": "All ✗",
     "sessionDetails": "Session Details",
-    "workoutType": "Workout Type",
+    "workoutType": "Workout type",
     "exerciseLog": "Exercise Log",
     "sharedWorkout": "Shared workout for all members",
     "markAllComplete": "✅ Mark All Complete",
@@ -481,7 +545,9 @@
     "backToGroup": "Back to Group",
     "locationPlaceholder": "e.g. Main gym floor",
     "sessionNotesPlaceholder": "Workout plan, cues, observations...",
-    "noGroupsHint": "Create groups to organise clients and manage group sessions."
+    "noGroupsHint": "Create groups to organise clients and manage group sessions.",
+    "sessionType": "Session type",
+    "sessionNotes": "Session notes"
   },
   "subscription": {
     "title": "Subscription",
@@ -526,7 +592,13 @@
     "readOnly": "Read-Only",
     "trial": "Trial",
     "manage": "Manage",
-    "removeClientsFirst": "Remove {{count}} client(s) before downgrading."
+    "removeClientsFirst": "Remove {{count}} client(s) before downgrading.",
+    "clientLimitTitle": "Client limit reached",
+    "clientLimitMessage": "Your plan ({{plan}}) allows {{max}} clients.",
+    "sessionLimitTitle": "Monthly session limit reached",
+    "sessionLimitMessage": "Your plan ({{plan}}) allows {{max}} sessions a month.",
+    "betaLimitHelp": "TRENIKO is in beta and there is no billing yet. If you need more, get in touch and we will raise it — we also want to know how many clients you actually have.",
+    "pauseInsteadHint": "A client you no longer train can be paused on their own page; everything is kept and the place is freed up."
   },
   "profile": {
     "title": "Profile",
@@ -546,7 +618,7 @@
     "bio": "Bio",
     "businessName": "Business Name",
     "language": "Language",
-    "theme": "Theme",
+    "theme": "Appearance",
     "darkMode": "Dark Mode",
     "lightMode": "Light Mode",
     "systemDefault": "System Default",
@@ -567,7 +639,15 @@
     "deleteAccountWarning": "This schedules deletion of all your data in 30 days. Are you sure?",
     "deletionScheduled": "Deletion scheduled",
     "deletionScheduledOn": "Your account will be deleted on",
-    "cancelDeletion": "Cancel deletion"
+    "cancelDeletion": "Cancel deletion",
+    "timezone": "Time zone",
+    "timezoneHint": "Decides what \"today\" means for you, and when reminders go out.",
+    "reminders": "Client reminders",
+    "remindersOn": "Email clients the day before a session",
+    "remindersHint": "A client with an email address gets a reminder about 24 hours ahead.",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "Match system"
   },
   "form": {
     "packageName": "Package Name",
@@ -598,14 +678,16 @@
     "accept": "I have read and accept this agreement",
     "scrollToAccept": "Scroll to the bottom to enable the Accept button",
     "accepting": "Recording acceptance...",
-    "failed": "Failed to record your acceptance. Please try again."
+    "failed": "Failed to record your acceptance. Please try again.",
+    "agreementTitle": "Data Processing Agreement"
   },
   "cookie": {
     "message": "We use cookies to keep you logged in and improve your experience.",
     "accept": "Accept All",
     "decline": "Reject All",
     "manage": "Manage",
-    "savePrefs": "Save Preferences"
+    "savePrefs": "Save Preferences",
+    "managePreferences": "Manage cookie preferences"
   },
   "errors": {
     "loadFailed": "Failed to load data",
@@ -623,7 +705,7 @@
     "addNotes": "Add Notes",
     "noNotes": "No notes added yet",
     "addGoals": "Add goals, injuries, diet notes...",
-    "editNotes": "Edit Notes",
+    "editNotes": "Edit notes",
     "saveNotes": "Save Notes",
     "goals": "Goals",
     "injuries": "Injuries & Health",
@@ -656,5 +738,43 @@
     "goToCalendar": "Go to Calendar",
     "nextStep": "Next step",
     "dismiss": "Dismiss"
+  },
+  "counts": {
+    "session_one": "{{count}} session",
+    "session_other": "{{count}} sessions",
+    "sessionLeft_one": "{{count}} session left",
+    "sessionLeft_other": "{{count}} sessions left",
+    "day_one": "{{count}} day",
+    "day_other": "{{count}} days",
+    "dayLeft_one": "{{count}} day left",
+    "dayLeft_other": "{{count}} days left",
+    "client_one": "{{count}} client",
+    "client_other": "{{count}} clients",
+    "item_one": "{{count}} item",
+    "item_other": "{{count}} items"
+  },
+  "attention": {
+    "title": "Needs your attention",
+    "allClear": "Nothing to deal with",
+    "allClearHint": "Nothing is waiting on you right now.",
+    "unmarked": "Unmarked sessions",
+    "unmarkedHint": "They are in the past and still say scheduled. Until you mark them, no figure on this screen is right.",
+    "unpaid": "Unpaid",
+    "unpaidHint": "Recorded as not yet paid.",
+    "unpaidDays": "waiting {{count}} days",
+    "expiring": "Packages running out",
+    "quiet": "Gone quiet",
+    "quietHint": "Active clients with nothing booked, {{days}}+ days without a session.",
+    "neverTrained": "Never trained",
+    "lastTrained": "Last trained {{count}} days ago",
+    "markSession": "Mark",
+    "openClient": "Open client",
+    "itemsToHandle_one": "{{count}} thing to handle",
+    "itemsToHandle_other": "{{count}} things to handle"
+  },
+  "consent": {
+    "bodyMetrics": "Body weight and measurements",
+    "injuryHistory": "Injury history and medical notes",
+    "sessionHistory": "Training session history and attendance"
   }
 }

@@ -15,7 +15,7 @@
 
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, signToken, pool, queryAs } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, signToken, applyPlanLimits, pool, queryAs } = require('../helpers/fixtures');
 const { setPlan } = require('../helpers/phase2bFixtures');
 
 jest.setTimeout(30000);
@@ -26,6 +26,11 @@ let B;
 beforeAll(async () => {
   A = await createTenant('a');
   B = await createTenant('b');
+
+  // Tenant A is pinned to a plan with a feature switched off and a small client
+  // cap, so the gate and the limit have something to deny. The shipped beta
+  // plan deliberately has neither (migration 038).
+  await applyPlanLimits(A.tenantId, { maxClients: 5, hasTrainingLogs: false });
 });
 
 afterAll(async () => {
@@ -95,17 +100,20 @@ describe('API5: privileged and sensitive functions are gated server-side', () =>
     await setPlan(A.tenantId, 'pro'); // export is a paid feature; open the gate
     const res = await asA(request(app).get(`/api/export/clients/${B.clientId}`));
     expect(res.status).toBe(404);
-    await setPlan(A.tenantId, 'free');
+    // Back to the capped plan the suite pins in beforeAll — not to the shipped
+    // beta plan, which grants every feature and would silently disable the
+    // feature-gate test below.
+    await applyPlanLimits(A.tenantId, { maxClients: 5, hasTrainingLogs: false });
   });
 
-  test('a free-plan tenant cannot reach a paid feature by calling it directly', async () => {
+  test('a tenant cannot reach a feature their plan lacks by calling it directly', async () => {
     // Probes training logs rather than export. /api/export is deliberately NOT
     // behind checkFeatureAccess any more: it is how a trainer exercises data
     // portability over their own records (GDPR Art. 20), and gating it meant
-    // every new signup — everyone starts on the free plan — got 403 from the
-    // "Export my data" button. The property under test here is that the
-    // feature gate runs and denies for an authenticated free-plan caller,
-    // which training logs exercises identically.
+    // every new signup got 403 from the "Export my data" button. The property
+    // under test here is that the feature gate runs and denies for an
+    // authenticated caller whose plan lacks the feature, which training logs
+    // exercises identically.
     const res = await asA(
       request(app).get(`/api/training-logs/client/${A.clientId}/completion-stats`)
     );
@@ -113,7 +121,7 @@ describe('API5: privileged and sensitive functions are gated server-side', () =>
     expect(res.body.error).toBe('Feature not available');
   });
 
-  test('data export stays reachable for a free-plan tenant, by design', async () => {
+  test('data export stays reachable regardless of plan, by design', async () => {
     // Pinned so the exemption above cannot be undone by accident: re-gating
     // export would lock every beta trainer out of their own data.
     const res = await asA(request(app).get('/api/export'));
@@ -139,7 +147,10 @@ describe('API6: sensitive business flows resist automation and abuse', () => {
        WHERE ts.tenant_id = $1`,
       [A.tenantId]
     );
-    expect(rows[0].name).toBe('free');
+    // Unchanged from whatever the tenant was on — the point is that a
+    // self-service call cannot move it to a paid plan, not which plan it sits
+    // on. The suite pins a capped plan in beforeAll.
+    expect(rows[0].name).not.toBe('pro');
   });
 
   test('repeating an account-deletion request is idempotent, not a queue of deletions', async () => {

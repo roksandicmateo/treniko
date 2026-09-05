@@ -45,6 +45,16 @@ describe('every translation key the UI asks for exists', () => {
   const lookup = (bundle, key) =>
     key.split('.').reduce((node, part) => (node === undefined ? undefined : node[part]), bundle);
 
+  // i18next resolves a counted key through its plural suffixes: asking for
+  // `counts.session` with a count selects `counts.session_one`, `_few` or
+  // `_other` by the language's CLDR rules. Croatian needs three forms, English
+  // two, so the bare key deliberately does not exist and a check that only
+  // looked for it would report every plural in the product as missing.
+  const PLURAL_SUFFIXES = ['_one', '_two', '_few', '_many', '_other'];
+  const defined = (bundle, key) =>
+    lookup(bundle, key) !== undefined ||
+    PLURAL_SUFFIXES.some(suffix => lookup(bundle, key + suffix) !== undefined);
+
   const referenced = new Set();
   for (const file of sourceFiles) {
     const src = read(file);
@@ -58,7 +68,7 @@ describe('every translation key the UI asks for exists', () => {
 
   for (const [name, bundle] of [['en', en], ['hr', hr], ['de', de]]) {
     test(`${name} defines all of them`, () => {
-      const missing = [...referenced].filter(key => lookup(bundle, key) === undefined).sort();
+      const missing = [...referenced].filter(key => !defined(bundle, key)).sort();
       expect(missing).toEqual([]);
     });
   }
@@ -79,7 +89,14 @@ describe('no component calls a translation function it does not have', () => {
       const obtainsT =
         /=\s*useTranslation\(/.test(src) ||       // const { t } = useTranslation()
         /\bt\s*[,}]/.test(src.match(/\(\s*\{[^}]*\}\s*\)\s*=>/)?.[0] || '') || // t passed as a prop
-        /\bt\b\s*[,)]/.test(src.match(/function\s+\w+\s*\(([^)]*)\)/)?.[1] || '');
+        /\bt\b\s*[,)]/.test(src.match(/function\s+\w+\s*\(([^)]*)\)/)?.[1] || '') ||
+        // A plain helper that takes `t` as its own argument, so a formatter can
+        // return translated words without every call site repeating the lookup.
+        // utils/datetime.js formats "Today"/"Tomorrow" this way — those three
+        // words used to be hardcoded per language inside a component ternary,
+        // outside the translation files entirely.
+        /=>\s*\{?[\s\S]*?\bt\s*\)/.test(src.match(/\([^)]*\bt\s*\)\s*=>/)?.[0] || '') ||
+        /\([^)]*\bt\s*\)\s*=>/.test(src);
       if (!obtainsT) offenders.push(rel(file));
     }
     expect(offenders).toEqual([]);

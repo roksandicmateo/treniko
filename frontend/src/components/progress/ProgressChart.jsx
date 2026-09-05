@@ -82,7 +82,7 @@ export default function ProgressChart({ clientId }) {
   const diffStr  = diff != null ? (diff >= 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1)) : null;
   const diffColor = diff == null ? '' : diff >= 0 ? 'text-green-600' : 'text-red-600';
 
-  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">{t('common.loading')}</div>;
+  if (loading) return <div className="py-12 text-center text-gray-400 text-sm dark:text-gray-500">{t('common.loading')}</div>;
 
   return (
     <div className="space-y-4">
@@ -101,7 +101,7 @@ export default function ProgressChart({ clientId }) {
             </button>
           ))}
           {metrics.length === 0 && (
-            <span className="text-gray-400 text-sm">{t('progress.noMetrics')}</span>
+            <span className="text-gray-400 text-sm dark:text-gray-500">{t('progress.noMetrics')}</span>
           )}
         </div>
         <button onClick={() => setShowAdd(true)}
@@ -118,8 +118,8 @@ export default function ProgressChart({ clientId }) {
             { label: 'Latest', val: lastVal  },
             { label: 'Change', val: diffStr, color: diffColor },
           ].map(({ label, val, color }) => (
-            <div key={label} className="bg-gray-50 rounded-xl p-3 text-center">
-              <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+            <div key={label} className="bg-gray-50 rounded-xl p-3 text-center dark:bg-gray-800">
+              <p className="text-xs text-gray-400 mb-0.5 dark:text-gray-500">{label}</p>
               <p className={`font-semibold ${color || 'text-gray-800'}`}>
                 {val ?? '—'} {val != null ? unit : ''}
               </p>
@@ -130,7 +130,7 @@ export default function ProgressChart({ clientId }) {
 
       {/* ── Chart ── */}
       {chartData.length > 1 ? (
-        <div className="bg-white border border-gray-100 rounded-xl p-3">
+        <div className="bg-white border border-gray-100 rounded-xl p-3 dark:bg-gray-900 dark:border-gray-800">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -150,15 +150,15 @@ export default function ProgressChart({ clientId }) {
           </ResponsiveContainer>
         </div>
       ) : chartData.length === 1 ? (
-        <div className="bg-blue-50 rounded-xl p-4 text-center text-sm text-blue-600">
+        <div className="bg-blue-50 rounded-xl p-4 text-center text-sm text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
 {t('progress.addMoreEntries')}
         </div>
       ) : (
-        <div className="border border-dashed border-gray-200 rounded-xl py-12 text-center">
-          <p className="text-gray-400 text-sm">
+        <div className="border border-dashed border-gray-200 rounded-xl py-12 text-center dark:border-gray-700">
+          <p className="text-gray-400 text-sm dark:text-gray-500">
 {t('progress.noEntries', { metric: selectedMetric || t('progress.thisMetric') })}
           </p>
-          <button onClick={() => setShowAdd(true)} className="mt-2 text-blue-600 text-sm hover:underline">
+          <button onClick={() => setShowAdd(true)} className="mt-2 text-blue-600 text-sm hover:underline dark:text-blue-400">
 {t('progress.addFirstEntry')}
           </button>
         </div>
@@ -166,10 +166,10 @@ export default function ProgressChart({ clientId }) {
 
       {/* ── History table with delete ── */}
       {entries.length > 0 && (
-        <div className="border border-gray-100 rounded-xl overflow-hidden">
+        <div className="border border-gray-100 rounded-xl overflow-hidden dark:border-gray-800">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 text-gray-400 text-xs">
+              <tr className="bg-gray-50 text-gray-400 text-xs dark:bg-gray-800 dark:text-gray-500">
                 <th className="px-4 py-2 text-left font-medium">{t('common.date')}</th>
                 <th className="px-4 py-2 text-right font-medium">{t('progress.value')}</th>
                 <th className="px-4 py-2 text-right font-medium">{t('progress.change')}</th>
@@ -188,14 +188,14 @@ export default function ProgressChart({ clientId }) {
                   : null;
                 const isPos = change != null && parseFloat(change) > 0;
                 return (
-                  <tr key={e.id} className="border-t border-gray-50 hover:bg-gray-50 group">
-                    <td className="px-4 py-2.5 text-gray-600">
+                  <tr key={e.id} className="border-t border-gray-50 hover:bg-gray-50 group dark:hover:bg-gray-800">
+                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">
                       {new Date(`${String(e.date).slice(0, 10)}T00:00:00`)
                         .toLocaleDateString(dateLocale, {
                           day: 'numeric', month: 'short', year: 'numeric',
                         })}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-medium text-gray-800">
+                    <td className="px-4 py-2.5 text-right font-medium text-gray-800 dark:text-gray-200">
                       {e.value} {e.unit}
                     </td>
                     <td className={`px-4 py-2.5 text-right text-xs ${

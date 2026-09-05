@@ -18,8 +18,8 @@ const PackageModal = ({ pkg, onClose, onSaved }) => {
   const [error, setError] = useState('');
 
   const PACKAGE_TYPES = [
-    { value: 'session_based', label: t('packages.sessionBased'), icon: '🎯', desc: 'A fixed number of sessions (e.g. "10 Training Sessions")' },
-    { value: 'time_based',    label: t('packages.timeBased'),    icon: '📅', desc: 'Valid for a set number of days (e.g. "30-Day Pass")' },
+    { value: 'session_based', label: t('packages.sessionBased'), icon: 'trophy', desc: 'A fixed number of sessions (e.g. "10 Training Sessions")' },
+    { value: 'time_based',    label: t('packages.timeBased'),    icon: 'calendar', desc: 'Valid for a set number of days (e.g. "30-Day Pass")' },
     { value: 'unlimited',     label: t('packages.unlimited'),    icon: '♾️', desc: 'Unlimited sessions within a time period (e.g. "Monthly Unlimited")' },
   ];
 
@@ -120,13 +120,13 @@ const PackageModal = ({ pkg, onClose, onSaved }) => {
             </div>
           )}
           <div>
-            <label className={lbl}>{t('form.sessionsPerPeriod')} <span className="text-gray-400 font-normal">({t('common.optional')})</span></label>
+            <label className={lbl}>{t('form.sessionsPerPeriod')} <span className="text-gray-400 font-normal dark:text-gray-500">({t('common.optional')})</span></label>
             <div className="grid grid-cols-2 gap-3">
               <input type="number" min="1" value={form.sessionsPerPeriod} onChange={e => set('sessionsPerPeriod', e.target.value)} className="input" placeholder="e.g. 8" />
               <input type="number" min="1" value={form.periodDays} onChange={e => set('periodDays', e.target.value)} className="input" placeholder="per X days" />
             </div>
           </div>
-          {error && <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm">{error}</div>}
+          {error && <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm dark:bg-red-950/40">{error}</div>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 btn-secondary">{t('common.cancel')}</button>
             <button type="button" onClick={handleSave} disabled={saving} className="flex-1 btn-primary disabled:opacity-50">

@@ -1,6 +1,7 @@
 const { queryWithTenant } = require('../config/database');
 const { sendDbClientError } = require('../utils/dbErrors');
 const { parseBoundedInt } = require('../utils/validation');
+const { getTrainerTimezone, todayFor } = require('../utils/trainerTime');
 
 /**
  * Get all clients for the authenticated tenant
@@ -23,8 +24,8 @@ const getAllClients = async (req, res) => {
         -- From the view, which is the single definition of "last session"
         -- (migrations 042 and 043): the most recent COMPLETED session dated
         -- today or earlier. This used to read a denormalised column on
-        -- the clients table that counted any session of any status, so a
-        -- booking for next week appeared under a column headed "Last session".
+        -- the clients table that counted any session of any status, so a booking
+        -- for next week appeared under a column headed "Last session".
         --
         -- ::text for the same reason next_session_date is cast below: a DATE
         -- serialises as a timestamp at local midnight, which is the previous
@@ -34,9 +35,28 @@ const getAllClients = async (req, res) => {
         c.is_archived,
         cs.total_sessions,
         cs.upcoming_sessions AS upcoming_sessions_count,
-        cs.completed_sessions
+        cs.completed_sessions,
+        cs.next_session_date::text AS next_session_date,
+        -- The numbers the client list is actually opened for. They used to be
+        -- reachable only by opening a client and then their packages tab, so
+        -- the screen showing thirty clients showed none of their balances.
+        active_pkg.package_name          AS active_package_name,
+        active_pkg.sessions_remaining,
+        active_pkg.end_date::text        AS active_package_end_date
       FROM clients c
       LEFT JOIN client_statistics cs ON c.id = cs.client_id
+      LEFT JOIN LATERAL (
+        SELECT cp.package_name, cp.end_date,
+               CASE WHEN cp.total_sessions IS NULL THEN NULL
+                    ELSE cp.total_sessions - cp.sessions_used
+               END AS sessions_remaining
+          FROM client_packages cp
+         WHERE cp.client_id = c.id
+           AND cp.tenant_id = c.tenant_id
+           AND cp.status = 'active'
+         ORDER BY cp.end_date ASC NULLS LAST, cp.assigned_at ASC
+         LIMIT 1
+      ) active_pkg ON true
       WHERE c.tenant_id = $1
     `;
     const params = [tenantId];
@@ -72,11 +92,18 @@ const getClientById = async (req, res) => {
     const { tenantId } = req.user;
     const { id } = req.params;
 
+    // The trainer's calendar day — the same one the dashboard uses. This was
+    // CURRENT_DATE, i.e. the database's own zone, which is a third opinion
+    // about what day it is (see utils/trainerTime.js).
+    const timezone = await getTrainerTimezone(req.user.userId);
+    const today = await todayFor(timezone);
+
     const clientResult = await queryWithTenant(
       `SELECT 
         c.id, c.first_name, c.last_name, c.email, c.phone, c.is_active,
-        c.created_at, c.updated_at, cs.last_session_date::text AS last_session_date,
+        c.created_at, c.updated_at, cs.last_session_date::text AS last_session_date, c.is_archived,
         c.date_of_birth, c.goals, c.injuries, c.diet_notes, c.notes,
+        c.reminders_opt_out,
         cs.total_sessions, cs.upcoming_sessions AS upcoming_sessions_count,
         cs.completed_sessions, cs.next_session_date::text AS next_session_date
        FROM clients c
@@ -94,18 +121,52 @@ const getClientById = async (req, res) => {
       `SELECT id, session_date::text AS session_date, start_time, end_time,
               session_type, notes, status
        FROM training_sessions
-       WHERE client_id = $1 AND tenant_id = $2 AND session_date >= CURRENT_DATE
+       WHERE client_id = $1 AND tenant_id = $2 AND session_date >= $3::date
          AND status = 'scheduled'
        ORDER BY session_date, start_time LIMIT 10`,
-      [id, tenantId], tenantId
+      [id, tenantId, today], tenantId
     );
 
     const recentSessions = await queryWithTenant(
       `SELECT id, session_date::text AS session_date, start_time, end_time,
               session_type, notes, status
        FROM training_sessions
-       WHERE client_id = $1 AND tenant_id = $2 AND session_date < CURRENT_DATE
+       WHERE client_id = $1 AND tenant_id = $2 AND session_date < $3::date
        ORDER BY session_date DESC, start_time DESC LIMIT 10`,
+      [id, tenantId, today], tenantId
+    );
+
+    // ── What the header needs, in one round trip ────────────────────────────
+    // "Trainer opens a client and immediately understands everything
+    // important" was the goal, and the three numbers the page used to show —
+    // total, completed, upcoming — were not it. How many sessions are left, has
+    // he paid, and when is he next in are the questions, and each of them used
+    // to be a separate tab and a separate request.
+    const activePackages = await queryWithTenant(
+      `SELECT cp.id, cp.package_name, cp.package_type, cp.total_sessions,
+              cp.sessions_used, cp.price, cp.currency,
+              cp.start_date::text AS start_date, cp.end_date::text AS end_date,
+              CASE WHEN cp.total_sessions IS NULL THEN NULL
+                   ELSE cp.total_sessions - cp.sessions_used
+              END AS sessions_remaining,
+              CASE WHEN cp.end_date IS NULL THEN NULL
+                   ELSE (cp.end_date - $3::date)
+              END AS days_left
+         FROM client_packages cp
+        WHERE cp.client_id = $1 AND cp.tenant_id = $2 AND cp.status = 'active'
+        ORDER BY cp.end_date ASC NULLS LAST, cp.assigned_at ASC`,
+      [id, tenantId, today], tenantId
+    );
+
+    const paymentSummary = await queryWithTenant(
+      `SELECT
+         COALESCE(SUM(amount) FILTER (WHERE status = 'paid'),    0) AS total_paid,
+         COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) AS total_pending,
+         COUNT(*)  FILTER (WHERE status = 'pending')::int          AS pending_count,
+         MAX(payment_date) FILTER (WHERE status = 'paid')::text    AS last_payment_date,
+         MIN(currency)                                              AS currency
+       FROM client_payments
+       WHERE client_id = $1 AND tenant_id = $2`,
       [id, tenantId], tenantId
     );
 
@@ -126,7 +187,14 @@ const getClientById = async (req, res) => {
       client: {
         ...clientResult.rows[0],
         upcoming_sessions: upcomingSessions.rows,
-        recent_sessions: recentSessions.rows
+        recent_sessions: recentSessions.rows,
+        // The header reads these; they are computed here so opening a client
+        // stays one request rather than four.
+        active_packages: activePackages.rows,
+        active_package: activePackages.rows[0] || null,
+        payment_summary: paymentSummary.rows[0],
+        next_session: upcomingSessions.rows[0] || null,
+        last_session: recentSessions.rows.find(sn => sn.status === 'completed') || null,
       }
     });
 
@@ -236,7 +304,8 @@ const updateClient = async (req, res) => {
     const { id } = req.params;
 const {
   firstName, lastName, email, phone, isActive,
-  dateOfBirth, goals, injuries, dietNotes, notes, isArchived
+  dateOfBirth, goals, injuries, dietNotes, notes, isArchived,
+  remindersOptOut
 } = req.body;
 
 
@@ -287,6 +356,13 @@ const {
     if (dietNotes   !== undefined) { updates.push(`diet_notes = $${paramCount++}`);    params.push(dietNotes || null); }
     if (isArchived !== undefined) { updates.push(`is_archived = $${paramCount++}`); params.push(isArchived); }
     if (notes       !== undefined) { updates.push(`notes = $${paramCount++}`);         params.push(notes || null); }
+    // Per-client consent for the day-before reminder. A client who says "don't
+    // email me" has to be recordable somewhere, and it is also the first thing
+    // an unsolicited-mail complaint asks about.
+    if (remindersOptOut !== undefined) {
+      updates.push(`reminders_opt_out = $${paramCount++}`);
+      params.push(remindersOptOut === true || remindersOptOut === 'true');
+    }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'Validation error', message: 'No fields to update' });

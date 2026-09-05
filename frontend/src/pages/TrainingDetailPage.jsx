@@ -72,7 +72,7 @@ function ExerciseCard({ ex, index }) {
       </button>
       {open && (
         <div className="px-4 pb-4 space-y-1.5 border-t border-gray-100 dark:border-gray-800 pt-3 bg-white dark:bg-gray-900">
-          {ex.notes && <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-2">📝 {ex.notes}</p>}
+          {ex.notes && <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-2">{ex.notes}</p>}
           {ex.sets && ex.sets.length > 0
             ? ex.sets.map((s, i) => <SetRow key={s.id || i} set={s} />)
             : <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">{t('training.noSets')}</p>}
@@ -129,7 +129,7 @@ export default function TrainingDetailPage() {
   if (!training) return (
     <div className="max-w-3xl mx-auto px-4 py-12 text-center">
       <p className="text-gray-500 dark:text-gray-400 mb-4">{error || t('common.noData')}</p>
-      <button onClick={() => navigate('/dashboard/trainings')} className="text-primary-500 text-sm">← {t('training.title')}</button>
+      <button onClick={() => navigate('/dashboard/trainings')} className="text-primary-500 text-sm">{t('training.title')}</button>
     </div>
   );
 
@@ -164,7 +164,7 @@ export default function TrainingDetailPage() {
       <div className="flex items-center gap-2 mt-4 mb-6">
         <button onClick={() => navigate('/dashboard/trainings')}
           className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center gap-1">
-          ← {t('training.title')}
+          {t('training.title')}
         </button>
       </div>
 
@@ -174,7 +174,7 @@ export default function TrainingDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className={`text-xs font-semibold uppercase tracking-wide ${typeStyle.text}`}>{training.workout_type}</span>
-              {training.is_completed && <span className="badge-green">✓ {t('sessions.completed')}</span>}
+              {training.is_completed && <span className="badge-green">{t('sessions.completed')}</span>}
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
               {training.title || `${training.first_name} ${training.last_name}'s Training`}
@@ -188,7 +188,7 @@ export default function TrainingDetailPage() {
               className={`px-3 py-2 rounded-xl text-sm font-medium border transition-colors bg-white dark:bg-gray-900 ${
                 training.is_completed ? 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400' : 'border-green-400 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
               }`}>
-              {completing ? '...' : training.is_completed ? `✓ ${t('sessions.completed')}` : t('training.markDone')}
+              {completing ? '...' : training.is_completed ? `${t('sessions.completed')}` : t('training.markDone')}
             </button>
             <button onClick={() => setEditOpen(true)} className="px-3 py-2 rounded-xl text-sm font-medium bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300">
               {t('common.edit')}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Icon from '../components/Icon';
 import { subscriptionsAPI } from '../services/api';
 import { format } from 'date-fns';
 import { showToast } from '../components/Toast';
@@ -8,8 +9,8 @@ import { useCurrencyFormatter } from '../utils/locale';
 
 const SubscriptionPage = () => {
   const { t } = useTranslation();
-  // Prices were a euro sign glued to toFixed(), which is the wrong shape in
-  // Croatian and German — see src/utils/locale.js.
+  // Prices were a '€' glued to toFixed(), which is the wrong shape in Croatian
+  // and German — see src/utils/locale.js.
   const money = useCurrencyFormatter();
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -118,8 +119,8 @@ const SubscriptionPage = () => {
             <div className="mb-4">
               <div className="text-sm text-gray-500 dark:text-gray-400">{t('common.status')}</div>
               <div className="text-lg font-semibold">
-                {subscription.subscription_status === 'active' && <span className="text-green-600 dark:text-green-400">✓ {t('subscription.statusActive')}</span>}
-                {subscription.subscription_status === 'expired' && <span className="text-red-600 dark:text-red-400">✗ {t('subscription.statusExpired')}</span>}
+                {subscription.subscription_status === 'active' && <span className="text-green-600 dark:text-green-400">{t('subscription.statusActive')}</span>}
+                {subscription.subscription_status === 'expired' && <span className="text-red-600 dark:text-red-400">{t('subscription.statusExpired')}</span>}
               </div>
             </div>
             <div className="mb-4">
@@ -191,7 +192,7 @@ const SubscriptionPage = () => {
                   {[
                     plan.max_clients ? `${plan.max_clients} ${t('subscription.clientsLabel')}` : t('subscription.unlimitedClients'),
                     plan.max_sessions_per_month ? `${plan.max_sessions_per_month} ${t('subscription.sessionsPerMonth')}` : t('subscription.unlimitedSessions'),
-                  ].map(item => <li key={item} className="flex items-start gap-2"><span className="text-green-500">✓</span><span className="text-gray-600 dark:text-gray-400">{item}</span></li>)}
+                  ].map(item => <li key={item} className="flex items-start gap-2"><Icon name="check" className="h-5 w-5 text-green-500" /><span className="text-gray-600 dark:text-gray-400">{item}</span></li>)}
                   {[
                     { key: 'has_training_logs', label: t('subscription.featureTrainingLogs') },
                     { key: 'has_analytics', label: t('subscription.featureAnalytics') },

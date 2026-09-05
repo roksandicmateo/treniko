@@ -15,6 +15,29 @@ const { pool } = require('../config/database');
  *
  * @returns {boolean} true when the token is still valid for this user.
  */
+/** Half of the 24h lifetime. Past this, an active request renews the token. */
+const SLIDING_RENEWAL_AFTER_SECONDS = 12 * 60 * 60;
+
+const issueSlidingToken = (res, payload) => {
+  if (typeof payload.iat !== 'number') return;
+  const ageSeconds = Math.floor(Date.now() / 1000) - payload.iat;
+  if (ageSeconds < SLIDING_RENEWAL_AFTER_SECONDS) return;
+
+  try {
+    const token = jwt.sign(
+      { userId: payload.userId, tenantId: payload.tenantId, email: payload.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    res.setHeader('X-Refreshed-Token', token);
+  } catch (e) {
+    // A failure to renew is not a failure to authenticate: the request carries
+    // a valid token and must go through. The trainer signs in again when it
+    // eventually expires.
+    console.error('[authenticateToken] token renewal failed:', e.message);
+  }
+};
+
 const isTokenStillValid = async (payload) => {
   const { rows } = await pool.query(
     'SELECT password_changed_at FROM users WHERE id = $1',
@@ -91,6 +114,25 @@ const authenticateToken = (req, res, next) => {
       email: user.email
     };
 
+    // ── Sliding session ────────────────────────────────────────────────────
+    // Tokens last 24 hours and there is no refresh token, so a trainer using
+    // the app between sessions was signed out once a day — on a phone, which
+    // is where most of this product is used. That is a real cost, and the two
+    // obvious fixes are both worse: a longer-lived JWT weakens the very thing
+    // the expiry is for, and a refresh-token store only helps if it lives in an
+    // httpOnly cookie, which means CORS credentials and CSRF protection on
+    // every route — a change too large to land safely at the end of this
+    // sprint (documented as remaining work).
+    //
+    // So an ACTIVE session renews itself: past the halfway point, a fresh
+    // token is minted from the one just verified and returned in a header the
+    // client stores. Nothing is stored server-side, the lifetime stays 24
+    // hours, and revocation is unaffected — a token minted before a password
+    // change fails the check above and never reaches this line, so the chain
+    // cannot be extended past a reset. An app left unopened for a day still
+    // asks for a password.
+    issueSlidingToken(res, user);
+
     next();
   });
 };
@@ -116,6 +158,7 @@ const validateTenantAccess = (req, res, next) => {
 };
 
 module.exports = {
+  SLIDING_RENEWAL_AFTER_SECONDS,
   authenticateToken,
   validateTenantAccess
 };

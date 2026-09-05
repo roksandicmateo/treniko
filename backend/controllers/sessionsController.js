@@ -1,5 +1,8 @@
-const { queryWithTenant } = require('../config/database');
+const { queryWithTenant, getClient } = require('../config/database');
 const { sendDbClientError } = require('../utils/dbErrors');
+const packageUsage = require('../services/packageUsageService');
+const { captureError } = require('../config/errorMonitor');
+const { statusConsumesSession } = packageUsage;
 
 const SESSION_SELECT = `
   ts.id, ts.client_id,
@@ -12,7 +15,41 @@ const SESSION_SELECT = `
   c.last_name as client_last_name
 `;
 
-const checkConflicts = async (tenantId, sessionDate, startTime, endTime, excludeId = null) => {
+/**
+ * Run a read either on the pool (with tenant context) or inside a caller's
+ * transaction. Conflict checking is used from both, and running it on the pool
+ * from inside a transaction would read a snapshot that does not include the
+ * caller's own uncommitted changes.
+ */
+const runRead = (db, tenantId) => (text, params) =>
+  db ? db.query(text, params) : queryWithTenant(text, params, tenantId);
+
+/**
+ * Overlapping bookings.
+ *
+ * ── The remaining race, stated plainly ───────────────────────────────────────
+ * This is a check followed by a write. Both now happen inside one transaction
+ * (see createSession and updateSession), which is a real improvement — the
+ * check reads the caller's own uncommitted changes and a failure rolls the
+ * whole thing back — but READ COMMITTED does not stop two concurrent
+ * transactions from each finding the slot free and both inserting.
+ *
+ * A database-level EXCLUDE constraint would close it, and it is deliberately
+ * NOT used here, for a reason that outranks the race: overlapping sessions are
+ * legitimate in this product. `force` exists precisely so a trainer can book
+ * two people at once when they mean to, group sessions overlap individual ones
+ * by design, and a constraint cannot tell an intentional overlap from an
+ * accidental one. Enforcing it in the database would make a supported workflow
+ * impossible in order to prevent something that needs two trainers, one
+ * account and the same second.
+ *
+ * The exposure is therefore: a single trainer, two devices, the same slot,
+ * within the same instant — and the outcome is a double booking they can see
+ * on their own calendar and fix. Recorded here rather than left implicit; if
+ * client-side booking is ever added, this becomes real and wants a partial
+ * exclusion constraint over non-forced individual sessions.
+ */
+const checkConflicts = async (tenantId, sessionDate, startTime, endTime, excludeId = null, db = null) => {
   // Check individual sessions
   let query = `
     SELECT ts.id, ts.start_time, ts.end_time, ts.session_type,
@@ -26,7 +63,8 @@ const checkConflicts = async (tenantId, sessionDate, startTime, endTime, exclude
   `;
   const params = [tenantId, sessionDate, startTime, endTime];
   if (excludeId) { query += ` AND ts.id != $${params.length + 1}`; params.push(excludeId); }
-  const result = await queryWithTenant(query, params, tenantId);
+  const read = runRead(db, tenantId);
+  const result = await read(query, params);
 
   // Also check group sessions for conflicts
   const groupQuery = `
@@ -39,7 +77,7 @@ const checkConflicts = async (tenantId, sessionDate, startTime, endTime, exclude
       AND gs.status NOT IN ('cancelled')
       AND (gs.start_time < $4 AND gs.end_time > $3)
   `;
-  const groupResult = await queryWithTenant(groupQuery, [tenantId, sessionDate, startTime, endTime], tenantId);
+  const groupResult = await read(groupQuery, [tenantId, sessionDate, startTime, endTime]);
 
   return [...result.rows, ...groupResult.rows];
 };
@@ -47,98 +85,25 @@ const checkConflicts = async (tenantId, sessionDate, startTime, endTime, exclude
 // ── Package usage follows session completion ──────────────────────────────────
 //
 // A session-based package is the trainer's core unit of business: "10 sessions
-// for 400 EUR". Nothing in the product decremented it. `POST
-// /clients/:id/packages/:cpid/use-session` existed, but the only caller was the
-// training-detail page's complete toggle — so a trainer who worked the way the
-// product invites them to (mark the session complete on the calendar) watched
-// "10 sessions remaining" stay at 10 forever, while the package banner in the
-// session modal reported a balance that was never true.
+// for 400 EUR". Completion is the event that consumes a session, so the server
+// records it, in the same transaction as the status change that causes it.
 //
-// Completion is the event that consumes a session, so the server records it,
-// next to the status change that causes it. Two properties matter:
+// The bookkeeping itself lives in services/packageUsageService.js — it is
+// shared with group attendance, which charges the same ledger. Three properties
+// matter and all three now come from the database rather than from convention:
 //
-//   - idempotent: package_session_usage has a UNIQUE constraint on session_id,
-//     so completing an already-completed session cannot consume twice;
-//   - reversible: moving a session back out of 'completed' releases the usage
-//     it took, because a session marked complete by mistake must not silently
-//     cost the client a session they never had.
+//   - atomic: the status change and the charge commit together or not at all.
+//     They used to be separate statements outside any transaction, so a failure
+//     between them left a charge the idempotency guard would never retry;
+//   - idempotent: a partial unique index on session_id means completing an
+//     already-complete session cannot consume twice;
+//   - reversible: moving a session back out of a charged status releases the
+//     usage it took, because a session marked complete by mistake must not
+//     silently cost the client a session they never had.
 //
-// A failure here is logged and swallowed: the session status change has already
-// been committed and answered for, and package bookkeeping must not turn a
-// successful update into a 500.
-const syncPackageUsageForSession = async (tenantId, sessionId, clientId, isNowCompleted) => {
-  try {
-    if (isNowCompleted) {
-      const active = await queryWithTenant(
-        `SELECT id, package_type, total_sessions, sessions_used
-           FROM client_packages
-          WHERE client_id = $1 AND tenant_id = $2 AND status = 'active'
-          ORDER BY assigned_at DESC
-          LIMIT 1`,
-        [clientId, tenantId], tenantId
-      );
-      if (active.rows.length === 0) return null;
-      const cp = active.rows[0];
-
-      const claimed = await queryWithTenant(
-        `INSERT INTO package_session_usage (tenant_id, client_package_id, session_id)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (session_id) DO NOTHING
-         RETURNING id`,
-        [tenantId, cp.id, sessionId], tenantId
-      );
-      if (claimed.rows.length === 0) return null;   // already counted
-
-      const updated = await queryWithTenant(
-        `UPDATE client_packages
-            SET sessions_used = sessions_used + 1, updated_at = NOW()
-          WHERE id = $1 AND tenant_id = $2
-          RETURNING *`,
-        [cp.id, tenantId], tenantId
-      );
-      const row = updated.rows[0];
-      if (row && row.package_type === 'session_based' &&
-          row.total_sessions !== null && row.sessions_used >= row.total_sessions) {
-        await queryWithTenant(
-          `UPDATE client_packages SET status = 'completed', updated_at = NOW()
-            WHERE id = $1 AND tenant_id = $2`,
-          [cp.id, tenantId], tenantId
-        );
-        row.status = 'completed';
-      }
-      return row;
-    }
-
-    const released = await queryWithTenant(
-      `DELETE FROM package_session_usage
-        WHERE session_id = $1 AND tenant_id = $2
-        RETURNING client_package_id`,
-      [sessionId, tenantId], tenantId
-    );
-    if (released.rows.length === 0) return null;
-
-    const restored = await queryWithTenant(
-      `UPDATE client_packages
-          SET sessions_used = GREATEST(sessions_used - 1, 0),
-              status = CASE
-                         WHEN status = 'completed'
-                          AND package_type = 'session_based'
-                          AND total_sessions IS NOT NULL
-                          AND GREATEST(sessions_used - 1, 0) < total_sessions
-                         THEN 'active'
-                         ELSE status
-                       END,
-              updated_at = NOW()
-        WHERE id = $1 AND tenant_id = $2
-        RETURNING *`,
-      [released.rows[0].client_package_id, tenantId], tenantId
-    );
-    return restored.rows[0] || null;
-  } catch (err) {
-    console.error('Package usage sync failed for session', sessionId, err.message);
-    return null;
-  }
-};
+// A failure is no longer swallowed. It rolls the whole update back and answers
+// 500, because a session that says "completed" while the package says otherwise
+// is worse than an error the trainer can retry.
 
 const getSessions = async (req, res) => {
   try {
@@ -177,21 +142,123 @@ const getSessionById = async (req, res) => {
   }
 };
 
-const createSession = async (req, res) => {
-  try {
-    const { tenantId } = req.user;
-    const { clientId, sessionDate, startTime, endTime, sessionType, notes, force, isGroup, groupTitle, attendees } = req.body; // ADHOC_GROUP_CREATE
+/**
+ * Charge every attendee of an ad-hoc group session, or the single client of an
+ * ordinary one. Returns the outcome for the session as a whole: the individual
+ * case reports its own, the group case reports 'charged' if anybody was
+ * charged and otherwise the first reason nobody could be.
+ */
+const chargeSessionAttendees = async (db, { tenantId, session, actorId }) => {
+  if (!session.is_group) {
+    return packageUsage.chargeUsage(db, {
+      tenantId, clientId: session.client_id, sessionId: session.id, actorId,
+    });
+  }
 
-    if (!clientId || !sessionDate || !startTime || !endTime) {
-      return res.status(400).json({ error: 'Validation error', message: 'Client ID, date, start time, and end time are required' });
+  const { rows: attendees } = await db.query(
+    'SELECT client_id FROM session_attendees WHERE session_id = $1 AND tenant_id = $2',
+    [session.id, tenantId]
+  );
+
+  const outcomes = [];
+  const packages = [];
+  for (const attendee of attendees) {
+    const result = await packageUsage.chargeUsage(db, {
+      tenantId, clientId: attendee.client_id, sessionId: session.id, actorId,
+    });
+    outcomes.push({ clientId: attendee.client_id, outcome: result.outcome });
+    if (result.clientPackage) packages.push(result.clientPackage);
+  }
+
+  const charged = outcomes.filter((o) => o.outcome === packageUsage.OUTCOME.CHARGED);
+  return {
+    outcome: charged.length > 0
+      ? packageUsage.OUTCOME.CHARGED
+      : (outcomes[0]?.outcome || packageUsage.OUTCOME.NO_ACTIVE_PACKAGE),
+    clientPackage: packages[0] || null,
+    attendeeOutcomes: outcomes,
+  };
+};
+
+/**
+ * POST /api/sessions
+ *
+ * Three shapes of booking arrive here. The individual one always worked. The
+ * ad-hoc group one — several clients training together without being a named
+ * group — did not: `isGroup` and `attendees` were destructured from the body
+ * and never used, and the handler then rejected the request for having no
+ * `clientId`, which the ad-hoc form does not collect. The third mode in the
+ * product's most-used modal answered 400 every single time.
+ *
+ * The schema for it has existed since migration 023 (`is_group`, `group_title`,
+ * `session_attendees`); only the handler was missing.
+ */
+const createSession = async (req, res) => {
+  const { tenantId, userId } = req.user;
+  const {
+    clientId, sessionDate, startTime, endTime, sessionType, notes, force,
+    isGroup, groupTitle, attendees,
+  } = req.body;
+
+  const wantsGroup = isGroup === true || isGroup === 'true';
+
+  if (!sessionDate || !startTime || !endTime) {
+    return res.status(400).json({
+      error: 'Validation error',
+      message: 'Date, start time, and end time are required',
+    });
+  }
+
+  // The two shapes need different things, and saying which is missing beats a
+  // single message that is wrong for one of them.
+  const attendeeIds = Array.isArray(attendees)
+    ? [...new Set(attendees.filter((id) => typeof id === 'string'))]
+    : [];
+
+  if (wantsGroup) {
+    if (attendeeIds.length === 0) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'A group session needs at least one participant',
+      });
+    }
+    if (attendeeIds.length > 50) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'A group session can hold at most 50 participants',
+      });
+    }
+  } else if (!clientId) {
+    return res.status(400).json({
+      error: 'Validation error',
+      message: 'Client ID, date, start time, and end time are required',
+    });
+  }
+
+  const db = await getClient();
+  let responded = false;
+
+  try {
+    await db.query('BEGIN');
+
+    // Every client id in the request is checked against this tenant. For the
+    // group case that is the whole guest list, in one round trip.
+    const idsToVerify = wantsGroup ? attendeeIds : [clientId];
+    const clientCheck = await db.query(
+      'SELECT id FROM clients WHERE id = ANY($1::uuid[]) AND tenant_id = $2',
+      [idsToVerify, tenantId]
+    );
+    if (clientCheck.rows.length !== idsToVerify.length) {
+      responded = true;
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Not found', message: 'Client not found' });
     }
 
-    const clientCheck = await queryWithTenant('SELECT id FROM clients WHERE id = $1 AND tenant_id = $2', [clientId, tenantId], tenantId);
-    if (clientCheck.rows.length === 0) return res.status(404).json({ error: 'Not found', message: 'Client not found' });
-
     if (!force) {
-      const conflicts = await checkConflicts(tenantId, sessionDate, startTime, endTime);
+      const conflicts = await checkConflicts(tenantId, sessionDate, startTime, endTime, null, db);
       if (conflicts.length > 0) {
+        responded = true;
+        await db.query('ROLLBACK');
         return res.status(409).json({
           error: 'conflict',
           message: 'This time slot overlaps with an existing session',
@@ -206,52 +273,128 @@ const createSession = async (req, res) => {
       }
     }
 
-    const result = await queryWithTenant(
-      `INSERT INTO training_sessions (tenant_id, client_id, session_date, start_time, end_time, session_type, notes, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
+    // `client_id` is NOT NULL on the table and stays meaningful for a group
+    // session: it is the first participant, so every existing query that joins
+    // through it (the calendar, client history, conflict checking) keeps
+    // working. The full guest list lives in session_attendees.
+    const primaryClientId = wantsGroup ? attendeeIds[0] : clientId;
+
+    const result = await db.query(
+      `INSERT INTO training_sessions
+         (tenant_id, client_id, session_date, start_time, end_time, session_type, notes,
+          status, is_group, group_title)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8, $9)
        RETURNING id, client_id, session_date::text AS session_date, start_time, end_time,
-                 session_type, notes, is_completed, status, created_at, updated_at`,
-      [tenantId, clientId, sessionDate, startTime, endTime, sessionType || null, notes || null], tenantId
+                 session_type, notes, is_completed, status, is_group, group_title,
+                 no_show_charged, created_at, updated_at`,
+      [
+        tenantId, primaryClientId, sessionDate, startTime, endTime,
+        sessionType || null, notes || null,
+        wantsGroup,
+        wantsGroup ? (groupTitle || null) : null,
+      ]
     );
 
     const session = result.rows[0];
-    const clientInfo = await queryWithTenant('SELECT first_name, last_name FROM clients WHERE id = $1', [clientId], tenantId);
-    res.status(201).json({ success: true, session: { ...session, client_first_name: clientInfo.rows[0].first_name, client_last_name: clientInfo.rows[0].last_name } });
+
+    if (wantsGroup) {
+      for (const attendeeId of attendeeIds) {
+        await db.query(
+          `INSERT INTO session_attendees (session_id, client_id, tenant_id, status)
+           VALUES ($1, $2, $3, 'scheduled')
+           ON CONFLICT (session_id, client_id) DO NOTHING`,
+          [session.id, attendeeId, tenantId]
+        );
+      }
+    }
+
+    const clientInfo = await db.query(
+      'SELECT first_name, last_name FROM clients WHERE id = $1 AND tenant_id = $2',
+      [session.client_id, tenantId]
+    );
+
+    await db.query('COMMIT');
+
+    return res.status(201).json({
+      success: true,
+      session: {
+        ...session,
+        client_first_name: clientInfo.rows[0].first_name,
+        client_last_name:  clientInfo.rows[0].last_name,
+        attendee_count: wantsGroup ? attendeeIds.length : 1,
+      },
+    });
   } catch (error) {
+    await db.query('ROLLBACK').catch(() => {});
+    if (responded) return;
     if (sendDbClientError(res, error)) return;
+    if (error.constraint === 'check_time_order') {
+      return res.status(400).json({ error: 'Validation error', message: 'End time must be after start time' });
+    }
     console.error('Create session error:', error);
-    if (error.constraint === 'check_time_order') return res.status(400).json({ error: 'Validation error', message: 'End time must be after start time' });
-    res.status(500).json({ error: 'Server error', message: 'An error occurred while creating session' });
+    return res.status(500).json({ error: 'Server error', message: 'An error occurred while creating session' });
+  } finally {
+    db.release();
   }
 };
 
 const updateSession = async (req, res) => {
-  try {
-    const { tenantId } = req.user;
-    const { id } = req.params;
-    const { clientId, sessionDate, startTime, endTime, sessionType, notes, isCompleted, status, force } = req.body;
+  const { tenantId, userId } = req.user;
+  const { id } = req.params;
+  const {
+    clientId, sessionDate, startTime, endTime, sessionType, notes,
+    isCompleted, status, force, chargeNoShow,
+  } = req.body;
 
-    const checkResult = await queryWithTenant('SELECT * FROM training_sessions WHERE id = $1 AND tenant_id = $2', [id, tenantId], tenantId);
-    if (checkResult.rows.length === 0) return res.status(404).json({ error: 'Not found', message: 'Session not found' });
+  const validStatuses = ['scheduled', 'completed', 'cancelled', 'no_show'];
+  if (status !== undefined && !validStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Validation error', message: 'Invalid status value' });
+  }
+
+  // The whole update runs in one transaction: the status change and the package
+  // charge it triggers must land together. `getClient` establishes the tenant
+  // context on BEGIN, so RLS applies exactly as it does on the pool path.
+  const db = await getClient();
+  let responded = false;
+
+  try {
+    await db.query('BEGIN');
+
+    // FOR UPDATE: two requests completing the same session at once would
+    // otherwise both read 'scheduled' and both try to charge it. The second
+    // waits here, sees the committed status, and charges nothing.
+    const checkResult = await db.query(
+      'SELECT * FROM training_sessions WHERE id = $1 AND tenant_id = $2 FOR UPDATE',
+      [id, tenantId]
+    );
+    if (checkResult.rows.length === 0) {
+      responded = true;
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Not found', message: 'Session not found' });
+    }
     const existing = checkResult.rows[0];
 
     if (clientId) {
-      const clientCheck = await queryWithTenant('SELECT id FROM clients WHERE id = $1 AND tenant_id = $2', [clientId, tenantId], tenantId);
-      if (clientCheck.rows.length === 0) return res.status(404).json({ error: 'Not found', message: 'Client not found' });
+      const clientCheck = await db.query(
+        'SELECT id FROM clients WHERE id = $1 AND tenant_id = $2', [clientId, tenantId]
+      );
+      if (clientCheck.rows.length === 0) {
+        responded = true;
+        await db.query('ROLLBACK');
+        return res.status(404).json({ error: 'Not found', message: 'Client not found' });
+      }
     }
 
-    const validStatuses = ['scheduled', 'completed', 'cancelled', 'no_show'];
-    if (status !== undefined && !validStatuses.includes(status)) return res.status(400).json({ error: 'Validation error', message: 'Invalid status value' });
-
-    // Check conflicts if time is changing
     const newDate  = sessionDate || existing.session_date;
     const newStart = startTime   || existing.start_time;
     const newEnd   = endTime     || existing.end_time;
     const timeChanging = sessionDate || startTime || endTime;
 
     if (timeChanging && !force) {
-      const conflicts = await checkConflicts(tenantId, newDate, newStart, newEnd, id);
+      const conflicts = await checkConflicts(tenantId, newDate, newStart, newEnd, id, db);
       if (conflicts.length > 0) {
+        responded = true;
+        await db.query('ROLLBACK');
         return res.status(409).json({
           error: 'conflict',
           message: 'This time slot overlaps with an existing session',
@@ -286,64 +429,153 @@ const updateSession = async (req, res) => {
       if (isCompleted === undefined) { updates.push(`is_completed = $${p++}`); params.push(status === 'completed'); }
     }
 
-    if (updates.length === 0) return res.status(400).json({ error: 'Validation error', message: 'No fields to update' });
+    if (updates.length === 0) {
+      responded = true;
+      await db.query('ROLLBACK');
+      return res.status(400).json({ error: 'Validation error', message: 'No fields to update' });
+    }
 
     params.push(id, tenantId);
-    const result = await queryWithTenant(
+    const result = await db.query(
       `UPDATE training_sessions SET ${updates.join(', ')} WHERE id = $${p++} AND tenant_id = $${p++}
        RETURNING id, client_id, session_date::text AS session_date, start_time, end_time,
-                 session_type, notes, is_completed, status, created_at, updated_at`,
-      params, tenantId
+                 session_type, notes, is_completed, status, no_show_charged, created_at, updated_at`,
+      params
     );
 
     const session = result.rows[0];
 
-    const wasCompleted = existing.status === 'completed';
-    const nowCompleted = session.status === 'completed';
-    let packageUsage = null;
-    if (wasCompleted !== nowCompleted) {
-      packageUsage = await syncPackageUsageForSession(tenantId, session.id, session.client_id, nowCompleted);
+    // ── A moved session is a new appointment ────────────────────────────────
+    // The reminder row is what stops a client being told twice; if the session
+    // moves after one was sent, that same row would stop them being told the
+    // NEW time. Clearing it lets the job send the correction. Only the time
+    // matters here — changing a note is not a reschedule.
+    const rescheduled = (sessionDate !== undefined && String(sessionDate) !== String(existing.session_date))
+      || (startTime !== undefined && String(startTime) !== String(existing.start_time))
+      || (endTime !== undefined && String(endTime) !== String(existing.end_time));
+    if (rescheduled) {
+      await db.query(
+        'DELETE FROM session_reminders WHERE session_id = $1 AND tenant_id = $2',
+        [session.id, tenantId]
+      );
     }
 
-    const clientInfo = await queryWithTenant('SELECT first_name, last_name FROM clients WHERE id = $1', [session.client_id], tenantId);
-    res.json({
+    // ── The charge ──────────────────────────────────────────────────────────
+    // Driven by whether the OLD and the NEW status consume a session, so a move
+    // from 'completed' to a charged 'no_show' is correctly a no-op rather than a
+    // refund followed by a charge, and a move to 'cancelled' refunds.
+    const wasCharged = statusConsumesSession(existing.status, existing.no_show_charged === true);
+    const nowCharges = statusConsumesSession(session.status, chargeNoShow === true);
+
+    let usage = null;
+    if (!wasCharged && nowCharges) {
+      usage = await chargeSessionAttendees(db, {
+        tenantId,
+        session: { ...session, is_group: existing.is_group },
+        actorId: userId || null,
+      });
+    } else if (wasCharged && !nowCharges) {
+      // clientId omitted on purpose: for an ad-hoc group session this releases
+      // every attendee's charge, and for an individual one there is only ever
+      // the single row.
+      usage = await packageUsage.releaseUsage(db, { tenantId, sessionId: session.id });
+    }
+
+    // The decision is stored on the session so a later edit knows whether this
+    // no-show was charged; without it, reopening and re-saving a charged
+    // no-show would refund a session the trainer decided to keep.
+    const noShowCharged = session.status === 'no_show' ? chargeNoShow === true : false;
+    if (noShowCharged !== (session.no_show_charged === true)) {
+      await db.query(
+        'UPDATE training_sessions SET no_show_charged = $1 WHERE id = $2 AND tenant_id = $3',
+        [noShowCharged, session.id, tenantId]
+      );
+      session.no_show_charged = noShowCharged;
+    }
+
+    const clientInfo = await db.query(
+      'SELECT first_name, last_name FROM clients WHERE id = $1 AND tenant_id = $2',
+      [session.client_id, tenantId]
+    );
+
+    await db.query('COMMIT');
+
+    return res.json({
       success: true,
-      session: { ...session, client_first_name: clientInfo.rows[0].first_name, client_last_name: clientInfo.rows[0].last_name },
-      // Present only when this update changed the session's completion state
-      // and a package was actually charged or refunded, so the caller can
-      // reflect the new balance without a second round trip.
-      ...(packageUsage ? { clientPackage: packageUsage } : {}),
+      session: {
+        ...session,
+        client_first_name: clientInfo.rows[0].first_name,
+        client_last_name:  clientInfo.rows[0].last_name,
+      },
+      // Always present when this update changed whether the session consumes a
+      // package, including when nothing could be charged. The UI needs to tell
+      // "one session taken off the block" apart from "this client has no active
+      // package" — before this, both answered success and looked identical.
+      ...(usage ? { packageOutcome: usage.outcome, clientPackage: usage.clientPackage } : {}),
     });
   } catch (error) {
+    await db.query('ROLLBACK').catch(() => {});
+    if (responded) return;
     if (sendDbClientError(res, error)) return;
-    console.error('Update session error:', error);
-    if (error.constraint === 'check_time_order') return res.status(400).json({ error: 'Validation error', message: 'End time must be after start time' });
-    res.status(500).json({ error: 'Server error', message: 'An error occurred while updating session' });
+    if (error.constraint === 'check_time_order') {
+      return res.status(400).json({ error: 'Validation error', message: 'End time must be after start time' });
+    }
+    // Reported, not just logged: this transaction carries the package charge,
+    // and a failure here is exactly the kind that stays invisible until a
+    // balance is wrong weeks later.
+    captureError(error, { route: 'PUT /api/sessions/:id', method: 'PUT', tenantId, outcome: 'package_charge_rolled_back' });
+    return res.status(500).json({ error: 'Server error', message: 'An error occurred while updating session' });
+  } finally {
+    db.release();
   }
 };
 
 const deleteSession = async (req, res) => {
-  try {
-    const { tenantId } = req.user;
-    const { id } = req.params;
-    const checkResult = await queryWithTenant('SELECT id, client_id, status FROM training_sessions WHERE id = $1 AND tenant_id = $2', [id, tenantId], tenantId);
-    if (checkResult.rows.length === 0) return res.status(404).json({ error: 'Not found', message: 'Session not found' });
+  const { tenantId } = req.user;
+  const { id } = req.params;
 
-    // Deleting a completed session returns its package session to the client.
-    // The usage row would go anyway (ON DELETE CASCADE), but the counter it
-    // incremented lives on client_packages and would stay inflated with no row
-    // left to explain it.
-    if (checkResult.rows[0].status === 'completed') {
-      await syncPackageUsageForSession(tenantId, id, checkResult.rows[0].client_id, false);
+  const db = await getClient();
+  let responded = false;
+
+  try {
+    await db.query('BEGIN');
+
+    const checkResult = await db.query(
+      'SELECT id, client_id, status, no_show_charged FROM training_sessions WHERE id = $1 AND tenant_id = $2 FOR UPDATE',
+      [id, tenantId]
+    );
+    if (checkResult.rows.length === 0) {
+      responded = true;
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Not found', message: 'Session not found' });
     }
 
-    await queryWithTenant('DELETE FROM training_sessions WHERE id = $1 AND tenant_id = $2', [id, tenantId], tenantId);
-    res.json({ success: true, message: 'Session deleted successfully' });
+    // Deleting a charged session returns its package session to the client. The
+    // ledger row would go anyway (ON DELETE CASCADE), but the cached counter on
+    // client_packages would stay inflated with no row left to explain it — so
+    // the release happens explicitly, before the delete, in the same
+    // transaction.
+    const row = checkResult.rows[0];
+    if (statusConsumesSession(row.status, row.no_show_charged === true)) {
+      await packageUsage.releaseUsage(db, { tenantId, sessionId: id });
+    }
+
+    await db.query('DELETE FROM training_sessions WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+    await db.query('COMMIT');
+
+    return res.json({ success: true, message: 'Session deleted successfully' });
   } catch (error) {
+    await db.query('ROLLBACK').catch(() => {});
+    if (responded) return;
     if (sendDbClientError(res, error)) return;
     console.error('Delete session error:', error);
-    res.status(500).json({ error: 'Server error', message: 'An error occurred while deleting session' });
+    return res.status(500).json({ error: 'Server error', message: 'An error occurred while deleting session' });
+  } finally {
+    db.release();
   }
 };
 
-module.exports = { getSessions, getSessionById, createSession, updateSession, deleteSession, syncPackageUsageForSession };
+module.exports = {
+  getSessions, getSessionById, createSession, updateSession, deleteSession,
+  statusConsumesSession,
+};

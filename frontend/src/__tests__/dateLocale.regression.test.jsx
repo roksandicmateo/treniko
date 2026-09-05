@@ -64,12 +64,14 @@ const renderClients = async () => {
   return view;
 };
 
-/** The one date cell in the row — matched by value-independent structure. */
-const renderedDate = () => {
-  const row = screen.getByText('Locale Probe').closest('tr');
-  const texts = [...row.querySelectorAll('p')].map((n) => n.textContent.trim());
-  return texts[texts.length - 1];
-};
+/**
+ * The last-session cell, found by a stable hook rather than by counting
+ * elements. The row's shape changed when the list started showing the numbers
+ * a trainer opens it for (sessions remaining, next session); what this suite
+ * pins is the LANGUAGE of the date, which is unaffected by that.
+ */
+const renderedDate = () =>
+  screen.getByTestId('client-last-session').textContent.trim();
 
 const setLanguage = async (lng) => {
   await act(async () => { await i18n.changeLanguage(lng); });

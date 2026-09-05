@@ -57,13 +57,20 @@
     "showing": "Zeige",
     "of": "von",
     "tryAgain": "Erneut versuchen",
-    "clearSearch": "Suche löschen",
-    "retry": "Erneut versuchen"
+    "clearSearch": "Suche zurücksetzen",
+    "retry": "Erneut versuchen",
+    "tomorrow": "Morgen",
+    "saveChanges": "Änderungen speichern",
+    "reason": "Grund",
+    "price": "Preis",
+    "searchPlaceholder": "Nach Namen suchen...",
+    "showMore": "Mehr anzeigen",
+    "showLess": "Weniger anzeigen"
   },
   "nav": {
     "dashboard": "Dashboard",
     "calendar": "Kalender",
-    "trainings": "Trainings",
+    "trainings": "Programme",
     "exercises": "Übungen",
     "clients": "Klienten",
     "groups": "Gruppen",
@@ -114,7 +121,9 @@
     "verificationLinkHint": "Klicken Sie auf den Link in der E-Mail, um Ihr Konto zu aktivieren. Prüfen Sie auch Ihren Spam-Ordner.",
     "showPassword": "Passwort anzeigen",
     "hidePassword": "Passwort verbergen",
-    "freeReassurance": "Kostenlos — bis zu 5 Kunden und 20 Einheiten pro Monat. Keine Kreditkarte: TRENIKO hat keinen Zahlungsanbieter. Sie erhalten eine E-Mail zur Bestätigung."
+    "freeReassurance": "Kostenlos — bis zu 5 Kunden und 20 Einheiten pro Monat. Keine Kreditkarte: TRENIKO hat keinen Zahlungsanbieter. Sie erhalten eine E-Mail zur Bestätigung.",
+    "linkExpired": "Link abgelaufen",
+    "linkInvalid": "Ungültiger Link"
   },
   "dashboard": {
     "greeting_morning": "Guten Morgen",
@@ -137,7 +146,10 @@
     "noClients": "Keine Klienten vorhanden",
     "openCalendar": "Kalender öffnen →",
     "noUpcoming": "Keine bevorstehenden Einheiten diese Woche",
-    "added": "Hinzugefügt"
+    "added": "Hinzugefügt",
+    "statsTitle": "Zahlen",
+    "todayTitle": "Heute",
+    "noSessionsTodayShort": "Heute nichts geplant"
   },
   "clients": {
     "title": "Klienten",
@@ -172,7 +184,7 @@
     "archived": "Archiviert",
     "tabs": {
       "profile": "Profil",
-      "trainings": "Trainings",
+      "trainings": "Programme",
       "progress": "Fortschritt",
       "packages": "Pakete",
       "notes": "Notizen",
@@ -191,7 +203,24 @@
     "clientDeleted": "Kunde gelöscht",
     "clientArchived": "Kunde archiviert",
     "clientReactivated": "Kunde reaktiviert",
-    "clientDeactivated": "Kunde deaktiviert"
+    "clientDeactivated": "Kunde deaktiviert",
+    "searchLabel": "Kunden suchen",
+    "noSearchResults": "Kein Kunde passt zur Suche",
+    "remaining": "Verbleibend",
+    "nextSession": "Nächstes Training",
+    "lastSession": "Letztes Training",
+    "noPackage": "Kein Paket",
+    "noUpcoming": "Nichts geplant",
+    "paid": "Bezahlt",
+    "unpaidAmount": "Offen: {{amount}}",
+    "noPayments": "Keine Zahlungen",
+    "scheduleSession": "+ Training planen",
+    "pause": "Pausieren",
+    "pauseHint": "Alle Daten bleiben, der Kunde erscheint nur nicht mehr unter den aktiven.",
+    "onPause": "Pausiert",
+    "reactivateHint": "Kunde zurück zu den aktiven.",
+    "remindersOptOut": "Keine Erinnerungen",
+    "remindersOptOutHint": "Dieser Kunde bekommt keine Erinnerung am Vortag."
   },
   "sessions": {
     "title": "Kalender",
@@ -217,9 +246,9 @@
     "conflictDetected": "Terminkonflikt erkannt",
     "conflictOverlaps": "Diese Einheit überschneidet sich mit bestehenden Einheiten:",
     "scheduleAnyway": "Trotzdem planen",
-    "trainingLogged": "Training protokolliert",
-    "noTrainingLogged": "Noch kein Training protokolliert",
-    "addTraining": "Training protokollieren",
+    "trainingLogged": "Programm erfasst",
+    "noTrainingLogged": "Noch kein Programm erfasst",
+    "addTraining": "Programm hinzufügen",
     "legend_scheduled": "Geplant",
     "legend_completed": "Abgeschlossen",
     "legend_noshow": "Nicht erschienen",
@@ -247,7 +276,22 @@
     "groupSession": "Gruppentraining",
     "openSession": "Training öffnen",
     "adhocGroup": "Gruppe",
-    "groupNamePlaceholder": "z. B. Morgengruppe, HIIT Montag..."
+    "groupNamePlaceholder": "z. B. Morgengruppe, HIIT Montag...",
+    "chargedFromPackage": "Ein Training von {{package}} abgezogen",
+    "noActivePackageWarning": "Training erfasst, aber dieser Kunde hat kein aktives Paket.",
+    "packageExhaustedWarning": "Training erfasst, aber das Paket ist aufgebraucht.",
+    "packageExpiredWarning": "Training erfasst, aber das Paket ist abgelaufen.",
+    "assignPackageNow": "Paket zuweisen",
+    "noShowChargeQuestion": "Vom Paket abziehen?",
+    "noShowChargeYes": "Ja, abziehen",
+    "noShowChargeNo": "Nicht abziehen",
+    "sessionReleased": "Training dem Paket zurückgegeben",
+    "movedTo": "Verschoben auf {{when}}",
+    "moveFailed": "Termin konnte nicht verschoben werden",
+    "quickAdd": "Neues Training",
+    "noParticipants": "Keine Teilnehmer",
+    "presentCount": "{{present}}/{{total}} anwesend",
+    "attendancePresent": "Anwesend"
   },
   "calendar": {
     "title": "Kalender",
@@ -255,12 +299,12 @@
     "month": "Monat",
     "week": "Woche",
     "day": "Tag",
-    "clickToCreate": "Klicken oder ziehen um eine Einheit zu erstellen"
+    "clickToCreate": "Tippe auf einen freien Slot für ein Training"
   },
   "training": {
-    "title": "Trainings",
-    "addTraining": "+ Training hinzufügen",
-    "noTrainings": "Keine Trainings",
+    "title": "Programme",
+    "addTraining": "+ Programm hinzufügen",
+    "noTrainings": "Noch keine Programme",
     "upcoming": "Bevorstehend",
     "past": "Vergangen",
     "completed": "Abgeschlossen",
@@ -334,14 +378,34 @@
     "goToPackages": "Zu Paketen →",
     "noSessionsRemaining": "Keine Einheiten übrig",
     "sessionsUsed": "Einheiten genutzt",
-    "typeSessionBased": "🎯 Nach Einheiten",
-    "typeTimeBased": "📅 Zeitbasiert",
-    "typeUnlimited": "♾️ Unbegrenzt",
+    "typeSessionBased": "Nach Trainings",
+    "typeTimeBased": "Nach Zeitraum",
+    "typeUnlimited": "Unbegrenzt",
     "noSessionsYet": "Noch keine Einheiten",
     "used": "genutzt",
     "started": "Beginn",
     "expires": "Läuft ab",
-    "days": "Tage"
+    "days": "Tage",
+    "ledger": "Paketverlauf",
+    "adjust": "Manuelle Korrektur",
+    "adjustTitle": "Paket korrigieren",
+    "adjustHint": "Trainings hinzufügen oder zurückgeben, ohne einen Termin zu erfinden.",
+    "adjustAmount": "Anzahl Trainings",
+    "adjustAdd": "Trainings abziehen",
+    "adjustGiveBack": "Trainings zurückgeben",
+    "adjustReason": "Grund (erforderlich)",
+    "adjustReasonPH": "z. B. Krankheit, abgesprochen",
+    "adjustSaved": "Korrektur gespeichert",
+    "entrySession": "Training",
+    "entryGroupSession": "Gruppentraining",
+    "entryAdjustment": "Korrektur",
+    "priceForClient": "Preis für diesen Kunden",
+    "priceHint": "Aus der Vorlage übernommen. Ändere ihn, wenn etwas anderes vereinbart ist.",
+    "sessionsForClient": "Anzahl Trainings",
+    "markPaid": "Kunde hat bezahlt",
+    "markPaidHint": "Erfasst sofort eine Zahlung zu diesem Paket.",
+    "paymentMethod": "Zahlungsart",
+    "noActive": "Kein aktives Paket"
   },
   "billing": {
     "title": "Abrechnung",
@@ -473,7 +537,7 @@
     "allPresent": "Alle ✓",
     "allAbsent": "Alle ✗",
     "sessionDetails": "Einheitendetails",
-    "workoutType": "Trainingstyp",
+    "workoutType": "Trainingsart",
     "exerciseLog": "Übungsprotokoll",
     "sharedWorkout": "Gemeinsames Training für alle Mitglieder",
     "markAllComplete": "✅ Alle als anwesend markieren",
@@ -481,7 +545,9 @@
     "backToGroup": "Zurück zur Gruppe",
     "locationPlaceholder": "z.B. Haupttrainingsfläche",
     "sessionNotesPlaceholder": "Trainingsplan, Hinweise, Beobachtungen...",
-    "noGroupsHint": "Erstellen Sie Gruppen, um Kunden zu organisieren und Gruppentrainings zu verwalten."
+    "noGroupsHint": "Erstellen Sie Gruppen, um Kunden zu organisieren und Gruppentrainings zu verwalten.",
+    "sessionType": "Terminart",
+    "sessionNotes": "Notizen zum Training"
   },
   "subscription": {
     "title": "Abonnement",
@@ -526,7 +592,13 @@
     "readOnly": "Nur-Lesen",
     "trial": "Testphase",
     "manage": "Verwalten",
-    "removeClientsFirst": "Entfernen Sie {{count}} Klient(en) vor dem Downgrade."
+    "removeClientsFirst": "Entfernen Sie {{count}} Klient(en) vor dem Downgrade.",
+    "clientLimitTitle": "Kundenlimit erreicht",
+    "clientLimitMessage": "Dein Tarif ({{plan}}) erlaubt {{max}} Kunden.",
+    "sessionLimitTitle": "Monatliches Trainingslimit erreicht",
+    "sessionLimitMessage": "Dein Tarif ({{plan}}) erlaubt {{max}} Trainings pro Monat.",
+    "betaLimitHelp": "TRENIKO ist in der Beta, Abrechnung gibt es noch nicht. Wenn du mehr brauchst, melde dich — wir heben das Limit an und erfahren gern, wie viele Kunden du wirklich hast.",
+    "pauseInsteadHint": "Einen Kunden, den du nicht mehr trainierst, kannst du auf seiner Seite pausieren; alles bleibt erhalten und der Platz wird frei."
   },
   "profile": {
     "title": "Profil",
@@ -546,7 +618,7 @@
     "bio": "Bio",
     "businessName": "Unternehmensname",
     "language": "Sprache",
-    "theme": "Thema",
+    "theme": "Darstellung",
     "darkMode": "Dunkelmodus",
     "lightMode": "Hellmodus",
     "systemDefault": "Systemstandard",
@@ -567,7 +639,15 @@
     "deleteAccountWarning": "Dies plant die Löschung aller Ihrer Daten in 30 Tagen. Sind Sie sicher?",
     "deletionScheduled": "Löschung geplant",
     "deletionScheduledOn": "Ihr Konto wird gelöscht am",
-    "cancelDeletion": "Löschung abbrechen"
+    "cancelDeletion": "Löschung abbrechen",
+    "timezone": "Zeitzone",
+    "timezoneHint": "Bestimmt, was für dich „heute“ ist und wann Erinnerungen rausgehen.",
+    "reminders": "Kundenerinnerungen",
+    "remindersOn": "Kunden am Vortag per E-Mail erinnern",
+    "remindersHint": "Ein Kunde mit E-Mail-Adresse wird etwa 24 Stunden vorher erinnert.",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeSystem": "Wie System"
   },
   "form": {
     "packageName": "Paketname",
@@ -598,14 +678,16 @@
     "accept": "Ich habe gelesen und akzeptiere diese Vereinbarung",
     "scrollToAccept": "Scrollen Sie nach unten, um den Akzeptieren-Button zu aktivieren",
     "accepting": "Akzeptanz wird gespeichert...",
-    "failed": "Ihre Akzeptanz konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
+    "failed": "Ihre Akzeptanz konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    "agreementTitle": "Auftragsverarbeitungsvertrag"
   },
   "cookie": {
     "message": "Wir verwenden Cookies, um Sie angemeldet zu halten und Ihr Erlebnis zu verbessern.",
     "accept": "Alle akzeptieren",
     "decline": "Alle ablehnen",
     "manage": "Verwalten",
-    "savePrefs": "Einstellungen speichern"
+    "savePrefs": "Einstellungen speichern",
+    "managePreferences": "Cookie-Einstellungen verwalten"
   },
   "errors": {
     "loadFailed": "Daten konnten nicht geladen werden",
@@ -656,5 +738,43 @@
     "goToCalendar": "Zum Kalender",
     "nextStep": "Nächster Schritt",
     "dismiss": "Schließen"
+  },
+  "counts": {
+    "session_one": "{{count}} Training",
+    "session_other": "{{count}} Trainings",
+    "sessionLeft_one": "noch {{count}} Training",
+    "sessionLeft_other": "noch {{count}} Trainings",
+    "day_one": "{{count}} Tag",
+    "day_other": "{{count}} Tage",
+    "dayLeft_one": "noch {{count}} Tag",
+    "dayLeft_other": "noch {{count}} Tage",
+    "client_one": "{{count}} Kunde",
+    "client_other": "{{count}} Kunden",
+    "item_one": "{{count}} Eintrag",
+    "item_other": "{{count}} Einträge"
+  },
+  "attention": {
+    "title": "Braucht deine Aufmerksamkeit",
+    "allClear": "Nichts zu erledigen",
+    "allClearHint": "Im Moment wartet nichts auf dich.",
+    "unmarked": "Nicht erfasste Trainings",
+    "unmarkedHint": "Sie liegen in der Vergangenheit und gelten noch als geplant. Bis dahin stimmt keine Zahl auf diesem Bildschirm.",
+    "unpaid": "Offen",
+    "unpaidHint": "Als noch nicht bezahlt erfasst.",
+    "unpaidDays": "seit {{count}} Tagen offen",
+    "expiring": "Pakete gehen zur Neige",
+    "quiet": "Lange nicht trainiert",
+    "quietHint": "Aktive Kunden ohne Termin, {{days}}+ Tage ohne Training.",
+    "neverTrained": "Nie trainiert",
+    "lastTrained": "Zuletzt vor {{count}} Tagen",
+    "markSession": "Erfassen",
+    "openClient": "Kunde öffnen",
+    "itemsToHandle_one": "{{count}} Sache zu erledigen",
+    "itemsToHandle_other": "{{count}} Sachen zu erledigen"
+  },
+  "consent": {
+    "bodyMetrics": "Körpergewicht und Maße",
+    "injuryHistory": "Verletzungshistorie und medizinische Notizen",
+    "sessionHistory": "Trainingshistorie und Anwesenheit"
   }
 }

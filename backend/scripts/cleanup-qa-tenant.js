@@ -95,6 +95,7 @@ const TENANT_DATA_TABLES = [
   ['client_payments', 'tenant_id'],
   ['session_attendees', 'tenant_id'],
   ['package_session_usage', 'tenant_id'],
+  ['session_reminders', 'tenant_id'],
 ];
 
 /**

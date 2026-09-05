@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import Icon from '../components/Icon';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { trainingService } from '../services/trainingService';
@@ -56,7 +57,7 @@ export default function TrainingsPage() {
       }).then(r => r.json()).then(d => {
         const gs = (d.sessions || []).map(s => ({
           id:           `group-${s.id}`,
-          title:        `👥 ${s.group_name}`,
+          title:        `${s.group_name}`,
           start_time:   s.start_time,
           session_date: (s.session_date || '').slice(0, 10),
           workout_type: s.session_type || 'Group',
@@ -166,7 +167,7 @@ export default function TrainingsPage() {
           placeholder={`${t('common.search')}...`}
           className="input pl-9"
         />
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+        <Icon name="search" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         {searchInput && (
           <button onClick={() => { setSearchInput(''); setSearch(''); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">×</button>
@@ -220,14 +221,28 @@ export default function TrainingsPage() {
       ) : (
         <>
           <div className="space-y-2">
-            {/* ITEMS_MAP_DONE */}{allItems.map(training => (
-              <div key={training.id} onClick={() => navigate(`/dashboard/trainings/${training.id}`)}
-                className="flex items-center gap-3 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors group">
+            {/* Each row is a div with the button role rather than a <button>:
+                the completion toggle inside it is a button, and a button inside
+                a button is invalid HTML. The row still takes focus and answers
+                Enter and Space. */}
+            {allItems.map(training => (
+              <div
+                key={training.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/dashboard/trainings/${training.id}`)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/dashboard/trainings/${training.id}`);
+                  }
+                }}
+                className="flex items-center gap-3 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
                 <button onClick={e => toggleCompleted(training, e)}
                   className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-colors ${
                     training.is_completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-600 hover:border-green-400'
                   }`}>
-                  {training.is_completed && <span className="text-white text-xs flex items-center justify-center w-full h-full">✓</span>}
+                  {training.is_completed && <Icon name="check" className="h-4 w-4 text-white flex items-center justify-center w-full h-full" />}
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

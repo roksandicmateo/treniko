@@ -1,4 +1,5 @@
 // frontend/src/pages/ExercisesPage.jsx
+import Icon from '../components/Icon';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showToast } from '../components/Toast';
@@ -214,7 +215,7 @@ export default function ExercisesPage() {
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder={`${t('common.search')} ${t('exercises.title').toLowerCase()}...`}
           className="input pl-9" />
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+        <Icon name="search" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">×</button>}
       </div>
 
@@ -222,7 +223,7 @@ export default function ExercisesPage() {
         <div className="text-center py-16 text-gray-400 dark:text-gray-500">{t('common.loading')}</div>
       ) : exercises.length === 0 ? (
         <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
-          <p className="text-4xl mb-3">🏋️</p>
+          <p className="mb-3"><Icon name="dumbbell" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></p>
           <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">{t('exercises.noExercises')}</p>
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">Build your exercise library to use when logging trainings.</p>
           <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">{t('exercises.addFirst')}</button>
@@ -246,9 +247,9 @@ export default function ExercisesPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{ex.name}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {ex.muscle_group && <span className="text-xs text-gray-500 dark:text-gray-400">💪 {ex.muscle_group}</span>}
-                        {ex.equipment   && <span className="text-xs text-gray-500 dark:text-gray-400">🔧 {ex.equipment}</span>}
-                        <span className="text-xs text-gray-400 dark:text-gray-500">📏 {ex.default_unit}</span>
+                        {ex.muscle_group && <span className="text-xs text-gray-500 dark:text-gray-400">{ex.muscle_group}</span>}
+                        {ex.equipment   && <span className="text-xs text-gray-500 dark:text-gray-400">{ex.equipment}</span>}
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{ex.default_unit}</span>
                       </div>
                       {ex.description && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{ex.description}</p>}
                     </div>

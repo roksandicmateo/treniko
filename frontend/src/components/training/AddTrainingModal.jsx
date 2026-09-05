@@ -141,13 +141,13 @@ export default function AddTrainingModal({
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
             {editTraining ? `${t('common.edit')} ${t('training.title').slice(0, -1)}` : t('training.addTraining')}
           </h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl leading-none font-light">×</button>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl leading-none font-light dark:text-gray-500">×</button>
         </div>
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2.5 rounded-xl text-sm">{error}</div>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2.5 rounded-xl text-sm dark:bg-red-950/40 dark:text-red-300">{error}</div>
           )}
 
           {/* Client */}
@@ -209,7 +209,7 @@ export default function AddTrainingModal({
             value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
 
           {/* Notes */}
-          <textarea className={`${inputCls} resize-none h-20`}
+          <textarea className={`${inputCls} resize-none h-20 `}
             placeholder={t('sessions.notesPlaceholder')} value={form.notes}
             onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
 
@@ -227,7 +227,7 @@ export default function AddTrainingModal({
                 <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{t('form.saveAsTemplate')}</span>
               </label>
               {saveAsTemplate && (
-                <input className={`${inputCls} mt-2`} placeholder={t('form.templateName') + '...'}
+                <input className={`${inputCls} mt-2 `} placeholder={t('form.templateName') + '...'}
                   value={templateName} onChange={e => setTemplateName(e.target.value)} />
               )}
             </div>

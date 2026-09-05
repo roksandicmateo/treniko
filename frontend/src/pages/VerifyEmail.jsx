@@ -50,7 +50,7 @@ const VerifyEmail = () => {
         {status === 'expired' && (
           <>
             <div className="text-5xl mb-4">⏰</div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Link expired</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{t('auth.linkExpired')}</h2>
             <p className="text-gray-500 dark:text-gray-400 mb-6">Your verification link has expired. Please register again.</p>
             <Link to="/register" className="btn-primary px-6 py-2.5 inline-block">Register again →</Link>
           </>
@@ -58,7 +58,7 @@ const VerifyEmail = () => {
         {status === 'error' && (
           <>
             <div className="text-5xl mb-4">❌</div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Invalid link</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{t('auth.linkInvalid')}</h2>
             <p className="text-gray-500 dark:text-gray-400 mb-6">This verification link is invalid.</p>
             <Link to="/login" className="btn-primary px-6 py-2.5 inline-block">Go to Login →</Link>
           </>

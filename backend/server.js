@@ -26,6 +26,7 @@ const {
 } = require('./middleware/security');
 const { authenticateToken } = require('./middleware/auth');
 const { runWithTenantContext } = require('./config/tenantContext');
+const { captureError, isConfigured: monitoringConfigured } = require('./config/errorMonitor');
 const trainingsRouter = require('./routes/trainings');
 const templatesRouter = require('./routes/templates');
 const uploadsRouter   = require('./routes/uploads');
@@ -60,6 +61,10 @@ app.use(cors({
     callback(err);
   },
   credentials: true,
+  // The sliding-session header (see middleware/auth.js). A response header is
+  // invisible to browser JavaScript unless it is named here, so without this
+  // the renewed token would be sent and silently dropped.
+  exposedHeaders: ['X-Refreshed-Token'],
 }));
 app.set('trust proxy', 1);
 // Body-size caps. These match Express's own defaults; they are stated
@@ -261,8 +266,15 @@ app.use((err, req, res, next) => {
   const status = err.status || err.statusCode || 500;
   const isDevelopment = process.env.NODE_ENV === 'development';
 
-  // Always log the full error server-side.
-  console.error('Error:', err);
+  // Always log the full error server-side, and report it. Before this it went
+  // to a PM2 log file and nowhere else, which is how a failure that only
+  // affects one trainer stays unnoticed for weeks (see config/errorMonitor.js).
+  captureError(err, {
+    route: req.route?.path || req.path,
+    method: req.method,
+    tenantId: req.user?.tenantId,
+    statusCode: status,
+  });
 
   if (res.headersSent) return next(err);
 
@@ -301,6 +313,8 @@ if (isMain) {
 // than guessed at, because at this point the handler's state is unknown.
 process.on('unhandledRejection', (reason) => {
   console.error('UNHANDLED REJECTION — request left unanswered, process kept alive:', reason);
+  captureError(reason instanceof Error ? reason : new Error(String(reason)),
+    { job: 'unhandledRejection' });
 });
 
 app.listen(PORT, () => {
@@ -319,7 +333,10 @@ app.listen(PORT, () => {
   // actually being applied to the role we connected as. They are skipped for a
   // table's owner and for BYPASSRLS roles, and nothing in the application's
   // behaviour would reveal that — see config/rlsStatus.js.
-  require('./config/rlsStatus').reportRlsStatus();
+  // In production this is a hard gate rather than a log line: a deployment
+  // still connecting as the table owner exits here instead of running for
+  // months with its second tenant boundary quietly disabled.
+  require('./config/rlsStatus').enforceRlsInProduction();
 });
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────────

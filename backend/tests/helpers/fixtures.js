@@ -124,6 +124,56 @@ const createTenant = async (label) => {
 };
 
 /**
+ * Move a tenant onto a plan with deliberately tight limits.
+ *
+ * The enforcement suites used to assert against the seeded `free` plan's
+ * numbers — 5 clients, no training logs. Migration 038 turned that plan into
+ * the beta plan (40 clients, every shipped feature on) precisely so trainers
+ * with a real client list can use the product, which left those suites testing
+ * limits that no longer exist.
+ *
+ * The security property under test was never "the free plan allows five". It is
+ * "whatever the plan says, the API enforces it". Pinning the tenant to a plan
+ * created for the test states that directly, and keeps the suites correct no
+ * matter what the shipped plans are changed to next.
+ *
+ * @param {string} tenantId
+ * @param {object} [limits]
+ * @returns {Promise<object>} the plan row the tenant now sits on
+ */
+const applyPlanLimits = async (tenantId, limits = {}) => {
+  const {
+    maxClients = 5,
+    maxSessionsPerMonth = 20,
+    hasTrainingLogs = false,
+    hasExport = false,
+    name = `${TEST_MARKER}-capped`,
+  } = limits;
+
+  const { rows: [plan] } = await pool.query(
+    `INSERT INTO subscription_plans
+       (name, display_name, price_monthly, price_yearly,
+        max_clients, max_sessions_per_month, max_storage_mb, max_trainer_seats,
+        has_training_logs, has_analytics, has_export)
+     VALUES ($1, 'Capped (test)', 0, 0, $2, $3, 100, 1, $4, false, $5)
+     ON CONFLICT (name) DO UPDATE SET
+       max_clients            = EXCLUDED.max_clients,
+       max_sessions_per_month = EXCLUDED.max_sessions_per_month,
+       has_training_logs      = EXCLUDED.has_training_logs,
+       has_export             = EXCLUDED.has_export
+     RETURNING *`,
+    [name, maxClients, maxSessionsPerMonth, hasTrainingLogs, hasExport]
+  );
+
+  await pool.query(
+    'UPDATE tenant_subscriptions SET plan_id = $1 WHERE tenant_id = $2',
+    [plan.id, tenantId]
+  );
+
+  return plan;
+};
+
+/**
  * Sign a JWT the same way authController does.
  * @param {object} payload
  * @param {object} [options] passed through to jwt.sign (e.g. to backdate iat)
@@ -165,4 +215,4 @@ const destroyTenant = async (tenantId) => {
   await pool.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
 };
 
-module.exports = { createTenant, destroyTenant, signToken, asTenant, queryAs, pool, TEST_MARKER };
+module.exports = { createTenant, destroyTenant, signToken, asTenant, queryAs, applyPlanLimits, pool, TEST_MARKER };

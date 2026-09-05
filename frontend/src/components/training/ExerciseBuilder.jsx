@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import Icon from '../Icon';
 import { exerciseService } from '../../services/trainingService';
 import { useTranslation } from 'react-i18next';
 
@@ -41,9 +42,18 @@ function ExerciseCard({ ex, exIdx, fields, onChange, onRemove }) {
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-xl mb-3 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
-      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen(o => !o)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); }
+        }}
+        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+      >
         <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-sm">☰</span>
+          <Icon name="more" className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           <div>
             <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{ex.exerciseName}</span>
             <span className="text-gray-400 dark:text-gray-500 text-xs ml-2">
@@ -67,7 +77,7 @@ function ExerciseCard({ ex, exIdx, fields, onChange, onRemove }) {
                 <div key={f} className="flex-1 min-w-[52px]">
                   <label className="text-xs text-gray-400 dark:text-gray-500 block mb-0.5">{FIELD_LABELS[f]}</label>
                   <input type="number" inputMode="decimal" min="0"
-                    className="w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm text-center bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-blue-400 focus:outline-none"
+                    className="w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm text-center bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-blue-400 focus:outline-none dark:bg-gray-900"
                     value={set[f] || ''} placeholder="—"
                     onChange={e => updateSet(setIdx, f, e.target.value)} />
                 </div>
@@ -83,7 +93,7 @@ function ExerciseCard({ ex, exIdx, fields, onChange, onRemove }) {
           <button type="button" onClick={addSet} className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline mt-1">
             + {t('training.sets')}
           </button>
-          <input className="w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 mt-1"
+          <input className="w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 mt-1 dark:bg-gray-900"
             placeholder={`${t('sessions.notes')} (${t('common.optional')})`}
             value={ex.notes || ''} onChange={e => onChange({ ...ex, notes: e.target.value })} />
         </div>
@@ -143,9 +153,9 @@ export default function ExerciseBuilder({ workoutType, exercises, onChange }) {
       </div>
 
       {showSearch && (
-        <div className="border border-blue-200 dark:border-blue-800 rounded-xl p-3 mb-4 bg-blue-50 dark:bg-blue-900/20">
+        <div className="border border-blue-200 dark:border-blue-800 rounded-xl p-3 mb-4 bg-blue-50 dark:bg-blue-900/20 dark:bg-blue-950/40">
           <input autoFocus
-            className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 mb-2 text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+            className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 mb-2 text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 dark:bg-gray-900"
             placeholder={`${t('common.search')} ${t('exercises.title').toLowerCase()}...`}
             value={search} onChange={e => doSearch(e.target.value)} />
           <div className="space-y-1 max-h-44 overflow-y-auto">

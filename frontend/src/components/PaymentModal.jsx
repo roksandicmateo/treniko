@@ -80,14 +80,14 @@ export default function PaymentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md dark:bg-gray-900">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white dark:text-gray-100">
             {isEdit ? t('billing.editPayment') : t('billing.logPayment')}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none dark:text-gray-500">×</button>
         </div>
 
         {/* Body */}
@@ -101,9 +101,7 @@ export default function PaymentModal({
             <input
               type="number" name="amount" min="0" step="0.01"
               value={form.amount} onChange={handleChange} placeholder="0.00"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
             />
           </div>
 
@@ -115,9 +113,7 @@ export default function PaymentModal({
               </label>
               <input
                 type="date" name="paymentDate" value={form.paymentDate} onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
               />
             </div>
             <div>
@@ -126,9 +122,7 @@ export default function PaymentModal({
               </label>
               <select
                 name="paymentMethod" value={form.paymentMethod} onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
               >
                 {['cash','bank_transfer','card','other'].map((m) => (
                   <option key={m} value={m}>{t(`billing.method.${m}`)}</option>
@@ -159,13 +153,11 @@ export default function PaymentModal({
           {packages.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('billing.fields.linkPackage')} <span className="text-gray-400 font-normal">({t('common.optional')})</span>
+                {t('billing.fields.linkPackage')} <span className="text-gray-400 font-normal dark:text-gray-500">({t('common.optional')})</span>
               </label>
               <select
                 name="clientPackageId" value={form.clientPackageId} onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
               >
                 <option value="">{t('billing.fields.noPackage')}</option>
                 {packages.map((pkg) => (
@@ -178,14 +170,12 @@ export default function PaymentModal({
           {/* Note */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('billing.fields.note')} <span className="text-gray-400 font-normal">({t('common.optional')})</span>
+              {t('billing.fields.note')} <span className="text-gray-400 font-normal dark:text-gray-500">({t('common.optional')})</span>
             </label>
             <textarea
               name="note" value={form.note} onChange={handleChange} rows={2}
               placeholder={t('billing.fields.notePlaceholder')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
             />
           </div>
         </div>
@@ -193,7 +183,7 @@ export default function PaymentModal({
         {/* Footer */}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
           <button onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
+            className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition dark:hover:bg-gray-800">
             {t('common.cancel')}
           </button>
           <button onClick={handleSubmit} disabled={saving}

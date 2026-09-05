@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useCurrencyFormatter } from '../utils/locale';
+import Icon from '../components/Icon';
 import { useState, useEffect } from 'react';
 import PackageModal from '../components/PackageModal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -29,9 +30,9 @@ const PackagesPage = () => {
   const token = () => localStorage.getItem('token');
 
   const TYPE_LABELS = {
-    session_based: `🎯 ${t('packages.sessionBased')}`,
-    time_based:    `📅 ${t('packages.timeBased')}`,
-    unlimited:     `♾️ ${t('packages.unlimited')}`,
+    session_based: `${t('packages.sessionBased')}`,
+    time_based:    `${t('packages.timeBased')}`,
+    unlimited:     `${t('packages.unlimited')}`,
   };
 
   const load = async () => {
@@ -106,7 +107,7 @@ const PackagesPage = () => {
         <div className="text-center py-12 text-gray-400 dark:text-gray-500">{t('common.loading')}</div>
       ) : filtered.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-center py-16">
-          <p className="text-4xl mb-4">📦</p>
+          <p className="mb-4"><Icon name="packages" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></p>
           <p className="text-gray-500 dark:text-gray-400 mb-2 font-medium">{t('packages.noPackages')}</p>
           <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">Create training packages to assign to your clients</p>
           <button onClick={() => { setEditingPkg(null); setModalOpen(true); }} className="btn-primary">

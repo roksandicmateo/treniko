@@ -5,11 +5,14 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const token   = () => localStorage.getItem('token');
 const hdr     = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' });
 
+// These four labels were written in Croatian, in a product that ships in
+// three languages — so an English or German trainer read "Nije došao" on their
+// own attendance list. They are keys now, like every other label.
 const STATUS_CONFIG = {
-  scheduled: { label: 'Zakazano',  color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-  completed: { label: 'Prisutan',  color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
-  no_show:   { label: 'Nije došao', color: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' },
-  cancelled: { label: 'Otkazano',  color: 'bg-gray-100 text-gray-500' },
+  scheduled: { labelKey: 'sessions.scheduled',         color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  completed: { labelKey: 'sessions.attendancePresent', color: 'bg-green-100 text-green-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+  no_show:   { labelKey: 'sessions.noShow',            color: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' },
+  cancelled: { labelKey: 'sessions.cancelled',         color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
 };
 
 export default function AdhocGroupPanel({ sessionId, tenantId }) {
@@ -38,15 +41,19 @@ export default function AdhocGroupPanel({ sessionId, tenantId }) {
   };
 
   if (loading) return <p className="text-xs text-gray-400 py-2">{t('common.loading')}</p>;
-  if (attendees.length === 0) return <p className="text-xs text-gray-400 py-2">Nema sudionika</p>;
+  if (attendees.length === 0) {
+    return <p className="text-xs text-gray-400 dark:text-gray-500 py-2">{t('sessions.noParticipants')}</p>;
+  }
 
   const present = attendees.filter(a => a.status === 'completed').length;
 
   return (
     <div className="mt-4 border-t border-gray-100 dark:border-gray-800 pt-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Sudionici</p>
-        <span className="text-xs text-gray-400">{present}/{attendees.length} prisutnih</span>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('sessions.participants')}</p>
+        <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+          {t('sessions.presentCount', { present, total: attendees.length })}
+        </span>
       </div>
       <div className="space-y-1.5">
         {attendees.map(a => {
@@ -57,7 +64,7 @@ export default function AdhocGroupPanel({ sessionId, tenantId }) {
               onClick={() => toggle(a.client_id, a.status)}>
               <div className={`w-3 h-3 rounded-full flex-shrink-0 ${a.status === 'completed' ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
               <p className="flex-1 text-sm text-gray-700 dark:text-gray-300">{a.first_name} {a.last_name}</p>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{cfg.label}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{t(cfg.labelKey)}</span>
             </div>
           );
         })}

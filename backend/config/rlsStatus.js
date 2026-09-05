@@ -135,4 +135,48 @@ const reportRlsStatus = async ({ db = pool, logger = console } = {}) => {
   return status;
 };
 
-module.exports = { inspectRlsEffectiveness, reportRlsStatus };
+/**
+ * In production, refuse to serve traffic with row-level security silently off.
+ *
+ * `reportRlsStatus` writes a warning, which is the right thing in development
+ * and the wrong thing on a production box: a warning in a PM2 log is exactly
+ * the kind of signal that goes unread for months, and the whole point of the
+ * policies is that nothing in the application's behaviour reveals their
+ * absence. A deployment that connects as the table owner would run for a year
+ * looking perfectly healthy with its second boundary disabled.
+ *
+ * So in production it is a startup failure instead. The remedy is one command
+ * (backend/scripts/least-privilege.sql) plus a DB_USER change, and an operator
+ * who genuinely needs to boot without it can set ALLOW_RLS_BYPASS=true and own
+ * that decision explicitly.
+ *
+ * Never fails when the policies are absent altogether — a database that has not
+ * had migration 029 applied is a different problem, already reported, and
+ * blocking on it would make the migration impossible to roll out.
+ *
+ * @returns {Promise<boolean>} true when it is safe to continue
+ */
+const enforceRlsInProduction = async ({ db = pool, logger = console, exit = process.exit } = {}) => {
+  const status = await reportRlsStatus({ db, logger });
+
+  if (process.env.NODE_ENV !== 'production') return true;
+  if (!status || status.protectedTables === 0 || status.effective) return true;
+  if (process.env.ALLOW_RLS_BYPASS === 'true') {
+    logger.warn(
+      '⚠️  Continuing without row-level security because ALLOW_RLS_BYPASS=true. ' +
+      'Tenant isolation rests on application filtering alone.'
+    );
+    return true;
+  }
+
+  logger.error(
+    `❌ Refusing to start: row-level security is not in force for role "${status.role}" ` +
+    'and NODE_ENV=production. Client health data is protected by one boundary instead ' +
+    'of two. Run backend/scripts/least-privilege.sql, point DB_USER at the restricted ' +
+    'runtime role, and restart. To start anyway, set ALLOW_RLS_BYPASS=true.'
+  );
+  exit(1);
+  return false;
+};
+
+module.exports = { inspectRlsEffectiveness, reportRlsStatus, enforceRlsInProduction };

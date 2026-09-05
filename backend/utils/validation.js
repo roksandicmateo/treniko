@@ -136,9 +136,41 @@ const validatePassword = (password) => {
   return { ok: true };
 };
 
+/**
+ * A money amount from a request body.
+ *
+ * Rejects rather than clamps: an individually agreed package price is the
+ * trainer's own figure, and silently turning "3O" into 30 or 0 would put a
+ * number they never typed on a client's record. Two decimal places, matching
+ * NUMERIC(10,2) in the schema.
+ *
+ * @returns {number|null} the amount, or null when the input is not a usable one
+ */
+const parseMoney = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(String(value).replace(',', '.'));
+  if (!Number.isFinite(n) || n < 0 || n > 99999999.99) return null;
+  return Math.round(n * 100) / 100;
+};
+
+/**
+ * A positive whole count (sessions in a package, for example) from a request
+ * body. Same reasoning as parseMoney: rejects instead of guessing.
+ *
+ * @returns {number|null}
+ */
+const parseCount = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(String(value));
+  if (!Number.isInteger(n) || n < 1 || n > 100000) return null;
+  return n;
+};
+
 module.exports = {
   isUuid,
   parseBoundedInt,
+  parseMoney,
+  parseCount,
   sanitizeCsvValue,
   escapeHtml,
   isEmail,

@@ -1,4 +1,5 @@
 // frontend/src/components/OnboardingChecklist.jsx
+import Icon from './Icon';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -54,50 +55,51 @@ export default function OnboardingChecklist() {
     const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };
 
-    // Query each resource directly so the check is accurate:
-    // - clients: any active client exists
-    // - packages: any package template exists (not just assigned ones)
-    // - sessions: any session exists (including future scheduled ones)
-    Promise.all([
-      fetch(`${API_URL}/clients?isActive=true`, { headers }).then(r => r.json()).catch(() => ({})),
-      fetch(`${API_URL}/packages`, { headers }).then(r => r.json()).catch(() => ({})),
-      fetch(`${API_URL}/sessions?limit=1`, { headers }).then(r => r.json()).catch(() => ({})),
-    ]).then(([clientsData, packagesData, sessionsData]) => {
-      const hasClient  = (clientsData.clients?.length || 0) > 0;
-      const hasPackage = (packagesData.packages?.length || 0) > 0;
-      // sessions endpoint may return sessions array directly or nested
-      const sessionList = sessionsData.sessions || sessionsData.data || [];
-      const hasSession = sessionList.length > 0;
+    // One endpoint, three booleans.
+    //
+    // This used to ask three separate endpoints and read their payloads, one of
+    // them `GET /sessions?limit=1` — a parameter that endpoint does not support,
+    // so it fetched every session the tenant had ever had in order to find out
+    // whether there was one, on every dashboard load until the checklist was
+    // dismissed.
+    fetch(`${API_URL}/dashboard/onboarding`, { headers })
+      .then(r => r.json())
+      .then(data => {
+        const state = data.onboarding || {};
+        const hasClient = state.has_client === true;
+        const hasPackage = state.has_package === true;
+        const hasSession = state.has_session === true;
 
-      const newSteps = [
-        {
-          id:     'client',
-          label:  t('onboarding.addClient'),
-          done:   hasClient,
-          action: () => navigate('/dashboard/clients'),
-          cta:    t('onboarding.goToClients'),
-        },
-        {
-          id:     'package',
-          label:  t('onboarding.createPackage'),
-          done:   hasPackage,
-          action: () => navigate('/dashboard/packages'),
-          cta:    t('onboarding.goToPackages'),
-        },
-        {
-          id:     'session',
-          label:  t('onboarding.scheduleSession'),
-          done:   hasSession,
-          action: () => navigate('/dashboard/calendar'),
-          cta:    t('onboarding.goToCalendar'),
-        },
-      ];
-      setSteps(newSteps);
-      if (newSteps.every(s => s.done)) {
-        localStorage.setItem(key, 'true');
-        setDismissed(true);
-      }
-    }).catch(() => {});
+        const newSteps = [
+          {
+            id:     'client',
+            label:  t('onboarding.addClient'),
+            done:   hasClient,
+            action: () => navigate('/dashboard/clients'),
+            cta:    t('onboarding.goToClients'),
+          },
+          {
+            id:     'package',
+            label:  t('onboarding.createPackage'),
+            done:   hasPackage,
+            action: () => navigate('/dashboard/packages'),
+            cta:    t('onboarding.goToPackages'),
+          },
+          {
+            id:     'session',
+            label:  t('onboarding.scheduleSession'),
+            done:   hasSession,
+            action: () => navigate('/dashboard/calendar'),
+            cta:    t('onboarding.goToCalendar'),
+          },
+        ];
+        setSteps(newSteps);
+        if (newSteps.every(step => step.done)) {
+          localStorage.setItem(key, 'true');
+          setDismissed(true);
+        }
+      })
+      .catch(() => {});
     // Re-runs when the tenant resolves, which on a fresh load is after the
     // first render.
   }, [tenantId]);
@@ -122,7 +124,7 @@ export default function OnboardingChecklist() {
         onClick={() => setCollapsed(c => !c)}
       >
         <div className="flex items-center gap-3">
-          <span className="text-xl">🚀</span>
+          <Icon name="trophy" className="h-6 w-6" />
           <div>
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {t('onboarding.title')}
@@ -170,7 +172,7 @@ export default function OnboardingChecklist() {
                   ? 'bg-green-500 border-green-500'
                   : 'border-gray-300 dark:border-gray-600'
               }`}>
-                {step.done && <span className="text-white text-xs font-bold">✓</span>}
+                {step.done && <Icon name="check" className="h-4 w-4 text-white font-bold" />}
                 {!step.done && <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold">{i + 1}</span>}
               </div>
 

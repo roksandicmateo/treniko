@@ -1,4 +1,5 @@
 // frontend/src/pages/GroupSessionDetail.jsx
+import Icon from '../components/Icon';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../utils/locale';
@@ -127,7 +128,7 @@ export default function GroupSessionDetail() {
     setSessionStatus('completed');
   };
 
-  if (loading) return <div className="flex items-center justify-center py-24 text-gray-400">{t('common.loading')}</div>;
+  if (loading) return <div className="flex items-center justify-center py-24 text-gray-400 dark:text-gray-500">{t('common.loading')}</div>;
   if (!session) return null;
 
   const attendedCount = attendance.filter(a => a.status === 'completed').length;
@@ -142,7 +143,7 @@ export default function GroupSessionDetail() {
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={() => { (() => { const p = new URLSearchParams(routerLocation.search); if (p.get('from') === 'client' && p.get('clientId')) { navigate(`/dashboard/clients/${p.get('clientId')}`); } else { navigate(`/dashboard/groups/${groupId}`); } })() }}
-          className="text-gray-400 hover:text-gray-600 text-sm">← {new URLSearchParams(routerLocation.search).get('from') === 'client' ? t('nav.clients') : t('groups.title')}</button>
+          className="text-gray-400 hover:text-gray-600 text-sm dark:text-gray-500">{new URLSearchParams(routerLocation.search).get('from') === 'client' ? t('nav.clients') : t('groups.title')}</button>
         <div className="flex items-center gap-3 flex-1">
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
             style={{ backgroundColor: session.group_color || '#0ea5e9' }}>
@@ -150,7 +151,7 @@ export default function GroupSessionDetail() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{session.group_name}</h1>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-400 dark:text-gray-500">
               {fmtDate(session.session_date)} · {fmtT(session.start_time)} – {fmtT(session.end_time)}
             </p>
           </div>
@@ -165,7 +166,7 @@ export default function GroupSessionDetail() {
         </div>
       </div>
 
-      {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">{error}</div>}
+      {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm dark:bg-red-950/40 dark:text-red-400">{error}</div>}
 
       <div className="grid sm:grid-cols-2 gap-5">
 
@@ -178,7 +179,7 @@ export default function GroupSessionDetail() {
             </div>
             <div className="flex gap-1">
               <button onClick={markAllPresent}
-                className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded-lg transition-colors">
+                className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded-lg transition-colors dark:text-emerald-400">
                 All ✓
               </button>
               <button onClick={() => setAttendance(prev => prev.map(a => ({ ...a, status: 'no_show' })))}
@@ -200,7 +201,7 @@ export default function GroupSessionDetail() {
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                     present ? 'bg-green-500 border-green-500' : 'border-gray-300'
                   }`}>
-                    {present && <span className="text-white text-xs font-bold">✓</span>}
+                    {present && <Icon name="check" className="h-4 w-4 text-white font-bold" />}
                   </div>
                   {/* Avatar */}
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
@@ -225,18 +226,18 @@ export default function GroupSessionDetail() {
 
         {/* Right: Session info */}
         <div className="space-y-3">
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3 dark:bg-gray-900 dark:border-gray-700">
             <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('groups.sessionDetails')}</h2>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Workout Type</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">{t('groups.workoutType')}</label>
                 <select value={workoutType} onChange={e => setWorkoutType(e.target.value)} className="input text-sm">
                   {WORKOUT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Session Type</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">{t('groups.sessionType')}</label>
                 <select value={sessionType} onChange={e => setSessionType(e.target.value)} className="input text-sm">
                   <option value="">— optional —</option>
                   {SESSION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -245,19 +246,19 @@ export default function GroupSessionDetail() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">Location</label>
               <input type="text" value={sessionLocation} onChange={e => setSessionLocation(e.target.value)}
                 className="input text-sm" placeholder={t('groups.locationPlaceholder')} />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Session Notes</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">{t('groups.sessionNotes')}</label>
               <textarea value={notes} onChange={e => setNotes(e.target.value)}
                 rows={3} className="input text-sm" placeholder={t('groups.sessionNotesPlaceholder')} />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1 dark:text-gray-400">Status</label>
               <div className="flex gap-1.5">
                 {['scheduled', 'completed', 'cancelled'].map(s => (
                   <button key={s} type="button" onClick={() => setSessionStatus(s)}
@@ -283,7 +284,7 @@ export default function GroupSessionDetail() {
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('groups.sharedWorkout')}</p>
           </div>
           {exercises.length > 0 && (
-            <span className="text-xs text-gray-400">{exercises.length} exercise{exercises.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{exercises.length} exercise{exercises.length !== 1 ? 's' : ''}</span>
           )}
         </div>
         <div className="p-4">

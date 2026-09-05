@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { sessionsAPI, clientsAPI } from '../services/api';
 import { format } from 'date-fns';
 import TimeInput from './TimeInput';
 import AdhocGroupPanel from './AdhocGroupPanel';
+import Icon from './Icon';
 import { trainingService } from '../services/trainingService';
 import AddTrainingModal from './training/AddTrainingModal';
 import ConfirmModal from './ConfirmModal';
@@ -64,10 +65,10 @@ const PackageBanner = ({ clientId, refreshKey }) => {
     <div className={`mb-4 border rounded-xl px-4 py-3 ${bgColor}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-base flex-shrink-0">📦</span>
+          <Icon name="packages" className="h-5 w-5 flex-shrink-0" />
           <div className="min-w-0">
             <p className={`text-xs font-semibold truncate ${textColor}`}>{pkg.package_name}</p>
-            <p className={`text-xs mt-0.5 ${textColor} opacity-80`}>
+            <p className={`text-xs mt-0.5 ${textColor} opacity-80 `}>
               {pkg.package_type === 'session_based' && sessionsLeft !== null
                 ? isEmpty
                   ? `⚠️ ${t('packages.noSessionsRemaining')}`
@@ -110,10 +111,10 @@ const GroupQuickSelect = ({ groups, selected, onSelect }) => {
         {g.name?.[0]}
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate leading-tight">{g.name}</p>
-        <p className="text-xs text-gray-400 leading-tight">{g.member_count} {t('groups.members')}</p>
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate leading-tight dark:text-gray-200">{g.name}</p>
+        <p className="text-xs text-gray-400 leading-tight dark:text-gray-500">{g.member_count} {t('groups.members')}</p>
       </div>
-      {selected === g.id && <span className="text-blue-600 text-sm ml-1 flex-shrink-0">✓</span>}
+      {selected === g.id && <Icon name="check" className="h-4 w-4 text-blue-600 ml-1 flex-shrink-0 dark:text-blue-400" />}
     </button>
   );
 
@@ -127,7 +128,7 @@ const GroupQuickSelect = ({ groups, selected, onSelect }) => {
       {/* Expand to show all */}
       {rest.length > 0 && !showAll && (
         <button type="button" onClick={() => setShowAll(true)}
-          className="w-full py-2 text-xs text-gray-500 hover:text-gray-700 border border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
+          className="w-full py-2 text-xs text-gray-500 hover:text-gray-700 border border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition-colors dark:hover:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
           + {rest.length} {t('groups.title').toLowerCase()}
         </button>
       )}
@@ -142,7 +143,71 @@ const GroupQuickSelect = ({ groups, selected, onSelect }) => {
 };
 
 // ── Main modal ────────────────────────────────────────────────────────────────
+/**
+ * What the last status change did to the client's package.
+ *
+ * Marking a session complete either takes a session off a package or does not,
+ * and until now the API answered identically either way — so a trainer whose
+ * client had run out, or never had a package at all, saw a green tick and
+ * carried on working for free. The outcome is now explicit, and where it is bad
+ * news the notice carries the way to fix it.
+ */
+const PackageOutcomeNotice = ({ outcome, clientId, onAssign, t }) => {
+  if (!outcome) return null;
+
+  const kinds = {
+    charged: {
+      tone: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300',
+      icon: 'check',
+      text: t('sessions.chargedFromPackage', { package: outcome.packageName || '' }),
+      action: false,
+    },
+    released: {
+      tone: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-900 text-sky-800 dark:text-sky-300',
+      icon: 'refresh',
+      text: t('sessions.sessionReleased'),
+      action: false,
+    },
+    no_active_package: {
+      tone: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-300',
+      icon: 'alert',
+      text: t('sessions.noActivePackageWarning'),
+      action: true,
+    },
+    package_exhausted: {
+      tone: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-300',
+      icon: 'alert',
+      text: t('sessions.packageExhaustedWarning'),
+      action: true,
+    },
+    package_expired: {
+      tone: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-300',
+      icon: 'alert',
+      text: t('sessions.packageExpiredWarning'),
+      action: true,
+    },
+  };
+
+  const kind = kinds[outcome.outcome];
+  if (!kind) return null;
+
+  return (
+    <div className={`mt-3 rounded-xl border px-3 py-2.5 flex items-start gap-2 ${kind.tone}`} role="status">
+      <Icon name={kind.icon} className="h-4 w-4 mt-0.5 flex-shrink-0" />
+      <div className="min-w-0">
+        <p className="text-sm">{kind.text}</p>
+        {kind.action && clientId && (
+          <button type="button" onClick={onAssign} className="mt-1 text-xs font-semibold underline">
+            {t('sessions.assignPackageNow')}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initialClientId, onClose, onSave }) => {
+  const navigate = useNavigate();
   const [clients,         setClients]         = useState([]);
   const [groups,          setGroups]          = useState([]);
   const [sessionMode,     setSessionMode]     = useState('individual');
@@ -164,6 +229,21 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
   const [adhocAttendees, setAdhocAttendees] = useState([]); // ad-hoc group attendees
   const [groupTitle, setGroupTitle]         = useState('');
   const [packageRefresh, setPackageRefresh] = useState(0);
+
+  // What the last status change did to the client's package. The API always
+  // answered 200 whether it charged a session or found no package at all, so
+  // "one session taken off the block" and "this client has no package and you
+  // just worked for free" looked identical on screen.
+  const [packageOutcome, setPackageOutcome] = useState(null);
+
+  // Whether a no-show costs the client a session is the trainer's policy, not
+  // ours. The product must not decide it silently, so it asks — and remembers
+  // the answer as the default for next time, because a trainer's policy is
+  // usually the same every time.
+  const [noShowAsk, setNoShowAsk] = useState(false);
+  const [chargeNoShow, setChargeNoShow] = useState(
+    () => localStorage.getItem('treniko_charge_no_show') === 'true'
+  );
 
   useEffect(() => {
     loadClients();
@@ -222,13 +302,38 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
     setShowConflictWarning(false);
   };
 
-  const handleSetStatus = async (newStatus) => {
+  const handleSetStatus = async (newStatus, options = {}) => {
     if (!session) return;
+
+    // A no-show asks first, unless this call is the answer to that question.
+    if (newStatus === 'no_show' && !options.answered) {
+      setNoShowAsk(true);
+      return;
+    }
+
     setStatusLoading(true);
     setError('');
+    setPackageOutcome(null);
     try {
-      await sessionsAPI.update(session.id, { status: newStatus });
+      const payload = { status: newStatus };
+      if (newStatus === 'no_show') {
+        payload.chargeNoShow = options.chargeNoShow === true;
+        localStorage.setItem('treniko_charge_no_show', String(options.chargeNoShow === true));
+        setChargeNoShow(options.chargeNoShow === true);
+      }
+
+      const res = await sessionsAPI.update(session.id, payload);
       if (linkedTraining) await trainingService.update(linkedTraining.id, { isCompleted: newStatus === 'completed' });
+
+      // Shown here rather than swallowed: the outcome is the difference
+      // between a session that was paid for and one that was not.
+      if (res?.data?.packageOutcome) {
+        setPackageOutcome({
+          outcome: res.data.packageOutcome,
+          packageName: res.data.clientPackage?.package_name,
+        });
+      }
+      setNoShowAsk(false);
       setPackageRefresh(n => n + 1);
       onSave();
     } catch (err) { setError(err.response?.data?.message || t('common.error')); }
@@ -321,9 +426,9 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
 
           {/* Conflict warning */}
           {showConflictWarning && conflicts.length > 0 && (
-            <div className="mb-5 bg-amber-50 border border-amber-300 rounded-xl p-4">
+            <div className="mb-5 bg-amber-50 border border-amber-300 rounded-xl p-4 dark:bg-amber-950/40">
               <div className="flex items-start gap-2 mb-3">
-                <span className="text-xl flex-shrink-0">⚠️</span>
+                <Icon name="alert" className="h-6 w-6 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-amber-800">{t('sessions.conflictDetected')}</p>
                   <p className="text-xs text-amber-700 mt-0.5">{t('sessions.conflictOverlaps')}</p>
@@ -331,9 +436,9 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
               </div>
               <div className="space-y-1.5 mb-3">
                 {conflicts.map(c => (
-                  <div key={c.id} className="bg-white rounded-lg px-3 py-2 border border-amber-200">
-                    <p className="text-sm font-medium text-gray-800">{c.clientName}</p>
-                    <p className="text-xs text-gray-500">
+                  <div key={c.id} className="bg-white rounded-lg px-3 py-2 border border-amber-200 dark:bg-gray-900">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{c.clientName}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {c.startTime?.slice(0, 5)} – {c.endTime?.slice(0, 5)}
                       {c.sessionType ? ` · ${c.sessionType}` : ''}
                     </p>
@@ -342,7 +447,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
               </div>
               <div className="flex gap-2">
                 <button onClick={() => { setShowConflictWarning(false); setConflicts([]); }}
-                  className="flex-1 py-2 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
+                  className="flex-1 py-2 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
                   {t('common.cancel')}
                 </button>
                 <button onClick={handleForceSubmit} disabled={loading}
@@ -357,14 +462,14 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
           {session && (
             <div className="mb-5">
               {loadingTraining ? (
-                <div className="text-xs text-gray-400 mb-3">{t('common.loading')}</div>
+                <div className="text-xs text-gray-400 mb-3 dark:text-gray-500">{t('common.loading')}</div>
               ) : linkedTraining ? (
-                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-3">
+                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-3 dark:bg-emerald-950/40">
                   <div>
-                    <p className="text-xs text-green-600 font-medium uppercase tracking-wide mb-0.5">{t('sessions.trainingLogged')}</p>
+                    <p className="text-xs text-green-600 font-medium uppercase tracking-wide mb-0.5 dark:text-emerald-400">{t('sessions.trainingLogged')}</p>
                     <p className="text-sm font-semibold text-green-800">{linkedTraining.title || linkedTraining.workout_type}</p>
                     {linkedTraining.exercises?.length > 0 && (
-                      <p className="text-xs text-green-600">{linkedTraining.exercises.length} {t('training.exercises')}</p>
+                      <p className="text-xs text-green-600 dark:text-emerald-400">{linkedTraining.exercises.length} {t('training.exercises')}</p>
                     )}
                   </div>
                   <button type="button" onClick={() => setShowAddTraining(true)}
@@ -373,8 +478,8 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-3">
-                  <p className="text-sm text-gray-500">{t('sessions.noTrainingLogged')}</p>
+                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-3 dark:bg-gray-800 dark:border-gray-700">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('sessions.noTrainingLogged')}</p>
                   <button type="button" onClick={() => setShowAddTraining(true)}
                     className="ml-3 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
                     {t('sessions.addTraining')}
@@ -384,19 +489,72 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
 
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { status: 'completed', label: `✅ ${t('sessions.completed')}`, active: 'bg-green-100 border-green-300 text-green-700', inactive: 'border-green-300 text-green-600 hover:bg-green-50' },
-                  { status: 'no_show',  label: `❌ ${t('sessions.noShow')}`,   active: 'bg-red-100 border-red-300 text-red-700',     inactive: 'border-red-300 text-red-500 hover:bg-red-50' },
-                  { status: 'cancelled',label: `🚫 ${t('sessions.cancelled')}`, active: 'bg-gray-100 border-gray-300 text-gray-600', inactive: 'border-gray-300 text-gray-500 hover:bg-gray-50' },
-                  { status: 'scheduled',label: `📅 ${t('sessions.scheduled')}`, active: 'bg-blue-100 border-blue-300 text-blue-700', inactive: 'border-blue-300 text-blue-500 hover:bg-blue-50' },
-                ].map(({ status, label, active, inactive }) => (
+                  { status: 'completed', icon: 'check',    label: t('sessions.completed'),
+                    active: 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300',
+                    inactive: 'border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40' },
+                  { status: 'no_show',   icon: 'x',        label: t('sessions.noShow'),
+                    active: 'bg-red-100 dark:bg-red-950/50 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300',
+                    inactive: 'border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40' },
+                  { status: 'cancelled', icon: 'trash',    label: t('sessions.cancelled'),
+                    active: 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300',
+                    inactive: 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800' },
+                  { status: 'scheduled', icon: 'calendar', label: t('sessions.scheduled'),
+                    active: 'bg-sky-100 dark:bg-sky-950/50 border-sky-300 dark:border-sky-800 text-sky-800 dark:text-sky-300',
+                    inactive: 'border-sky-300 dark:border-sky-900 text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40' },
+                ].map(({ status, icon, label, active, inactive }) => (
                   <button key={status} type="button"
                     onClick={() => handleSetStatus(status)}
                     disabled={statusLoading || currentStatus === status}
-                    className={`py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${currentStatus === status ? `${active} cursor-default` : inactive}`}>
+                    className={`inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-sm font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${currentStatus === status ? `${active} cursor-default` : inactive}`}>
+                    <Icon name={icon} className="h-4 w-4" />
                     {label}
                   </button>
                 ))}
               </div>
+
+              {/* The no-show question. Asked, not assumed. */}
+              {noShowAsk && (
+                <div className="mt-3 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                    {t('sessions.noShowChargeQuestion')}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={statusLoading}
+                      onClick={() => handleSetStatus('no_show', { answered: true, chargeNoShow: true })}
+                      className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50"
+                    >
+                      {t('sessions.noShowChargeYes')}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statusLoading}
+                      onClick={() => handleSetStatus('no_show', { answered: true, chargeNoShow: false })}
+                      className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50"
+                    >
+                      {t('sessions.noShowChargeNo')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNoShowAsk(false)}
+                      className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                      {t('common.cancel')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* What that did to the package. */}
+              {packageOutcome && (
+                <PackageOutcomeNotice
+                  outcome={packageOutcome}
+                  clientId={activeClientId}
+                  onAssign={() => { setPackageOutcome(null); onClose(); navigate(`/dashboard/clients/${activeClientId}`); }}
+                  t={t}
+                />
+              )}
             </div>
           )}
 
@@ -434,7 +592,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                     <option key={client.id} value={client.id}>{client.first_name} {client.last_name}</option>
                   ))}
                 </select>
-                {session && <p className="text-xs text-gray-500 mt-1">{t('sessions.client')}: {session.clientName}</p>}
+                {session && <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">{t('sessions.client')}: {session.clientName}</p>}
               </div>
             ) : null}
 
@@ -442,7 +600,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
             {!session && sessionMode === 'adhoc-group' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.groupName')} <span className="text-gray-400 text-xs">({t('sessions.optional')})</span></label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.groupName')} <span className="text-gray-400 text-xs dark:text-gray-500">({t('sessions.optional')})</span></label>
                   <input type="text" className="input" placeholder={t('sessions.groupNamePlaceholder')}
                     value={groupTitle} onChange={e => setGroupTitle(e.target.value)} />
                 </div>
@@ -450,7 +608,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('sessions.participants')}</label>
                   <div className="border border-gray-200 dark:border-gray-700 rounded-xl max-h-40 overflow-y-auto">
                     {clients.length === 0 ? (
-                      <p className="text-sm text-gray-400 p-3">{t('sessions.noClients')}</p>
+                      <p className="text-sm text-gray-400 p-3 dark:text-gray-500">{t('sessions.noClients')}</p>
                     ) : clients.map(cl => {
                       const checked = adhocAttendees.includes(cl.id);
                       return (
@@ -475,8 +633,8 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('nav.groups')} *</label>
                 {groups.length === 0 ? (
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500">
-                    {t('groups.noGroups')}. <Link to="/dashboard/groups" className="text-blue-600 hover:underline">{t('groups.addFirst')} →</Link>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
+                    {t('groups.noGroups')}. <Link to="/dashboard/groups" className="text-blue-600 hover:underline dark:text-blue-400">{t('groups.addFirst')} →</Link>
                   </div>
                 ) : (
                   <GroupQuickSelect
@@ -486,7 +644,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
                   />
                 )}
                 {selectedGroupId && (
-                  <p className="text-xs text-blue-600 mt-1.5">
+                  <p className="text-xs text-blue-600 mt-1.5 dark:text-blue-400">
                     ℹ️ {t('sessions.sessionFor')} {groups.find(g => g.id === selectedGroupId)?.member_count || 0} {t('sessions.members')}
                   </p>
                 )}
@@ -522,7 +680,7 @@ const SessionModal = ({ session, initialDate, initialTime, initialEndTime, initi
               <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={3} className="input" placeholder={t('sessions.notesPlaceholder')} />
             </div>
 
-            {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
+            {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm dark:bg-red-950/40 dark:text-red-400">{error}</div>}
 
             <div className="flex space-x-3 pt-2">
               {session && <button type="button" onClick={handleDelete} className="btn-danger" disabled={loading}>{t('common.delete')}</button>}

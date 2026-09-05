@@ -10,6 +10,8 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { sessionsAPI } from '../services/api';
 import SessionModal from '../components/SessionModal';
 import { format } from 'date-fns';
+import Icon from '../components/Icon';
+import { showToast } from '../components/Toast';
 
 const STATUS_COLORS = {
   completed: { bg: '#22c55e', border: '#16a34a' },
@@ -31,7 +33,19 @@ export default function Calendar() {
   const fcLocale = i18n.language === 'hr' ? hrLocale : i18n.language === 'de' ? deLocale : undefined;
   const dateLocale = i18n.language === 'hr' ? 'hr-HR' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
   const calRef = useRef(null);
-  const mobile = window.innerWidth < 640;
+
+  // Read once at render, this was wrong the moment a phone was rotated or a
+  // window resized: the view stayed on the layout the page happened to load
+  // with. It is state now, kept in step with the viewport.
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 640);
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)');
+    const sync = (e) => setMobile(e.matches);
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
 
   const [currentView, setCurrentView] = useState(mobile ? 'timeGridDay' : 'timeGridWeek');
   const [title,       setTitle]       = useState('');
@@ -183,6 +197,86 @@ export default function Calendar() {
     calRef.current?.getApi().refetchEvents();
   };
 
+  /**
+   * Move a session by dragging it.
+   *
+   * ── Why this matters more than it looks ──────────────────────────────────
+   * Rescheduling is the single most frequent thing a trainer does to a booked
+   * session — clients ask to move constantly. With `editable={false}` it took
+   * six interactions: open the session, change the date, change the start,
+   * change the end, save, close. Dragging is one.
+   *
+   * The server already had everything needed: `PUT /sessions/:id` checks for
+   * overlaps and accepts `force` to book anyway. So a drop onto an occupied
+   * slot asks rather than silently double-books, and a refusal puts the event
+   * back where it was — `info.revert()` is FullCalendar's own undo, so the
+   * calendar never shows a move that did not happen.
+   */
+  const handleEventDrop = async (info) => {
+    const { event, revert } = info;
+
+    // Group sessions are edited on their own screen: they carry attendance and
+    // a member list, and moving one is not the same operation as moving an
+    // individual booking.
+    if (event.extendedProps.kind === 'group') {
+      revert();
+      return;
+    }
+
+    const date = format(event.start, 'yyyy-MM-dd');
+    const startTime = format(event.start, 'HH:mm');
+    const endTime = event.end ? format(event.end, 'HH:mm') : null;
+
+    const save = async (force) => sessionsAPI.update(event.id, {
+      sessionDate: date,
+      startTime,
+      ...(endTime ? { endTime } : {}),
+      ...(force ? { force: true } : {}),
+    });
+
+    try {
+      await save(false);
+      showToast(t('sessions.movedTo', { when: `${date} ${startTime}` }), 'success');
+    } catch (err) {
+      if (err.response?.data?.error === 'conflict') {
+        const names = (err.response.data.conflicts || [])
+          .map(c => `${c.clientName} ${String(c.startTime).slice(0, 5)}`)
+          .join(', ');
+        // eslint-disable-next-line no-alert -- a confirm is the right shape
+        // here: the answer decides one request, there is nothing to fill in,
+        // and a modal for it would sit on top of a calendar mid-drag.
+        if (window.confirm(`${t('sessions.conflictOverlaps')} ${names}\n\n${t('sessions.scheduleAnyway')}?`)) {
+          try {
+            await save(true);
+            showToast(t('sessions.movedTo', { when: `${date} ${startTime}` }), 'success');
+            return;
+          } catch {
+            showToast(t('sessions.moveFailed'), 'error');
+          }
+        }
+        revert();
+        return;
+      }
+      showToast(t('sessions.moveFailed'), 'error');
+      revert();
+    }
+  };
+
+  /**
+   * A tap on an empty slot opens the form.
+   *
+   * `select` needs a press-and-drag, which is unreliable on a touch screen —
+   * so on a phone the most common way to start a booking did nothing at all
+   * about half the time. `dateClick` is a single tap.
+   */
+  const handleDateClick = (arg) => {
+    setSelectedSession(null);
+    setSelectedDate(format(arg.date, 'yyyy-MM-dd'));
+    setSelectedTime(arg.date);
+    setSelectedEndTime(null);
+    setModalOpen(true);
+  };
+
   const go = (action) => {
     const api = calRef.current?.getApi();
     if (!api) return;
@@ -267,7 +361,8 @@ export default function Calendar() {
                 clientFilterRef.current = value;   // effect runs after paint; refetch is immediate
                 calRef.current?.getApi().refetchEvents();
               }}
-              className="hidden sm:block text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[160px]"
+              aria-label={t('sessions.allClients')}
+              className="text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-500 max-w-[120px] sm:max-w-[160px]"
             >
               <option value="">{t('sessions.allClients')}</option>
               {clients.map(cl => (
@@ -308,7 +403,12 @@ export default function Calendar() {
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
           allDaySlot={false}
-          editable={false}
+          editable={!mobile}
+          eventStartEditable={!mobile}
+          eventDurationEditable={!mobile}
+          eventDrop={handleEventDrop}
+          eventResize={handleEventDrop}
+          dateClick={handleDateClick}
           locale={fcLocale}
           selectable={true}
           selectMirror={true}

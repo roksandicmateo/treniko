@@ -51,14 +51,14 @@ export default function AddProgressModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4">
+      <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4 dark:bg-gray-900">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-gray-900">{t('progress.addProgressEntry')}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{t('progress.addProgressEntry')}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none dark:text-gray-500">×</button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm dark:bg-red-950/40 dark:text-red-300">
             {error}
           </div>
         )}
@@ -66,10 +66,10 @@ export default function AddProgressModal({
         {/* Metric selector */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">{t('progress.metric')}</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('progress.metric')}</label>
             <button
               onClick={() => setCustom((c) => !c)}
-              className="text-blue-600 text-xs hover:underline"
+              className="text-blue-600 text-xs hover:underline dark:text-blue-400"
             >
               {custom ? t('progress.useCommon') : t('progress.customMetric')}
             </button>
@@ -78,13 +78,13 @@ export default function AddProgressModal({
           {custom ? (
             <div className="grid grid-cols-2 gap-2">
               <input
-                className="border border-gray-300 rounded-xl p-2.5 text-sm"
+                className="border border-gray-300 rounded-xl p-2.5 text-sm dark:border-gray-700"
                 placeholder={t('progress.customMetricName')}
                 value={form.metricName}
                 onChange={(e) => setForm((f) => ({ ...f, metricName: e.target.value }))}
               />
               <input
-                className="border border-gray-300 rounded-xl p-2.5 text-sm"
+                className="border border-gray-300 rounded-xl p-2.5 text-sm dark:border-gray-700"
                 placeholder={t('progress.unitPlaceholder')}
                 value={form.unit}
                 onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
@@ -113,22 +113,22 @@ export default function AddProgressModal({
         {/* Value + Unit */}
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-gray-300">
               {t('progress.value')} <span className="text-red-400">*</span>
             </label>
             <input
               type="number"
               inputMode="decimal"
-              className="w-full border border-gray-300 rounded-xl p-3 text-sm"
+              className="w-full border border-gray-300 rounded-xl p-3 text-sm dark:border-gray-700"
               placeholder="0.0"
               value={form.value}
               onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('progress.unit')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-gray-300">{t('progress.unit')}</label>
             <input
-              className="w-full border border-gray-300 rounded-xl p-3 text-sm"
+              className="w-full border border-gray-300 rounded-xl p-3 text-sm dark:border-gray-700"
               value={form.unit}
               onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
             />
@@ -137,12 +137,12 @@ export default function AddProgressModal({
 
         {/* Date */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-gray-300">
             {t('progress.date')} <span className="text-red-400">*</span>
           </label>
           <input
             type="date"
-            className="w-full border border-gray-300 rounded-xl p-3 text-sm"
+            className="w-full border border-gray-300 rounded-xl p-3 text-sm dark:border-gray-700"
             value={form.date}
             onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
           />
@@ -150,7 +150,7 @@ export default function AddProgressModal({
 
         {/* Notes */}
         <input
-          className="w-full border border-gray-300 rounded-xl p-3 text-sm"
+          className="w-full border border-gray-300 rounded-xl p-3 text-sm dark:border-gray-700"
           placeholder={t('progress.notesOptional')}
           value={form.notes}
           onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
@@ -160,7 +160,7 @@ export default function AddProgressModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 border border-gray-300 py-3 rounded-xl text-sm font-medium hover:bg-gray-50"
+            className="flex-1 border border-gray-300 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 dark:border-gray-700"
           >
             Cancel
           </button>

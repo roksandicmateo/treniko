@@ -34,13 +34,15 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k) => k }),
 }));
 
+// The checklist asks one endpoint for three booleans. It used to ask three,
+// one of which fetched every session the tenant had ever had in order to find
+// out whether there was one.
+const accountWith = (state) =>
+  vi.fn().mockImplementation(() =>
+    Promise.resolve({ json: () => Promise.resolve({ success: true, onboarding: state }) }));
+
 const emptyAccount = () =>
-  vi.fn().mockImplementation((url) => {
-    const body = url.includes('/clients') ? { clients: [] }
-      : url.includes('/packages') ? { packages: [] }
-      : { sessions: [] };
-    return Promise.resolve({ json: () => Promise.resolve(body) });
-  });
+  accountWith({ has_client: false, has_package: false, has_session: false });
 
 const renderChecklist = () =>
   render(<MemoryRouter><OnboardingChecklist /></MemoryRouter>);
@@ -80,12 +82,7 @@ describe('onboarding checklist is scoped to the account', () => {
 
   test('completing every step stores the flag under this tenant only', async () => {
     // An account that already has a client, a package and a session.
-    global.fetch = vi.fn().mockImplementation((url) => {
-      const body = url.includes('/clients') ? { clients: [{ id: 1 }] }
-        : url.includes('/packages') ? { packages: [{ id: 1 }] }
-        : { sessions: [{ id: 1 }] };
-      return Promise.resolve({ json: () => Promise.resolve(body) });
-    });
+    global.fetch = accountWith({ has_client: true, has_package: true, has_session: true });
 
     renderChecklist();
 

@@ -26,7 +26,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, test, expect, vi, afterEach, beforeEach } from 'vitest';
+import { describe, test, expect, vi, afterEach, beforeEach, beforeAll } from 'vitest';
 import { render, screen, cleanup, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -148,6 +148,23 @@ describe('BUG-4: the measurement trend reads chronologically', () => {
   // and under CPU contention that happened often enough to fail the suite
   // roughly one run in three while passing in isolation every time.
   let view;
+
+  // ── Why this warm-up is here ───────────────────────────────────────────────
+  // These tests render ProgressChart, which pulls in recharts — by a wide
+  // margin the heaviest import in the bundle. `renderChart` imports it inside
+  // the test, so the first test in the block paid for transforming and
+  // evaluating recharts INSIDE its own 5s timeout. In isolation that is fine;
+  // as the twelfth suite in a full run, on a loaded machine, it intermittently
+  // was not, and the suite failed with a timeout on an assertion that had
+  // nothing to do with charts being slow.
+  //
+  // Importing it once up front moves that cost out of any test's budget. The
+  // module registry is per file, so this genuinely warms what `renderChart`
+  // will use; `vi.doMock` below still applies, because it mocks the service
+  // module rather than recharts.
+  beforeAll(async () => {
+    await import('recharts');
+  }, 30000);
 
   const renderChart = async (entries = ENTRIES) => {
     vi.doMock('../services/trainingService', () => ({
@@ -282,9 +299,25 @@ describe('BUG-5: every destination is reachable on a phone', () => {
 
   test('every desktop destination exists somewhere on mobile', async () => {
     await renderLayout();
+
+    // The desktop bar carries the four destinations the business runs on and
+    // puts the training-writing pages behind its own "More" menu, so the full
+    // desktop list is the bar plus that menu — the same split the phone uses.
     const desktopNav = document.querySelector('nav.hidden');
-    const desktop = hrefs(desktopNav);
+    const desktopMoreButton = desktopNav.querySelector('button');
+    expect(desktopMoreButton).toBeTruthy();
+    desktopMoreButton.click();
+    await waitFor(() => expect(desktopNav.querySelector('[role="menu"]')).toBeTruthy());
+
+    const desktop = [
+      ...hrefs(desktopNav),
+      ...hrefs(desktopNav.querySelector('[role="menu"]')),
+    ];
     expect(desktop.length).toBeGreaterThan(5);
+
+    // Close it again so the shared `moreOpen` state does not leave the phone
+    // sheet already open before the click below.
+    desktopMoreButton.click();
 
     const more = mobileNav().querySelector('button');
     more.click();
@@ -298,12 +331,16 @@ describe('BUG-5: every destination is reachable on a phone', () => {
     expect(unreachable).toEqual([]);
   });
 
-  test('the sheet is derived from the nav list, not written out a second time', async () => {
+  test('the sheet is derived from the nav lists, not written out a second time', async () => {
     // A hand-maintained second list is how Groups and Exercises went missing in
-    // the first place. Deriving the sheet by subtraction means a new
-    // destination is either a primary tab or in the sheet — never nowhere.
+    // the first place. The two lists are now the source and `allNavItems` is
+    // composed from them, rather than the sheet being derived by subtraction —
+    // which keeps the same property: a destination cannot exist in the app's
+    // navigation without being in one of the two lists the phone renders.
     const src = read('pages', 'DashboardLayout.jsx');
-    expect(src).toMatch(/moreNavItems\s*=\s*allNavItems\.filter/);
+    expect(src).toMatch(/allNavItems\s*=\s*\[\s*\.\.\.PRIMARY_NAV\s*,\s*\.\.\.SECONDARY_NAV\s*\]/);
+    expect(src).toMatch(/bottomNavItems\s*=\s*PRIMARY_NAV/);
+    expect(src).toMatch(/moreNavItems\s*=\s*SECONDARY_NAV/);
   });
 });
 
@@ -346,13 +383,37 @@ describe('BUG-6: nothing pushes the page wider than the phone', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-describe('BUG-1: the client detail tile reads the count, not the list', () => {
-  test('ClientDetail uses the count field', () => {
-    const src = read('pages', 'ClientDetail.jsx');
-    expect(src).toMatch(/Number\(client\.upcoming_sessions_count\)/);
-    // `Number([...])` is NaN for anything but a one-element array, which is how
-    // a client with two scheduled sessions showed 0 and one with a single
-    // session looked correct.
-    expect(src).not.toMatch(/Number\(client\.upcoming_sessions\)/);
+describe('BUG-1: a count is never read off a list', () => {
+  // `upcoming_sessions` is the ARRAY of the next scheduled sessions;
+  // `upcoming_sessions_count` is the number. `Number([...])` is NaN for
+  // anything but a one-element array, which is how a client with two scheduled
+  // sessions showed 0 while one with a single session looked correct.
+  //
+  // The three counters this originally guarded are gone from the client
+  // header — it now shows the next session, the last session, the package
+  // balance and whether they have paid, which is what the page is opened for.
+  // The defect it guards against is not about that tile, though: it is about
+  // treating the array as a number anywhere at all.
+  const files = [
+    ['pages', 'ClientDetail.jsx'],
+    ['pages', 'Clients.jsx'],
+    ['components', 'ClientSummaryHeader.jsx'],
+  ];
+
+  for (const [dir, file] of files) {
+    test(`${file} never counts the list itself`, () => {
+      const src = read(dir, file);
+      expect(src).not.toMatch(/Number\(\s*client\.upcoming_sessions\s*\)/);
+      expect(src).not.toMatch(/client\.upcoming_sessions\s*\|\|\s*0/);
+    });
+  }
+
+  test('the client list shows the next session date, not a count off an array', () => {
+    // The list used to carry a completed-sessions counter and a phone number.
+    // It now carries the balance and the next session — the two things it is
+    // opened for — and both come from scalar fields.
+    const src = read('pages', 'Clients.jsx');
+    expect(src).toMatch(/client\.next_session_date/);
+    expect(src).toMatch(/client\.sessions_remaining/);
   });
 });

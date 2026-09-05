@@ -1,4 +1,5 @@
 // frontend/src/components/progress/PRSummary.jsx  (NEW FILE)
+import Icon from '../Icon';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../utils/locale';
@@ -31,14 +32,14 @@ export default function PRSummary({ clientId }) {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="py-12 text-center text-gray-400 text-sm">{t('common.loading')}</div>;
+  if (loading) return <div className="py-12 text-center text-gray-400 text-sm dark:text-gray-500">{t('common.loading')}</div>;
 
   if (Object.keys(data).length === 0) {
     return (
-      <div className="border border-dashed border-gray-200 rounded-xl py-16 text-center">
-        <div className="text-4xl mb-3">🏆</div>
-        <p className="text-gray-500 font-medium mb-1">{t('prs.noPRs')}</p>
-        <p className="text-gray-400 text-sm max-w-xs mx-auto">
+      <div className="border border-dashed border-gray-200 rounded-xl py-16 text-center dark:border-gray-700">
+        <div className="mb-3"><Icon name="trophy" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></div>
+        <p className="text-gray-500 font-medium mb-1 dark:text-gray-400">{t('prs.noPRs')}</p>
+        <p className="text-gray-400 text-sm max-w-xs mx-auto dark:text-gray-500">
           {t('prs.autoTracked')}
         </p>
       </div>
@@ -90,10 +91,10 @@ export default function PRSummary({ clientId }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">{t('prs.title')}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{prs.length} exercise{prs.length !== 1 ? 's' : ''} tracked</p>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('prs.title')}</h3>
+          <p className="text-xs text-gray-400 mt-0.5 dark:text-gray-500">{prs.length} exercise{prs.length !== 1 ? 's' : ''} tracked</p>
         </div>
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl dark:bg-gray-800">
           {[['exercise', 'A–Z'], ['weight', t('prs.sortWeight')], ['date', t('prs.sortRecent')]].map(([val, label]) => (
             <button key={val} onClick={() => setSortBy(val)}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
@@ -108,19 +109,19 @@ export default function PRSummary({ clientId }) {
       {/* PR cards */}
       <div className="space-y-2">
         {sorted.map(pr => (
-          <div key={pr.name} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+          <div key={pr.name} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors dark:hover:bg-gray-800 dark:border-gray-700">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base">🏆</span>
-                  <p className="font-semibold text-gray-900 truncate">{pr.name}</p>
+                  <Icon name="trophy" className="h-5 w-5" />
+                  <p className="font-semibold text-gray-900 truncate dark:text-gray-100">{pr.name}</p>
                   {pr.category && (
-                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full flex-shrink-0">
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full flex-shrink-0 dark:bg-gray-800 dark:text-gray-400">
                       {pr.category}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-400 ml-6">
+                <p className="text-xs text-gray-400 ml-6 dark:text-gray-500">
                   {pr.sessions} session{pr.sessions !== 1 ? 's' : ''} · Last: {formatDate(pr.lastTrained)}
                 </p>
               </div>
@@ -129,15 +130,15 @@ export default function PRSummary({ clientId }) {
               <div className="flex gap-4 flex-shrink-0 text-right">
                 {pr.maxWeight != null && (
                   <div>
-                    <p className="text-lg font-bold text-gray-900">{pr.maxWeight} <span className="text-xs font-normal text-gray-400">kg</span></p>
-                    <p className="text-xs text-gray-400">{t('prs.maxWeight')}</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{pr.maxWeight} <span className="text-xs font-normal text-gray-400 dark:text-gray-500">kg</span></p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{t('prs.maxWeight')}</p>
                     <p className="text-xs text-gray-300">{formatDate(pr.maxWeightDate)}</p>
                   </div>
                 )}
                 {pr.best1RM != null && (
                   <div>
-                    <p className="text-lg font-bold text-blue-600">{pr.best1RM} <span className="text-xs font-normal text-gray-400">kg</span></p>
-                    <p className="text-xs text-gray-400">{t('prs.est1RM')}</p>
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{pr.best1RM} <span className="text-xs font-normal text-gray-400 dark:text-gray-500">kg</span></p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{t('prs.est1RM')}</p>
                     <p className="text-xs text-gray-300">{formatDate(pr.best1RMDate)}</p>
                   </div>
                 )}
@@ -147,7 +148,7 @@ export default function PRSummary({ clientId }) {
         ))}
       </div>
 
-      <p className="text-xs text-gray-400 text-center">
+      <p className="text-xs text-gray-400 text-center dark:text-gray-500">
         {t('prs.formula')}
       </p>
     </div>

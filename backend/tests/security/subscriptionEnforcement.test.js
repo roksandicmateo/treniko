@@ -14,7 +14,7 @@
 
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, pool, queryAs } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, applyPlanLimits, pool, queryAs } = require('../helpers/fixtures');
 
 jest.setTimeout(30000);
 
@@ -22,6 +22,10 @@ let T;
 
 beforeAll(async () => {
   T = await createTenant('sub');
+  // Pinned to a plan with a feature switched off and a small client cap. The
+  // beta plan has neither (migration 038); the middleware's job is to enforce
+  // whatever plan the tenant is on, which is what these tests exercise.
+  await applyPlanLimits(T.tenantId, { maxClients: 5, hasTrainingLogs: false });
 });
 
 afterAll(async () => {
@@ -140,7 +144,7 @@ describe('TR-HIGH-1: enforcement middleware runs with an authenticated user', ()
     expect(res.status).toBe(200);
   });
 
-  test('checkFeatureAccess blocks a free-plan tenant from training logs', async () => {
+  test('checkFeatureAccess blocks a tenant whose plan lacks the feature', async () => {
     const res = await auth(
       request(app).get(`/api/training-logs/client/${T.clientId}/completion-stats`)
     );
@@ -149,7 +153,7 @@ describe('TR-HIGH-1: enforcement middleware runs with an authenticated user', ()
   });
 
   test('checkClientLimit blocks creation past the plan limit', async () => {
-    // Free plan allows 5 clients; the fixture already created 1.
+    // The pinned plan allows 5 clients; the fixture already created 1.
     const created = [];
     try {
       for (let i = 0; i < 4; i += 1) {
@@ -187,6 +191,38 @@ describe('TR-HIGH-2: paid plan upgrades require payment', () => {
     return rows[0].id;
   };
 
+  test('a paid plan outside the old name ranking is still refused', async () => {
+    // The guard used to rank plans with a hardcoded map of names,
+    // `{ free: 0, pro: 1, enterprise: 2 }`. Any plan whose name was missing
+    // from it ranked as `undefined`, which is never greater than a number, so
+    // the move was classified as a downgrade and allowed — a free trainer
+    // could promote themselves onto it. Ranking is by price now; this pins it.
+    const { rows: [premium] } = await pool.query(
+      `INSERT INTO subscription_plans
+         (name, display_name, price_monthly, price_yearly, max_clients,
+          max_sessions_per_month, max_storage_mb, max_trainer_seats,
+          has_training_logs, has_analytics, has_export)
+       VALUES ('sec2a-test-premium', 'Premium (test)', 79, 790, NULL, NULL, 9000, 5,
+               true, true, true)
+       ON CONFLICT (name) DO UPDATE SET price_monthly = EXCLUDED.price_monthly
+       RETURNING id, name`
+    );
+
+    const res = await auth(request(app).post('/api/subscriptions/change-plan'))
+      .send({ planId: premium.id, billingPeriod: 'monthly' });
+
+    expect(res.status).toBe(402);
+    expect(res.body.paymentRequired).toBe(true);
+
+    const after = await pool.query(
+      `SELECT sp.name FROM tenant_subscriptions ts
+         JOIN subscription_plans sp ON sp.id = ts.plan_id
+        WHERE ts.tenant_id = $1`,
+      [T.tenantId]
+    );
+    expect(after.rows[0].name).not.toBe('sec2a-test-premium');
+  });
+
   test('a free tenant cannot self-upgrade to a paid plan', async () => {
     const enterprise = await planId('enterprise');
 
@@ -205,7 +241,11 @@ describe('TR-HIGH-2: paid plan upgrades require payment', () => {
         WHERE ts.tenant_id = $1`,
       [T.tenantId]
     );
-    expect(after.rows[0].name).toBe('free');
+    // Unchanged: the guard's job is that a self-service call cannot grant a
+    // paid plan, not that the tenant sits on any particular free tier. The
+    // suite pins a capped test plan in beforeAll.
+    expect(after.rows[0].name).not.toBe('pro');
+    expect(after.rows[0].name).not.toBe('enterprise');
   });
 
   test('a free tenant cannot self-upgrade to pro either', async () => {
@@ -224,7 +264,11 @@ describe('TR-HIGH-2: paid plan upgrades require payment', () => {
         WHERE ts.tenant_id = $1`,
       [T.tenantId]
     );
-    expect(after.rows[0].name).toBe('free');
+    // Unchanged: the guard's job is that a self-service call cannot grant a
+    // paid plan, not that the tenant sits on any particular free tier. The
+    // suite pins a capped test plan in beforeAll.
+    expect(after.rows[0].name).not.toBe('pro');
+    expect(after.rows[0].name).not.toBe('enterprise');
   });
 
   test('cancelling a subscription is still allowed', async () => {

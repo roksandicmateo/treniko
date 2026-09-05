@@ -4,7 +4,7 @@ const clientRouter = express.Router({ mergeParams: true });
 const {
   getPackages, getPackage, createPackage, updatePackage, deletePackage,
   getClientPackages, getActiveClientPackage, assignPackage,
-  updateClientPackage, useSession
+  updateClientPackage, useSession, adjustClientPackage, getClientPackageLedger
 } = require('../controllers/packagesController');
 const { authenticateToken } = require('../middleware/auth');
 const { attachUuidParamGuards, guardInheritedUuidParams } = require('../utils/routeGuards');
@@ -34,5 +34,8 @@ clientRouter.get( '/packages/active',       getActiveClientPackage);
 clientRouter.post('/packages',              assignPackage);
 clientRouter.put( '/packages/:id',          updateClientPackage);
 clientRouter.post('/packages/:id/use-session', useSession);
+// A manual correction, and the ledger that explains any balance.
+clientRouter.post('/packages/:id/adjust', adjustClientPackage);
+clientRouter.get( '/packages/:id/ledger', getClientPackageLedger);
 
 module.exports = { router, clientRouter };

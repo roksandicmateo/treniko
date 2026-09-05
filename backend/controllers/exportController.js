@@ -209,6 +209,13 @@ const tenantDatasets = (tenantId, trainerId) => [
     sql: 'SELECT * FROM client_payments WHERE tenant_id = $1 ORDER BY payment_date',
     params: [tenantId] },
 
+  // What was sent to which client and when. It is a record of messages a
+  // person received, so it belongs in their trainer's export like any other
+  // client-linked row.
+  { name: 'session_reminders',
+    sql: 'SELECT * FROM session_reminders WHERE tenant_id = $1 ORDER BY sent_at',
+    params: [tenantId] },
+
   { name: 'subscription',
     sql: 'SELECT * FROM tenant_subscriptions WHERE tenant_id = $1',
     params: [tenantId] },

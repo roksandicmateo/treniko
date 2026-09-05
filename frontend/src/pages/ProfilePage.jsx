@@ -4,12 +4,24 @@ import { showToast } from '../components/Toast';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import LanguageSelector from '../components/LanguageSelector';
+import Icon from '../components/Icon';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+// A short list rather than the full IANA database: these are the zones a
+// Croatian-first product is plausibly used in, and the server validates
+// whatever arrives against PostgreSQL's own zone table anyway.
+const TIMEZONES = [
+  'Europe/Zagreb', 'Europe/Ljubljana', 'Europe/Belgrade', 'Europe/Sarajevo',
+  'Europe/Vienna', 'Europe/Berlin', 'Europe/Zurich', 'Europe/Rome',
+  'Europe/London', 'Europe/Dublin', 'Europe/Madrid', 'Europe/Lisbon',
+  'Europe/Stockholm', 'Europe/Warsaw', 'Europe/Prague', 'Europe/Budapest',
+  'Europe/Athens', 'Europe/Istanbul', 'UTC',
+];
+
 const ProfilePage = () => {
   const { t, i18n } = useTranslation();
-  const { isDark, toggle } = useTheme();
+  const { mode, setMode } = useTheme();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -17,7 +29,8 @@ const ProfilePage = () => {
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
     bio: '', city: '', country: '', website: '',
-    businessName: '', businessPhone: '', businessWebsite: ''
+    businessName: '', businessPhone: '', businessWebsite: '',
+    timezone: 'Europe/Zagreb', sessionRemindersEnabled: true,
   });
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordError, setPasswordError] = useState('');
@@ -42,6 +55,8 @@ const ProfilePage = () => {
           businessName: p.business?.name || '',
           businessPhone: p.business?.phone || '',
           businessWebsite: p.business?.website || '',
+          timezone: p.timezone || 'Europe/Zagreb',
+          sessionRemindersEnabled: p.session_reminders_enabled !== false,
         });
       }
     } catch { showToast(t('common.error'), 'error'); }
@@ -187,24 +202,81 @@ const ProfilePage = () => {
       {/* Settings */}
       {activeTab === 'settings' && (
         <div className="space-y-4">
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6">
-            <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4">🌍 {t('profile.language')}</h3>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4">{t('profile.language')}</h3>
             <LanguageSelector />
           </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6">
-            <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4">🎨 {t('profile.theme')}</h3>
-            <div className="flex gap-3">
-              <button onClick={() => isDark && toggle()}
-                className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-colors ${!isDark ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}>
-                <span className="text-2xl">☀️</span>
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('profile.lightMode')}</p>
-              </button>
-              <button onClick={() => !isDark && toggle()}
-                className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 transition-colors ${isDark ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}>
-                <span className="text-2xl">🌙</span>
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('profile.darkMode')}</p>
-              </button>
+
+          {/* Three modes, not two. The provider used to resolve the system
+              preference once at startup and write it down as a choice, so an
+              app on a phone that switches to dark at sunset stayed light
+              forever — and "follow my device" could not be asked for even
+              deliberately. */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4">{t('profile.theme')}</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { key: 'light',  icon: 'sun',    label: t('profile.themeLight') },
+                { key: 'dark',   icon: 'moon',   label: t('profile.themeDark') },
+                { key: 'system', icon: 'screen', label: t('profile.themeSystem') },
+              ].map(option => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setMode(option.key)}
+                  aria-pressed={mode === option.key}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                    mode === option.key
+                      ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/40'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                >
+                  <Icon name={option.icon} className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{option.label}</span>
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* The two settings the product's own behaviour depends on. */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 space-y-5">
+            <div>
+              <label htmlFor="tz" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('profile.timezone')}
+              </label>
+              <select
+                id="tz"
+                value={formData.timezone || 'Europe/Zagreb'}
+                onChange={e => setFormData({ ...formData, timezone: e.target.value })}
+                className="input"
+              >
+                {TIMEZONES.map(zone => <option key={zone} value={zone}>{zone}</option>)}
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('profile.timezoneHint')}</p>
+            </div>
+
+            <div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.sessionRemindersEnabled !== false}
+                  onChange={e => setFormData({ ...formData, sessionRemindersEnabled: e.target.checked })}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+                    {t('profile.remindersOn')}
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    {t('profile.remindersHint')}
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-50">
+              {saving ? t('common.saving') : t('common.saveChanges')}
+            </button>
           </div>
         </div>
       )}

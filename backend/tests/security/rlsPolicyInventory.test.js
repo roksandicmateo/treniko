@@ -40,6 +40,7 @@ const DIRECT_TENANT_TABLES = [
   'client_packages',
   'client_payments',
   'package_session_usage',
+  'session_reminders',
   'subscription_history',
 ];
 

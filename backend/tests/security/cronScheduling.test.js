@@ -27,11 +27,22 @@ const CRON_SOURCE = fs.readFileSync(
 );
 
 describe('node-cron 4.x still supports how this application schedules work', () => {
-  test('cron.js schedules exactly one expression, and it is the documented daily run', () => {
+  test('cron.js schedules exactly the documented expressions', () => {
     const expressions = [...CRON_SOURCE.matchAll(/cron\.schedule\(\s*['"]([^'"]+)['"]/g)]
       .map((m) => m[1]);
 
-    expect(expressions).toEqual(['0 9 * * *']);
+    // Daily subscription check, and the hourly session-reminder run added with
+    // client reminders. The list is exact on purpose: a schedule that appears
+    // here without being written down is a background job nobody knows runs.
+    expect(expressions).toEqual(['0 9 * * *', '0 * * * *']);
+  });
+
+  test('every scheduled expression is valid under the upgraded parser', () => {
+    const expressions = [...CRON_SOURCE.matchAll(/cron\.schedule\(\s*['"]([^'"]+)['"]/g)]
+      .map((m) => m[1]);
+    for (const expression of expressions) {
+      expect(cron.validate(expression)).toBe(true);
+    }
   });
 
   test('that expression is valid under the upgraded parser', () => {

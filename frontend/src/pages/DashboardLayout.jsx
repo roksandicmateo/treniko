@@ -9,10 +9,11 @@ import VerifyEmailBanner from '../components/VerifyEmailBanner';
 import ProfileMenu from '../components/ProfileMenu';
 import LanguageSelector from '../components/LanguageSelector';
 import { useTranslation } from 'react-i18next';
+import Icon from '../components/Icon';
 
 const DashboardLayout = () => {
   const { user } = useAuth();
-  const { isDark, toggle } = useTheme();
+  const { mode, isDark, toggle } = useTheme();
   const { t } = useTranslation();
   const [dpaAccepted, setDpaAccepted] = useState(true);
   const [dpaLoading,  setDpaLoading]  = useState(true);
@@ -37,16 +38,29 @@ const DashboardLayout = () => {
     else setDpaLoading(false);
   }, [user]);
 
-  const allNavItems = [
-    { to: '/dashboard',           label: t('nav.dashboard'), icon: '🏠' },
-    { to: '/dashboard/calendar',  label: t('nav.calendar'),  icon: '📅' },
-    { to: '/dashboard/trainings', label: t('nav.trainings'), icon: '🏋️' },
-    { to: '/dashboard/clients',   label: t('nav.clients'),   icon: '👥' },
-    { to: '/dashboard/packages',  label: t('nav.packages'),  icon: '📦' },
-    { to: '/dashboard/exercises', label: t('nav.exercises'), icon: '💪' },
-    { to: '/dashboard/groups',    label: t('nav.groups'),    icon: '🤝' },
-    { to: '/dashboard/progress',  label: t('nav.progress'),  icon: '📈' },
+  // ── What sits in the navigation ────────────────────────────────────────────
+  // Eight top-level destinations made a focused tool look like eight products.
+  // Four of them are the business: today, the calendar, the clients and the
+  // packages they buy. The rest — the exercise library, the workout log, the
+  // progress charts — are about writing training, which is a different job and
+  // one every screen reaches through a client anyway (their own tabs on the
+  // client page). They keep their routes and their place in the "More" menu;
+  // nothing was removed, and nothing is unreachable.
+  const PRIMARY_NAV = [
+    { to: '/dashboard',          label: t('nav.dashboard'), icon: 'home' },
+    { to: '/dashboard/calendar', label: t('nav.calendar'),  icon: 'calendar' },
+    { to: '/dashboard/clients',  label: t('nav.clients'),   icon: 'clients' },
+    { to: '/dashboard/packages', label: t('nav.packages'),  icon: 'packages' },
   ];
+
+  const SECONDARY_NAV = [
+    { to: '/dashboard/groups',    label: t('nav.groups'),    icon: 'groups' },
+    { to: '/dashboard/trainings', label: t('nav.trainings'), icon: 'dumbbell' },
+    { to: '/dashboard/exercises', label: t('nav.exercises'), icon: 'play' },
+    { to: '/dashboard/progress',  label: t('nav.progress'),  icon: 'chart' },
+  ];
+
+  const allNavItems = [...PRIMARY_NAV, ...SECONDARY_NAV];
 
   // ── Mobile navigation ───────────────────────────────────────────────────────
   // The bottom bar used to be a fixed list of six destinations, and Groups and
@@ -63,11 +77,8 @@ const DashboardLayout = () => {
   // `moreNavItems` is derived by subtraction, so a destination added to
   // allNavItems can never again be silently unreachable on mobile: if it is not
   // a primary tab it appears in the sheet.
-  const PRIMARY_MOBILE = [
-    '/dashboard', '/dashboard/calendar', '/dashboard/clients', '/dashboard/trainings',
-  ];
-  const bottomNavItems = PRIMARY_MOBILE.map(to => allNavItems.find(i => i.to === to));
-  const moreNavItems   = allNavItems.filter(i => !PRIMARY_MOBILE.includes(i.to));
+  const bottomNavItems = PRIMARY_NAV;
+  const moreNavItems   = SECONDARY_NAV;
 
   const [moreOpen, setMoreOpen] = useState(false);
   const routerLocation = useLocation();
@@ -88,18 +99,32 @@ const DashboardLayout = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 sm:h-16">
             <h1 className="text-xl sm:text-2xl font-bold text-primary-500 tracking-tight">TRENIKO</h1>
-            <div className="flex items-center gap-2">
-              {/* Language selector — compact dropdown */}
-              <div className="hidden sm:block">
-                <LanguageSelector compact />
-              </div>
-              {/* Dark mode toggle */}
+            <div className="flex items-center gap-1.5">
+              {/* Language and theme both live in the header, on every screen
+                  size. The language picker used to be `hidden sm:block`, so on
+                  a phone — where most of this product is used — it was not in
+                  the header at all. */}
+              <LanguageSelector compact />
+
+              {/* Light → dark → follow the device, in one control. The label
+                  says which mode is active rather than which icon is showing,
+                  because "sun" alone does not tell you whether you chose light
+                  or your phone did. */}
               <button
                 onClick={toggle}
-                className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                title={isDark ? t('profile.lightMode') : t('profile.darkMode')}
+                aria-label={`${t('profile.theme')}: ${
+                  mode === 'system' ? t('profile.themeSystem')
+                    : mode === 'dark' ? t('profile.themeDark')
+                    : t('profile.themeLight')
+                }`}
+                title={
+                  mode === 'system' ? t('profile.themeSystem')
+                    : mode === 'dark' ? t('profile.themeDark')
+                    : t('profile.themeLight')
+                }
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               >
-                {isDark ? '☀️' : '🌙'}
+                <Icon name={mode === 'system' ? 'screen' : isDark ? 'moon' : 'sun'} className="h-[18px] w-[18px]" />
               </button>
               <ProfileMenu />
             </div>
@@ -111,7 +136,7 @@ const DashboardLayout = () => {
       <nav className="hidden sm:block bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-0 overflow-x-auto">
-            {allNavItems.map(item => (
+            {PRIMARY_NAV.map(item => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -124,10 +149,55 @@ const DashboardLayout = () => {
                   }`
                 }
               >
-                <span className="text-base">{item.icon}</span>
+                <Icon name={item.icon} className="h-[18px] w-[18px]" />
                 <span>{item.label}</span>
               </NavLink>
             ))}
+
+            {/* The training-writing side of the product, one click away rather
+                than competing with the four destinations the business runs on. */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMoreOpen(o => !o)}
+                aria-expanded={moreOpen}
+                aria-haspopup="menu"
+                className={`flex items-center gap-2 px-4 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  moreIsActive
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700'
+                }`}
+              >
+                <Icon name="more" className="h-[18px] w-[18px]" />
+                <span>{t('nav.more')}</span>
+              </button>
+
+              {moreOpen && (
+                <div
+                  role="menu"
+                  className="absolute left-0 top-full z-50 w-56 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden"
+                >
+                  {SECONDARY_NAV.map(item => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      role="menuitem"
+                      onClick={() => setMoreOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                          isActive
+                            ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-gray-800'
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`
+                      }
+                    >
+                      <Icon name={item.icon} className="h-[18px] w-[18px]" />
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -156,6 +226,8 @@ const DashboardLayout = () => {
       </main>
 
       {/* ── Mobile "More" sheet ── */}
+      {/* Shares `moreOpen` with the desktop dropdown above; `sm:hidden` keeps
+          exactly one of the two visible at any width. */}
       {moreOpen && (
         <div className="sm:hidden fixed inset-0 z-50" role="dialog" aria-modal="true"
              aria-label={t('nav.more')}>
@@ -180,7 +252,7 @@ const DashboardLayout = () => {
                   }`
                 }
               >
-                <span className="text-xl">{item.icon}</span>
+                <Icon name={item.icon} className="h-5 w-5" />
                 <span>{item.label}</span>
               </NavLink>
             ))}
@@ -206,9 +278,7 @@ const DashboardLayout = () => {
             >
               {({ isActive }) => (
                 <>
-                  <span className={`text-xl mb-0.5 transition-transform ${isActive ? 'scale-110' : ''}`}>
-                    {item.icon}
-                  </span>
+                  <Icon name={item.icon} className={`h-5 w-5 mb-0.5 transition-transform ${isActive ? 'scale-110' : ''}`} />
                   <span className={isActive ? 'font-semibold' : ''}>{item.label}</span>
                 </>
               )}
@@ -225,7 +295,7 @@ const DashboardLayout = () => {
                 : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
             }`}
           >
-            <span className="text-xl mb-0.5">⋯</span>
+            <Icon name="more" className="h-5 w-5 mb-0.5" />
             <span className={moreIsActive || moreOpen ? 'font-semibold' : ''}>{t('nav.more')}</span>
           </button>
         </div>

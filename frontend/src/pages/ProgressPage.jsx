@@ -1,4 +1,5 @@
 // frontend/src/pages/ProgressPage.jsx
+import Icon from '../components/Icon';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +50,7 @@ const makeDayFormatter = (locale) => (d) => {
 // ── Stat card ────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, unit, icon, color }) => (
   <div className={`rounded-2xl p-4 ${color}`}>
-    <div className="text-2xl mb-1">{icon}</div>
+    <Icon name={icon} className="h-5 w-5 mb-1 text-gray-500 dark:text-gray-400" />
     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value ?? '—'}<span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-1">{unit}</span></p>
     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{label}</p>
   </div>
@@ -154,7 +155,7 @@ export default function ProgressPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">📈 Progress</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Progress</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('progress.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -184,7 +185,7 @@ export default function ProgressPage() {
         <div className="flex items-center justify-center py-24 text-gray-400">{t('common.loading')}</div>
       ) : !data ? (
         <div className="text-center py-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
-          <p className="text-4xl mb-3">📊</p>
+          <p className="mb-3"><Icon name="chart" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></p>
           <p className="text-gray-600 dark:text-gray-400 font-medium">No progress data yet</p>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Complete training sessions to see progress charts</p>
         </div>
@@ -194,10 +195,10 @@ export default function ProgressPage() {
         <>
           {/* Stats row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label={t('progress.statSessions')} value={stats?.total_sessions} icon="📅" color="bg-blue-50 dark:bg-blue-900/20" />
-            <StatCard label={t('progress.statHours')} value={stats?.total_hours} unit="h" icon="⏱️" color="bg-purple-50 dark:bg-purple-900/20" />
-            <StatCard label={t('progress.statSets')} value={stats?.total_sets} icon="💪" color="bg-green-50 dark:bg-green-900/20" />
-            <StatCard label={t('progress.statExercises')} value={stats?.unique_exercises} icon="🏋️" color="bg-orange-50 dark:bg-orange-900/20" />
+            <StatCard label={t('progress.statSessions')} value={stats?.total_sessions} icon="calendar" color="bg-blue-50 dark:bg-blue-900/20" />
+            <StatCard label={t('progress.statHours')} value={stats?.total_hours} unit="h" icon="clock" color="bg-purple-50 dark:bg-purple-900/20" />
+            <StatCard label={t('progress.statSets')} value={stats?.total_sets} icon="dumbbell" color="bg-green-50 dark:bg-green-900/20" />
+            <StatCard label={t('progress.statExercises')} value={stats?.unique_exercises} icon="dumbbell" color="bg-orange-50 dark:bg-orange-900/20" />
           </div>
 
           {/* Strength chart */}
@@ -292,7 +293,7 @@ export default function ProgressPage() {
           {/* Personal records */}
           {prs.length > 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">🏆 {t('progress.personalRecords')}</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('progress.personalRecords')}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {prs.map((pr, i) => (
                   <div key={pr.exercise_id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
@@ -309,7 +310,7 @@ export default function ProgressPage() {
           {/* No data state */}
           {data.exercises.length === 0 && data.frequencyData.length === 0 && (
             <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
-              <p className="text-4xl mb-3">📊</p>
+              <p className="mb-3"><Icon name="chart" className="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600" /></p>
               <p className="text-gray-600 dark:text-gray-400 font-medium">No completed trainings yet</p>
               <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Log and complete training sessions to see progress</p>
               <button onClick={() => navigate('/dashboard/trainings')} className="btn-primary mt-4">

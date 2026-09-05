@@ -6,6 +6,9 @@ const { pool, getClient } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { attachUuidParamGuards } = require('../utils/routeGuards');
 const { isUuid, parseBoundedInt } = require('../utils/validation');
+const packageUsage = require('../services/packageUsageService');
+const { captureError } = require('../config/errorMonitor');
+const { statusConsumesSession } = packageUsage;
 
 // Mirrors the check_attendance_status constraint in migration 017.
 const ATTENDANCE_STATUSES = ['scheduled', 'completed', 'cancelled', 'no_show'];
@@ -314,27 +317,46 @@ router.get('/:id/sessions', async (req, res) => {
 
 // ── PUT /api/groups/:id/sessions/:sessionId/attendance/:clientId ─────────────
 // Update individual member attendance status
+// ── PUT /api/groups/:id/sessions/:sessionId/attendance/:clientId ─────────────
+//
+// Attendance is where a group session becomes real, so it is also where it has
+// to cost a package session. It never did: `syncPackageUsageForSession` was
+// reachable only from the individual-session controller, so a trainer running
+// small groups watched every member's balance stand still while they trained.
+//
+// Each member is charged separately, against their own next-expiring package,
+// through the same ledger the individual path writes to — so "how many has she
+// got left" means one thing regardless of how she trained.
 router.put('/:id/sessions/:sessionId/attendance/:clientId', async (req, res) => {
-  try {
-    const { tenantId } = req.user;
-    const { status } = req.body;
-    const { id: groupId, sessionId, clientId } = req.params;
+  const { tenantId, userId } = req.user;
+  const { status, chargeNoShow } = req.body;
+  const { id: groupId, sessionId, clientId } = req.params;
 
-    if (!isUuid(groupId) || !isUuid(sessionId) || !isUuid(clientId)) {
-      return res.status(404).json({ error: 'Attendance record not found' });
-    }
-    if (!ATTENDANCE_STATUSES.includes(status)) {
-      return res.status(400).json({
-        error: `status must be one of: ${ATTENDANCE_STATUSES.join(', ')}`,
-      });
-    }
+  if (!isUuid(groupId) || !isUuid(sessionId) || !isUuid(clientId)) {
+    return res.status(404).json({ error: 'Attendance record not found' });
+  }
+  if (!ATTENDANCE_STATUSES.includes(status)) {
+    return res.status(400).json({
+      error: `status must be one of: ${ATTENDANCE_STATUSES.join(', ')}`,
+    });
+  }
+
+  const db = await getClient();
+  let responded = false;
+
+  try {
+    await db.query('BEGIN');
 
     // Verify group belongs to tenant
-    const { rows: [group] } = await pool.query(
+    const { rows: [group] } = await db.query(
       'SELECT id FROM groups WHERE id=$1 AND tenant_id=$2',
       [groupId, tenantId]
     );
-    if (!group) return res.status(404).json({ error: 'Group not found' });
+    if (!group) {
+      responded = true;
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Group not found' });
+    }
 
     // Tenant ownership is enforced on the row actually being mutated, not just
     // on the group named in the URL. `group_session_attendance` has no
@@ -343,24 +365,77 @@ router.put('/:id/sessions/:sessionId/attendance/:clientId', async (req, res) => 
     // lives in this tenant AND belongs to the group from the URL. Without this
     // join a trainer could pass their own :id together with another tenant's
     // :sessionId/:clientId and overwrite that tenant's attendance record.
-    const { rows: [attendance] } = await pool.query(
-      `UPDATE group_session_attendance gsa
-          SET status = $1
-         FROM group_sessions gs
-        WHERE gs.id = gsa.group_session_id
-          AND gsa.group_session_id = $2
-          AND gsa.client_id = $3
-          AND gs.group_id = $4
-          AND gs.tenant_id = $5
-      RETURNING gsa.*`,
-      [status, sessionId, clientId, groupId, tenantId]
+    //
+    // The previous state is read under FOR UPDATE first, because the charge
+    // decision depends on it and two concurrent saves must not both charge.
+    const { rows: [previous] } = await db.query(
+      `SELECT gsa.status, gsa.no_show_charged
+         FROM group_session_attendance gsa
+         JOIN group_sessions gs ON gs.id = gsa.group_session_id
+        WHERE gsa.group_session_id = $1
+          AND gsa.client_id = $2
+          AND gs.group_id = $3
+          AND gs.tenant_id = $4
+        FOR UPDATE OF gsa`,
+      [sessionId, clientId, groupId, tenantId]
     );
     // A row owned by another tenant is indistinguishable from one that does not
     // exist: both return this same 404, so the response cannot be used to probe
     // for the existence of another tenant's records.
-    if (!attendance) return res.status(404).json({ error: 'Attendance record not found' });
-    res.json({ success: true, attendance });
-  } catch (e) { if (sendDbClientError(res, e)) return; console.error(e); res.status(500).json({ error: 'Server error' }); }
+    if (!previous) {
+      responded = true;
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Attendance record not found' });
+    }
+
+    const noShowCharged = status === 'no_show' ? chargeNoShow === true : false;
+
+    const { rows: [attendance] } = await db.query(
+      `UPDATE group_session_attendance gsa
+          SET status = $1, no_show_charged = $2
+         FROM group_sessions gs
+        WHERE gs.id = gsa.group_session_id
+          AND gsa.group_session_id = $3
+          AND gsa.client_id = $4
+          AND gs.group_id = $5
+          AND gs.tenant_id = $6
+      RETURNING gsa.*`,
+      [status, noShowCharged, sessionId, clientId, groupId, tenantId]
+    );
+
+    const wasCharged = statusConsumesSession(previous.status, previous.no_show_charged === true);
+    const nowCharges = statusConsumesSession(status, chargeNoShow === true);
+
+    let usage = null;
+    if (!wasCharged && nowCharges) {
+      usage = await packageUsage.chargeUsage(db, {
+        tenantId,
+        clientId,
+        groupSessionId: sessionId,
+        actorId: userId || null,
+      });
+    } else if (wasCharged && !nowCharges) {
+      usage = await packageUsage.releaseUsage(db, {
+        tenantId, groupSessionId: sessionId, clientId,
+      });
+    }
+
+    await db.query('COMMIT');
+
+    return res.json({
+      success: true,
+      attendance,
+      ...(usage ? { packageOutcome: usage.outcome, clientPackage: usage.clientPackage } : {}),
+    });
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    if (responded) return;
+    if (sendDbClientError(res, e)) return;
+    captureError(e, { route: 'PUT /api/groups/:id/sessions/:sessionId/attendance/:clientId', method: 'PUT', tenantId, outcome: 'package_charge_rolled_back' });
+    return res.status(500).json({ error: 'Server error' });
+  } finally {
+    db.release();
+  }
 });
 
 

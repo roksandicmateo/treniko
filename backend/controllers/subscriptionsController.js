@@ -289,7 +289,9 @@ const changePlan = async (req, res) => {
 
     // Get current subscription
     const currentSub = await queryWithTenant(
-      `SELECT ts.*, sp.name as current_plan_name
+      `SELECT ts.*, sp.name as current_plan_name,
+              sp.price_monthly AS current_price_monthly,
+              sp.price_yearly  AS current_price_yearly
        FROM tenant_subscriptions ts
        JOIN subscription_plans sp ON ts.plan_id = sp.id
        WHERE ts.tenant_id = $1`,
@@ -354,11 +356,23 @@ const changePlan = async (req, res) => {
       });
     }
 
-    // Determine change type
-    const priceOrder = { free: 0, pro: 1, enterprise: 2 };
-    const changeType = priceOrder[plan.name] > priceOrder[current.current_plan_name]
-      ? 'upgrade'
-      : 'downgrade';
+    // Determine change type.
+    //
+    // This used to rank plans by a hardcoded name map, `{ free: 0, pro: 1,
+    // enterprise: 2 }`. Any plan whose name was not in that map produced
+    // `undefined`, and `undefined > 0` is false — so a move onto it was
+    // classified as a DOWNGRADE and waved past the paid-plan guard below. The
+    // map is the kind of thing that silently stops covering reality the moment
+    // a plan is added or renamed, which is exactly what a security control must
+    // not do.
+    //
+    // Price is the thing the guard actually cares about, and it is on the row.
+    const price = (p) => Math.max(Number(p.price_monthly) || 0, Number(p.price_yearly) || 0);
+    const currentPrice = Math.max(
+      Number(current.current_price_monthly) || 0,
+      Number(current.current_price_yearly) || 0
+    );
+    const changeType = price(plan) > currentPrice ? 'upgrade' : 'downgrade';
 
     // Self-service upgrades to a paid plan are refused unless explicitly
     // enabled. This endpoint applies the new plan and extends the billing

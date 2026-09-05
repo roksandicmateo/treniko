@@ -1,6 +1,7 @@
 // backend/controllers/profileController.js  (NEW FILE)
 
 const { pool } = require('../config/database');
+const { isKnownTimezone, DEFAULT_TIMEZONE } = require('../utils/trainerTime');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { isEmail, normalizeEmail, validatePassword } = require('../utils/validation');
@@ -16,7 +17,8 @@ const getProfile = async (req, res) => {
   try {
     const [userRes, tenantRes] = await Promise.all([
       pool.query(
-        `SELECT id, email, first_name, last_name, phone, bio, city, country, website, created_at
+        `SELECT id, email, first_name, last_name, phone, bio, city, country, website, created_at,
+                timezone, session_reminders_enabled
          FROM users WHERE id = $1`,
         [userId]
       ),
@@ -50,9 +52,24 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   const userId = req.user.userId;
   const tenantId = req.user.tenantId;
-  const { firstName, lastName, email, phone, bio, city, country, website, businessName, businessPhone, businessWebsite } = req.body;
+  const {
+    firstName, lastName, email, phone, bio, city, country, website,
+    businessName, businessPhone, businessWebsite,
+    timezone, sessionRemindersEnabled,
+  } = req.body;
 
   try {
+    // A zone the database does not know would make every date function using it
+    // raise, so a typo here would break the dashboard rather than the form.
+    // Checked against PostgreSQL's own zone table before it can be stored.
+    if (timezone !== undefined && timezone !== null) {
+      if (!(await isKnownTimezone(timezone))) {
+        return res.status(400).json({
+          error: `Unknown time zone. Use an IANA name such as ${DEFAULT_TIMEZONE}.`,
+        });
+      }
+    }
+
     // If changing email, validate its shape and check it's not taken
     if (email) {
       if (!isEmail(email)) {
@@ -78,11 +95,19 @@ const updateProfile = async (req, res) => {
         city       = COALESCE($6, city),
         country    = COALESCE($7, country),
         website    = COALESCE($8, website),
+        timezone   = COALESCE($9, timezone),
+        session_reminders_enabled = COALESCE($10, session_reminders_enabled),
         profile_updated_at = NOW(),
         updated_at = NOW()
-       WHERE id = $9
-       RETURNING id, email, first_name, last_name, phone, bio, city, country, website`,
-      [firstName, lastName, email ? normalizeEmail(email) : null, phone, bio, city, country, website, userId]
+       WHERE id = $11
+       RETURNING id, email, first_name, last_name, phone, bio, city, country, website,
+                 timezone, session_reminders_enabled`,
+      [
+        firstName, lastName, email ? normalizeEmail(email) : null, phone, bio, city, country, website,
+        timezone ?? null,
+        typeof sessionRemindersEnabled === 'boolean' ? sessionRemindersEnabled : null,
+        userId,
+      ]
     );
 
     // Update tenant (business) if provided

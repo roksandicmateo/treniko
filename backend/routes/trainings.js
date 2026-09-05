@@ -36,12 +36,27 @@ async function loadFull(trainingId, tenantId, db) {
     [trainingId]
   );
 
-  for (const ex of exRows) {
-    const { rows: sets } = await db.query(
-      'SELECT * FROM training_sets WHERE training_exercise_id = $1 ORDER BY sort_order',
-      [ex.id]
+  // One query for every set in the training, not one per exercise. A programme
+  // with twelve exercises used to cost thirteen round trips to render, and the
+  // count grew with the size of the workout — so the slowest page was the one a
+  // trainer opens with a client standing in front of them.
+  if (exRows.length > 0) {
+    const { rows: setRows } = await db.query(
+      `SELECT * FROM training_sets
+        WHERE training_exercise_id = ANY($1::uuid[])
+        ORDER BY training_exercise_id, sort_order`,
+      [exRows.map(ex => ex.id)]
     );
-    ex.sets = sets;
+
+    const setsByExercise = new Map();
+    for (const set of setRows) {
+      const list = setsByExercise.get(set.training_exercise_id);
+      if (list) list.push(set);
+      else setsByExercise.set(set.training_exercise_id, [set]);
+    }
+    for (const ex of exRows) {
+      ex.sets = setsByExercise.get(ex.id) || [];
+    }
   }
 
   t.exercises = exRows;

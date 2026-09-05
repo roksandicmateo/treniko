@@ -17,7 +17,7 @@
 
 const request = require('supertest');
 const app = require('../../server');
-const { createTenant, destroyTenant, pool, queryAs } = require('../helpers/fixtures');
+const { createTenant, destroyTenant, applyPlanLimits, pool, queryAs } = require('../helpers/fixtures');
 
 jest.setTimeout(30000);
 
@@ -57,6 +57,13 @@ const fillToClientLimit = async () => {
 beforeAll(async () => {
   T = await createTenant('climit');
   U = await createTenant('cliso');
+
+  // The cap under test belongs to the PLAN, not to any particular shipped
+  // tier. The beta plan every account now starts on allows 40 clients so that
+  // a trainer with a real client list can use the product (migration 038), so
+  // the tenant is pinned to a plan created here with a small cap: the property
+  // being tested is that the API enforces whatever the plan says.
+  await applyPlanLimits(T.tenantId, { maxClients: 5 });
 
   // A package template to assign later. Its own route is /api/packages, which
   // has nothing to do with the client cap.
